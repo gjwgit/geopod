@@ -1,0 +1,610 @@
+name: Build Installers
+
+# 20241024 gjw Construct bundles for various distributions. The
+# bundles (.zip or .exe or .dmg files) are created as artefacts that
+# can be downloaded locally using the github command line `gh`. I am
+# not utilising github SECRETS yet but will do so to push the packages
+# directly to repository and to build signed packages.
+
+# 20251017 gjw The dev branch used to be assumed in the naming of
+# artefacts below using `${{ github.ref_name }}`. But other branch
+# names are then problematic, particularly if the branch name includes
+# `/` (our usual practice) and we wanted to skip the `dev` check for
+# limiting the builds. For testing build processes in a separate
+# branch, named other than `dev` we now use a branch named
+# `build`. All `github.ref_name` are replaced with env.RELEASE.
+
+# 20251017 jesscmoore Added github secrets for macos signing during
+# build and added signing workflow as per
+# <https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications>
+
+# 20251029 jesscmoore Use flutter flavors to build with separate build
+# configurations for app store ('staging' flavor, uses distribution
+# certificate) and developer testing ('dev' flavor, uses development
+# certificate). Workflows added for building unsigned, signed ('dev'
+# and 'staging') macos apps.
+# https://docs.flutter.dev/deployment/flavors-ios
+
+on:
+  push:
+    branches:
+      - dev
+      - build
+      - jess/macos_installer
+
+env:
+  APP: geopod
+  RELEASE: dev
+  LINUX_PKGS: libsecret-1-dev
+  FLUTTER_VERSION: '3.35.7'
+  MACOS_APP_RELEASE_UNSIGNED_PATH: build/macos/Build/Products/Release-unsigned
+  MACOS_APP_RELEASE_STAGING_PATH: build/macos/Build/Products/Release-staging
+  MACOS_APP_RELEASE_DEV_PATH: build/macos/Build/Products/Release-dev
+
+jobs:
+
+  ########################################################################
+  # LINUX
+  #
+  # 20250110 gjw Originally I was building on Ubuntu 22.04 since my
+  # 24.04 version would not run on Mint 21.3. Then moved even older to
+  # Ubuntu 20.04 to get it more widely available. Seems to work on
+  # 22.04 and 24.04. Backwards the error was: "rattle:
+  # /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found
+  # (required by rattle)" On Ubuntu 20.04 the highest version of GLIBC
+  # is GLIBC2.30.
+  #
+  # 20250311 gjw Support for Ubuntu 20.04 is being deprecated
+  # https://github.com/gjwgit/rattleng/actions/runs/13753262146.
+  # Move to 22.04 to get broadest deployment.
+
+  package-linux-zip:
+    if: |
+      contains(github.event.head_commit.message, 'bump version') ||
+      contains(github.event.head_commit.message, 'build installers') ||
+      contains(github.event.head_commit.message, 'build linux')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v4
+
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -y
+          printf '#%.0s' {1..72}; printf '\nninja-build\n'
+          sudo apt-get install -y ninja-build
+          printf '#%.0s' {1..72}; printf '\nlibgtk-3-dev\n'
+          sudo apt-get install -y libgtk-3-dev
+          printf '#%.0s' {1..72}; printf '\nclang cmake\n'
+          sudo apt-get install -y clang cmake
+
+      - name: Install extra Linux packages
+        if: env.LINUX_PKGS != ''
+        run: |
+          printf '#%.0s' {1..72}; printf '\n${{env.LINUX_PKGS}}\n'
+          sudo apt-get install -y ${{env.LINUX_PKGS}}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          architecture: x64
+          flutter-version: ${{env.FLUTTER_VERSION}}
+
+      - name: Confirm Flutter Version
+        run: flutter --version
+
+      - name: Install Flutter Project Dependencies
+        run: flutter pub get
+
+      - name: Enable Linux Build
+        run: flutter config --enable-linux-desktop
+
+      - name: Build Flutter Linux app
+        run: flutter build linux --release
+
+      # Package as ZIP
+
+      - name: Zip Bundle
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          filename: ${{ env.APP }}-${{ env.RELEASE }}-linux.zip
+          directory: build/linux/x64/release/bundle
+
+      - name: Upload Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-linux-zip
+          path: build/linux/x64/release/bundle/${{ env.APP }}-${{ env.RELEASE }}-linux.zip
+
+
+  package-linux-snap:
+    if: |
+      contains(github.event.head_commit.message, 'bump version') ||
+      contains(github.event.head_commit.message, 'build installers') ||
+      contains(github.event.head_commit.message, 'build linux') ||
+      contains(github.event.head_commit.message, 'build snap')
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Clone Repository
+        uses: actions/checkout@v4
+
+      - name: Update system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get upgrade -y
+
+      - name: Build snap
+        if: hashFiles('snap/**') != ''
+        uses: snapcore/action-build@v1
+        id: build
+
+      - name: Upload snap artifact
+        if: hashFiles('snap/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-linux-snap
+          path: ${{ steps.build.outputs.snap }}
+
+  # publish:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   # Only publish on tag pushes
+  #   if: startsWith(github.ref, 'refs/tags/v')
+  #   steps:
+  #     - name: Download snap artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: snap-package
+
+  #     - name: Publish to Snap Store
+  #       uses: snapcore/action-publish@v1
+  #       env:
+  #         SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
+  #       with:
+  #         snap: '*.snap'
+  #         release: stable
+
+  ########################################################################
+  # MACOS - DISTRIBUTION CERTIFICATE SIGNED FOR APP STORE
+
+  # Uses Mac App Distrtibution cert and associated profile
+  # for app store distribution
+  # Certificate name: Togaware Pty Ltd
+  # Certificate type: Mac App Distrtibution
+  # Profile name: NotePod_Mac_Distribution_Mac_Appstore_Connect
+  # Profile type: Mac Appstore Connect (distribution profile)
+  # Profile linked apps: com.togaware.notepod
+  # Profile linked certificate: Togaware Pty Ltd
+  # Certificate creation date: 29/10/2025
+  # Profile creation date: 29/10/2025
+
+  package-macos-dmg-zip-appstore:
+    if: |
+      contains(github.event.head_commit.message, 'bump version') ||
+      contains(github.event.head_commit.message, 'build installers') ||
+      contains(github.event.head_commit.message, 'build macos appstore')
+    runs-on: macos-latest
+
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: ${{env.FLUTTER_VERSION}}
+
+      - name: Confirm Flutter Version
+        run: flutter --version
+
+      - name: Install Flutter Project Dependencies
+        run: flutter pub get
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      # Install certificate and provisioning profile for app signing.
+
+      - name: Install Apple certificate and provisioning profile
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          MACOS_PROVISION_PROFILE: ${{ secrets.MACOS_PROVISION_PROFILE }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+        run: |
+
+          echo "Create variables for filepaths for certificate, provisioning profile, and keychain"
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.provisionprofile
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo "Import certificate and provisioning profile from secrets"
+          echo -n "$MACOS_CERTIFICATE" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$MACOS_PROVISION_PROFILE" | base64 --decode -o $PP_PATH
+
+          echo "Create temporary keychain"
+          security create-keychain -p "$MACOS_KEYCHAIN_PWD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PWD" $KEYCHAIN_PATH
+
+          echo "Import certificate to keychain"
+          security import $CERTIFICATE_PATH -P "$MACOS_CERTIFICATE_PWD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
+          echo "Add to partition list to allow access to keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          echo "Apply provisioning profile"
+          # Although specifies mobile, this location is meant to be correct for
+          # macos and ios provisioning profiles
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      # Build and sign the app
+      # Uses a scheme 'staging' created in Xcode to have a separate
+      # build configuration to specify the cert and profile used for
+      # dev build. Then specify scheme name as flavour in flutter CLI.
+      # Certificate type (xcode var CODE_SIGN_IDENTITY)
+      # Provisioning profile name (xcode var PROVISIONING_PROFILE_SPECIFIER)
+
+      - name: Build Flutter macOS app
+        run: flutter build macos --release --flavor staging
+
+      - name: Note the build location
+        run: |
+          pwd
+          ls -lh ${{ env.MACOS_APP_RELEASE_STAGING_PATH }}
+
+      - name: Check macOS app code signature
+        run: |
+          codesign --display --verbose=2 "${{ env.MACOS_APP_RELEASE_STAGING_PATH }}/${{ env.APP }}.app"
+
+      # Package as DMG
+
+      - name: Create DMG
+        run: |
+          mkdir -p dmg_temp
+          cp -R "${{ env.MACOS_APP_RELEASE_STAGING_PATH }}/${{ env.APP }}.app" dmg_temp/
+          ln -s /Applications dmg_temp/Applications
+          hdiutil create -volname "${{ env.APP }}" \
+            -srcfolder dmg_temp \
+            -ov -format UDZO \
+            "${{ env.APP }}-${{env.RELEASE}}-macos-staging.dmg"
+
+      - name: Note the DMG created
+        run: |
+          ls -lh ${{ env.APP }}-${{env.RELEASE}}-macos-staging.dmg
+
+      - name: Upload Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-macos-staging-dmg
+          path: ${{ env.APP }}-${{env.RELEASE}}-macos-staging.dmg
+
+      # Package as ZIP
+
+      - name: Create ZIP
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          directory: ${{ env.MACOS_APP_RELEASE_STAGING_PATH }}
+          path: ${{ env.APP }}.app
+          filename: ${{ env.APP }}-${{env.RELEASE}}-macos-staging.zip
+
+      - name: Review ZIP exists
+        run: ls -lh ${{ env.MACOS_APP_RELEASE_STAGING_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-staging.zip
+
+      - name: Upload Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-macos-staging-zip
+          path: ${{ env.MACOS_APP_RELEASE_STAGING_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-staging.zip
+
+      # Ref: https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications
+
+########################################################################
+  # MACOS - DEVELOPMENT CERTIFICATE SIGNED FOR DEV TESTING
+
+  # Uses Development cert and associated profile
+  # for testing by developers on registered devices
+  # Certificate name: Jessica Moore
+  # Certificate type: Development
+  # Profile name: Wildcard_Development_Mac_App_Development
+  # Profile type: macOS App Development (development profile)
+  # Profile linked apps: * (wildcard allowed for development profiles)
+  # Profile linked certificate: Jessica Moore
+  # Profile linked devices: c71, boofy
+  # Certificate creation date: 23/10/2025
+  # Profile creation date: 29/10/2025
+
+  package-macos-dmg-zip-dev:
+    if: |
+      contains(github.event.head_commit.message, 'bump version') ||
+      contains(github.event.head_commit.message, 'build installers') ||
+      contains(github.event.head_commit.message, 'build macos dev')
+    runs-on: macos-latest
+
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: ${{env.FLUTTER_VERSION}}
+
+      - name: Confirm Flutter Version
+        run: flutter --version
+
+      - name: Install Flutter Project Dependencies
+        run: flutter pub get
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      # Install certificate and provisioning profile for app signing.
+
+      - name: Install Apple certificate and provisioning profile
+        env:
+          MACOS_CERTIFICATE_DEV: ${{ secrets.MACOS_CERTIFICATE_DEV }}
+          MACOS_CERTIFICATE_DEV_PWD: ${{ secrets.MACOS_CERTIFICATE_DEV_PWD }}
+          MACOS_PROVISION_PROFILE_DEV: ${{ secrets.MACOS_PROVISION_PROFILE_DEV }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+        run: |
+
+          echo "Create variables for filepaths for certificate, provisioning profile, and keychain"
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.provisionprofile
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo "Import certificate and provisioning profile from secrets"
+          echo -n "$MACOS_CERTIFICATE_DEV" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$MACOS_PROVISION_PROFILE_DEV" | base64 --decode -o $PP_PATH
+
+          echo "Create temporary keychain"
+          security create-keychain -p "$MACOS_KEYCHAIN_PWD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PWD" $KEYCHAIN_PATH
+
+          echo "Import certificate to keychain"
+          security import $CERTIFICATE_PATH -P "$MACOS_CERTIFICATE_DEV_PWD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
+          echo "Add to partition list to allow access to keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          echo "Apply provisioning profile"
+          # Although specifies mobile, this location is meant to be correct for
+          # macos and ios provisioning profiles
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      # Build and sign the app
+      # Uses a scheme 'dev' created in Xcode to have a separate
+      # build configuration to specify the cert and profile used for
+      # dev build. Then specify scheme name as flavour in flutter CLI.
+      # Certificate type (xcode var CODE_SIGN_IDENTITY)
+      # Provisioning profile name (xcode var PROVISIONING_PROFILE_SPECIFIER)
+
+      - name: Build Flutter macOS app
+        run: flutter build macos --release --flavor dev
+
+      - name: Note the build location
+        run: |
+          pwd
+          ls -lh ${{ env.MACOS_APP_RELEASE_DEV_PATH }}
+
+      - name: Check macOS app code signature
+        run: |
+          codesign --display --verbose=2 "${{ env.MACOS_APP_RELEASE_DEV_PATH }}/${{ env.APP }}.app"
+
+      # Package as DMG
+
+      - name: Create DMG
+        run: |
+          mkdir -p dmg_temp
+          cp -R "${{ env.MACOS_APP_RELEASE_DEV_PATH }}/${{ env.APP }}.app" dmg_temp/
+          ln -s /Applications dmg_temp/Applications
+          hdiutil create -volname "${{ env.APP }}" \
+            -srcfolder dmg_temp \
+            -ov -format UDZO \
+            "${{ env.APP }}-${{env.RELEASE}}-macos-dev.dmg"
+
+      - name: Note the DMG created
+        run: |
+          ls -lh ${{ env.APP }}-${{env.RELEASE}}-macos-dev.dmg
+
+      - name: Upload Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-macos-dev-dmg
+          path: ${{ env.APP }}-${{env.RELEASE}}-macos-dev.dmg
+
+      # Package as ZIP
+
+      - name: Create ZIP
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          directory: ${{ env.MACOS_APP_RELEASE_DEV_PATH }}
+          path: ${{ env.APP }}.app
+          filename: ${{ env.APP }}-${{env.RELEASE}}-macos-dev.zip
+
+      - name: Review ZIP exists
+        run: ls -lh ${{ env.MACOS_APP_RELEASE_DEV_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-dev.zip
+
+      - name: Upload Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-macos-dev-zip
+          path: ${{ env.MACOS_APP_RELEASE_DEV_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-dev.zip
+
+      # Ref: https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications
+
+########################################################################
+  # MACOS - UNSIGNED
+
+  # Build without signing certificate
+  # for testing by developers
+  # Note: build without signing prevents build with keychain access capability
+  # This means the app fails to use secure local storage and the use needs to
+  # press login and security key submit buttons x2.
+
+  package-macos-dmg-zip-unsigned:
+    if: |
+      contains(github.event.head_commit.message, 'bump version') ||
+      contains(github.event.head_commit.message, 'build installers') ||
+      contains(github.event.head_commit.message, 'build macos unsigned')
+    runs-on: macos-latest
+
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: ${{env.FLUTTER_VERSION}}
+
+      - name: Confirm Flutter Version
+        run: flutter --version
+
+      - name: Install Flutter Project Dependencies
+        run: flutter pub get
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      # Build an unsigned app
+
+      - name: Build Flutter macOS app
+        run: flutter build macos --release --flavor unsigned
+
+      - name: Note the build location
+        run: |
+          pwd
+          ls -lh ${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}
+
+      - name: Check macOS app code signature
+        run: |
+          codesign --display --verbose=2 "${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}/${{ env.APP }}.app"
+
+      # Package as DMG
+
+      - name: Create DMG
+        run: |
+          mkdir -p dmg_temp
+          cp -R "${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}/${{ env.APP }}.app" dmg_temp/
+          ln -s /Applications dmg_temp/Applications
+          hdiutil create -volname "${{ env.APP }}" \
+            -srcfolder dmg_temp \
+            -ov -format UDZO \
+            "${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.dmg"
+
+      - name: Note the DMG created
+        run: |
+          ls -lh ${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.dmg
+
+      - name: Upload Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-macos-unsigned-dmg
+          path: ${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.dmg
+
+      # Package as ZIP
+
+      - name: Create ZIP
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          directory: ${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}
+          path: ${{ env.APP }}.app
+          filename: ${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.zip
+
+      - name: Review ZIP exists
+        run: ls -lh ${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.zip
+
+      - name: Upload Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-macos-unsigned-zip
+          path: ${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.zip
+
+  ########################################################################
+  # WINDOWS
+
+  package-windows-zip-exe:
+    if: |
+      contains(github.event.head_commit.message, 'bump version') ||
+      contains(github.event.head_commit.message, 'build installers') ||
+      contains(github.event.head_commit.message, 'build windows')
+    runs-on: windows-latest # randomly not working (choco fails) with inno 1.2.7
+
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          architecture: x64
+          flutter-version: ${{env.FLUTTER_VERSION}}
+
+      - name: Confirm Flutter Version
+        run: flutter --version
+
+      - name: Install Flutter Project Dependencies
+        run: flutter pub get
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Flutter Windows app
+        run: flutter build windows --release
+
+      # Package as ZIP
+
+      - name: Archive Release
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          filename: ${{ env.APP }}-${{env.RELEASE}}-windows.zip
+          directory: build/windows/x64/runner/Release
+
+      - name: Upload Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-windows-zip
+          path: build/windows/x64/runner/Release/${{ env.APP }}-${{env.RELEASE}}-windows.zip
+
+      # Package as EXE
+
+      - name: Check the DLLs for Inclusion in the .iss script
+        run: dir D:\a\${{ env.APP }}\${{ env.APP }}\build\windows\x64\runner\Release\
+
+      - name: Get Version from pubspec.yaml
+        run: |
+          $version = (Get-Content pubspec.yaml | Select-String '^version:[^^]*' | ForEach-Object { $_.ToString().Split(":")[1].Trim().Split("+")[0].Trim() })
+          echo "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Compile .ISS to .EXE Installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.7
+        with:
+          path: installers/app-windows.iss
+          options: /O+
+
+      - name: Upload Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-windows-inno
+          path: D:\a\${{ env.APP }}\${{ env.APP }}\installers\installers\${{ env.APP }}-dev-windows-inno.exe

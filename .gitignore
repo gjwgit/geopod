@@ -1,4 +1,70 @@
-# The following is from both `flutter create` and github.
+########################################################################
+# Local ignores
+########################################################################
+
+!lib
+
+*~
+*.bak
+
+ARCHIVE
+ignore
+pubspec.yaml.*
+
+qtest_*.txt
+
+installers/*.apk
+installers/*.exe
+installers/*.snap
+installers/*.tar.gz
+installers/*-linux.zip
+installers/*-macos.zip
+installers/*-windows.zip
+
+.Rhistory
+
+# Puppeteer browser cache used in testing solidui apps
+
+.local-chrome/
+
+# Note: test_credentials.json and auth_tokens.json can be committed
+# for CI/CD as baseline/templates that are "stale" tokens that get
+# auto-regenerated when tests are run.  These are test-only
+# credentials for a dev POD server, not production.
+#
+# Because the files are already in the repo we need to tell our
+# particular clone of the repository (i.e., for each developer) to
+# assume the files are unchanged, even though they will be updated for
+# each test run.
+#
+# git update-index --assume-unchanged integration_test/fixtures/auth_tokens.json integration_test/fixtures/complete_auth_data.json
+#
+# To undo this:
+#
+# git update-index --no-assume-unchanged integration_test/fixtures/auth_tokens.json integration_test/fixtures/complete_auth_data.json
+#
+# To see which files are marked this way:
+#
+# git ls-files -v | grep '^h'
+
+# Integration test auth data (contains sensitive tokens)
+
+#integration/fixtures/auth_tokens.json
+#integration/fixtures/complete_auth_data.json
+#integration/fixtures/test_credentials.json
+
+# Integration test TMDB API key (contains sensitive API key)
+integration_test/fixtures/tmdb_api_key.json
+
+########################################################################
+# From https://github.com/flutter/flutter/blob/master/.gitignore
+# Combined with the github flutter .gitignore
+# Combined with the flutter create .gitignore
+########################################################################
+
+#-----------------------------------------------------------------------
+# Miscellaneous
+#-----------------------------------------------------------------------
 
 *.class
 *.lock
@@ -14,38 +80,23 @@
 .swiftpm/
 migrate_working_dir/
 
+#-----------------------------------------------------------------------
 # IntelliJ related
+#-----------------------------------------------------------------------
+
 *.iml
 *.ipr
 *.iws
 .idea/
 
+#-----------------------------------------------------------------------
+# Visual Studio Code related
+#
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
-#.vscode/
 
-# packages file containing multi-root paths
-.packages.generated
-
-# Flutter/Dart/Pub related
-**/doc/api/
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-
-**/generated_plugin_registrant.dart
-.packages
-.pub-preload-cache/
-.pub/
-/build/
-/coverage/
-flutter_*.png
-linked_*.ds
-unlinked.ds
-unlinked_spec.ds
+.vscode/
 
 # Symbolication related
 app.*.symbols
@@ -58,7 +109,79 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+#-----------------------------------------------------------------------
+# Flutter repo-specific
+#-----------------------------------------------------------------------
+
+/bin/cache/
+/bin/internal/bootstrap.bat
+/bin/internal/bootstrap.sh
+/bin/mingit/
+/dev/benchmarks/mega_gallery/
+/dev/bots/.recipe_deps
+/dev/bots/android_tools/
+/dev/devicelab/ABresults*.json
+/dev/docs/doc/
+/dev/docs/flutter.docs.zip
+/dev/docs/lib/
+/dev/docs/pubspec.yaml
+/dev/integration_tests/**/xcuserdata
+/dev/integration_tests/**/Pods
+/packages/flutter/coverage/
+version
+analysis_benchmark.json
+
+# packages file containing multi-root paths
+
+.packages.generated
+
+#-----------------------------------------------------------------------
+# Flutter/Dart/Pub related
+#-----------------------------------------------------------------------
+
+# Directory created by dartdoc. If you don't generate documentation
+# locally you can remove this line.
+
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+**/generated_plugin_registrant.dart
+.packages
+.pub-preload-cache/
+.pub/
+build/
+flutter_*.png
+linked_*.ds
+unlinked.ds
+unlinked_spec.ds
+
+# If you're building an application, you may want to check-in the
+# pubspec.lock. Libraries should not include pubspec.lock, per
+# https://dart.dev/guides/libraries/private-files#pubspeclock.
+
+/pubspec.lock
+
+#-----------------------------------------------------------------------
+# Avoid committing generated Javascript files.
+#
+# *.info.json is produced by the --dump-info flag.
+#
+# Don't specify *.js if your project includes source files written
+# in JavaScript.
+#-----------------------------------------------------------------------
+
+*.dart.js
+*.info.json
+*.js
+*.js_
+*.js.deps
+*.js.map
+
+#-----------------------------------------------------------------------
 # Android related
+#-----------------------------------------------------------------------
+
 **/android/**/gradle-wrapper.jar
 .gradle/
 **/android/captures/
@@ -69,7 +192,12 @@ app.*.map.json
 **/android/key.properties
 *.jks
 
+android/app/.cxx/
+
+#-----------------------------------------------------------------------
 # iOS/XCode related
+#-----------------------------------------------------------------------
+
 **/ios/**/*.mode1v3
 **/ios/**/*.mode2v3
 **/ios/**/*.moved-aside
@@ -99,30 +227,55 @@ app.*.map.json
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
+ios/Flutter/
+ios/Runner.xcodeproj/
+ios/Runner.xcworkspace/
+ios/Runner/
+ios/RunnerTests/
+
+#-----------------------------------------------------------------------
 # macOS
+#-----------------------------------------------------------------------
+
 **/Flutter/ephemeral/
 **/Pods/
 **/macos/Flutter/GeneratedPluginRegistrant.swift
 **/macos/Flutter/ephemeral
 **/xcuserdata/
 
+#-----------------------------------------------------------------------
 # Windows
+#-----------------------------------------------------------------------
+
 **/windows/flutter/generated_plugin_registrant.cc
 **/windows/flutter/generated_plugin_registrant.h
 **/windows/flutter/generated_plugins.cmake
 
+#-----------------------------------------------------------------------
 # Linux
+#-----------------------------------------------------------------------
+
 **/linux/flutter/generated_plugin_registrant.cc
 **/linux/flutter/generated_plugin_registrant.h
 **/linux/flutter/generated_plugins.cmake
+**/linux/runner
 
+#-----------------------------------------------------------------------
 # Coverage
+#-----------------------------------------------------------------------
+
 coverage/
 
+#-----------------------------------------------------------------------
 # Symbols
+#-----------------------------------------------------------------------
+
 app.*.symbols
 
+#-----------------------------------------------------------------------
 # Exceptions to above rules.
+#-----------------------------------------------------------------------
+
 !**/ios/**/default.mode1v3
 !**/ios/**/default.mode2v3
 !**/ios/**/default.pbxuser

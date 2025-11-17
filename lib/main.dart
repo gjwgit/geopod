@@ -30,26 +30,35 @@ class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   String? _selectedMarkerText;
 
-  // Define your points of interest
+  // Define your points of interest - Larrakia significant sites near Darwin
   final List<MarkerData> _markers = [
     MarkerData(
-      position: LatLng(-35.2809, 149.1300), // Canberra
-      title: 'The Playhouse',
+      position: LatLng(-12.4634, 130.8456), // Darwin city center
+      title: 'Garramilla (Darwin)',
       description:
-          'This has been a significant cultural hub for the Arts in Canberra.',
+          'The traditional Larrakia name for Darwin, meaning "white stone"',
     ),
     MarkerData(
-      position: LatLng(-35.3075, 149.1244),
-      title: 'Parliament House',
+      position: LatLng(-12.4686, 130.8403),
+      title: 'Stokes Hill',
       description:
-          'This is where our politicians spend to much time arguing '
-          'rather than debating.',
+          'A site where the Larrakia people believe the spiritual ancestor "Chinute Chinute" lives, manifesting as a tawny frogmouth.',
     ),
     MarkerData(
-      position: LatLng(-35.2915, 149.1351),
-      title: 'Lake Burley Griffin',
+      position: LatLng(-12.4294, 130.8350),
+      title: 'Mindil Beach',
       description:
-          'The central basin supports regular Arts events for the Canberra community',
+          'One of several popular sites around Darwin that holds specific cultural meaning for the Larrakia people.',
+    ),
+    MarkerData(
+      position: LatLng(-12.3771, 130.8765),
+      title: 'Rapid Creek',
+      description: 'An important Larrakia cultural site in Darwin.',
+    ),
+    MarkerData(
+      position: LatLng(-12.3589, 130.8655),
+      title: 'Casuarina Beach',
+      description: 'Significant coastal site for Larrakia people',
     ),
   ];
 
@@ -62,7 +71,7 @@ class _MapScreenState extends State<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: LatLng(-35.2809, 149.1300), // Canberra
+              initialCenter: LatLng(-12.4634, 130.8456), // Darwin
               initialZoom: 12.0,
               minZoom: 3.0,
               maxZoom: 18.0,

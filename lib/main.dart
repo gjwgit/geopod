@@ -34,18 +34,22 @@ class _MapScreenState extends State<MapScreen> {
   final List<MarkerData> _markers = [
     MarkerData(
       position: LatLng(-35.2809, 149.1300), // Canberra
-      title: 'Canberra',
-      description: 'Capital of Australia',
+      title: 'The Playhouse',
+      description:
+          'This has been a significant cultural hub for the Arts in Canberra.',
     ),
     MarkerData(
       position: LatLng(-35.3075, 149.1244),
       title: 'Parliament House',
-      description: 'Seat of Australian Government',
+      description:
+          'This is where our politicians spend to much time arguing '
+          'rather than debating.',
     ),
     MarkerData(
-      position: LatLng(-35.2835, 149.1281),
+      position: LatLng(-35.2915, 149.1351),
       title: 'Lake Burley Griffin',
-      description: 'Beautiful artificial lake',
+      description:
+          'The central basin supports regular Arts events for the Canberra community',
     ),
   ];
 

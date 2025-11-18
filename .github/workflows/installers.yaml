@@ -487,7 +487,7 @@ jobs:
       # Build an unsigned app
 
       - name: Build Flutter macOS app
-        run: flutter build macos --release --flavor unsigned
+        run: flutter build macos --release
 
       - name: Note the build location
         run: |

@@ -17,3 +17,7 @@ https://pods.solidcommunity.au/my-moviestar/profile/card#me
 # ANU Software Innovation Institute website (frequent timeouts in CI)
 
 https://sii.anu.edu.au/
+
+# Ignore the tempalte index file.
+
+web/**

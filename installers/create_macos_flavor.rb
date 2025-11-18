@@ -8,18 +8,19 @@
 
 require 'xcodeproj'
 
-if ARGV.include?('-h') || ARGV.include?('--help')
+if ARGV.include?('-h') || ARGV.include?('--help') || ARGV.length != 1
   puts "Usage: create_macos_flavor [flavor]"
   puts ""
   puts "-h, --help: Show this help message."
-  puts "flavor:     Where flavor is the name of the new flavor."
+  puts "flavor:     Where flavor is the name of the new flavor (Default: none)."
   exit
 end
 
-debug_conf_name = 'Debug-unsigned'
-profile_conf_name = 'Profile-unsigned'
-release_conf_name = 'Release-unsigned'
-new_scheme_name = "unsigned"
+# Get scheme name from command line
+flavor = ARGV[0]
+debug_conf_name = "Debug-#{flavor}"
+profile_conf_name = "Profile-#{flavor}"
+release_conf_name = "Release-#{flavor}"
 project_path = '../macos/Runner.xcodeproj'
 shared_schemes_dir = File.join(project_path, 'xcshareddata', 'xcschemes')
 
@@ -76,7 +77,7 @@ puts "Initial build configurations for project '#{project.path.basename}':"
 list_build_configs(project)
 
 # List schemes
-puts "Initial shared schemes for project '#{project.path.basename}':"
+puts "Initial shared schemes (flavors) for project '#{project.path.basename}':"
 list_schemes(shared_schemes_dir)
 
 
@@ -93,7 +94,7 @@ scheme.test_action.build_configuration=debug_conf_name
 scheme.profile_action.build_configuration=profile_conf_name
 scheme.analyze_action.build_configuration=debug_conf_name
 scheme.archive_action.build_configuration=release_conf_name
-scheme.save_as(project_path, new_scheme_name)
+scheme.save_as(project_path, flavor)
 
 # list build configurations
 puts ""
@@ -101,7 +102,5 @@ puts "Final build configurations for project '#{project.path.basename}':"
 list_build_configs(project)
 
 # list schemes
-puts "Final schemes for project '#{project.path.basename}':"
+puts "Final schemes (flavors) for project '#{project.path.basename}':"
 list_schemes(shared_schemes_dir)
-
-# TODO: supply scheme name on commandline

@@ -9,7 +9,7 @@
 require 'xcodeproj'
 
 if ARGV.include?('-h') || ARGV.include?('--help') || ARGV.length != 1
-  puts "Usage: create_macos_flavor [flavor]"
+  puts "Usage: create_macos_flavor.rb [flavor]"
   puts ""
   puts "-h, --help: Show this help message."
   puts "flavor:     Where flavor is the name of the new flavor (Default: none)."

@@ -1,6 +1,6 @@
-/// Book of Life - The application's home page.
+/// The application's home page.
 ///
-// Time-stamp: <Friday 2025-11-21 08:38:57 +1100 Graham Williams>
+// Time-stamp: <Friday 2025-11-21 09:21:38 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///

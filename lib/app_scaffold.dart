@@ -1,6 +1,6 @@
 /// The primary [MaterialApp] widget.
 ///
-// Time-stamp: <Friday 2025-11-21 08:42:00 +1100 Graham Williams>
+// Time-stamp: <Friday 2025-11-21 09:25:41 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -40,7 +40,7 @@ var appScaffold = SolidScaffold(
       title: 'Home',
       tooltip: '''
 
-            **Home:** Tap here to return to the main page for the app.
+            **Home:** Tap here to return to the main map page for the app.
 
             ''',
       child: Home(title: appTitle),
@@ -50,26 +50,33 @@ var appScaffold = SolidScaffold(
       title: 'Interests',
       tooltip: '''
 
-            **Interests:** Tap here to access your life interests. You Movie
-            interests are managed by the MovieStar app but you get a summary
-            here.
+            **Interests:** Tap here to access the list of points of interest you
+              have access to. Here you can add and remove points and check those
+              that are shared with you. You can also share your points of
+              interest with other users through their Pods.
 
             ''',
       child: Center(
-        child: Text('Profile Page', style: TextStyle(fontSize: 24)),
+        child: Text(
+          'RSN List of Points of Interest',
+          style: TextStyle(fontSize: 24),
+        ),
       ),
     ),
     const SolidMenuItem(
       icon: Icons.headphones,
-      title: 'Music',
+      title: 'Audio',
       tooltip: '''
 
-            **Music:** Tap here to listen to and review music from your music
-              library.
+            **Audio:** Tap here to listen to and review audio commentary for the
+              points of interest.
 
             ''',
       child: Center(
-        child: Text('Music Library', style: TextStyle(fontSize: 24)),
+        child: Text(
+          'RSN Library of Audio for Locations of Interest',
+          style: TextStyle(fontSize: 24),
+        ),
       ),
     ),
     const SolidMenuItem(
@@ -77,12 +84,15 @@ var appScaffold = SolidScaffold(
       title: 'Video',
       tooltip: '''
 
-            **Video:** Tap here to view and review videos from your video
-              library.
+            **Video:** Tap here to view and review videos for your points of
+              interest.
 
             ''',
       child: Center(
-        child: Text('Video Library', style: TextStyle(fontSize: 24)),
+        child: Text(
+          'RSN Video Library for Locations of Interest',
+          style: TextStyle(fontSize: 24),
+        ),
       ),
     ),
     const SolidMenuItem(
@@ -90,7 +100,7 @@ var appScaffold = SolidScaffold(
       title: 'Files',
       tooltip: '''
 
-            **Files:** Tap here to browse the files on your POD.
+            **Files:** Tap here to browse the files for the app on your Pod.
 
             ''',
       child: SolidFile(basePath: ''),
@@ -104,7 +114,7 @@ var appScaffold = SolidScaffold(
     // VERSION
     versionConfig: const SolidVersionConfig(
       changelogUrl:
-          'https://github.com/gjwgit/book_of_life/blob/dev/'
+          'https://github.com/gjwgit/geopod/blob/dev/'
           'CHANGELOG.md',
       showDate: true,
     ),
@@ -149,17 +159,11 @@ var appScaffold = SolidScaffold(
     applicationLegalese: '''Copyright © 2025 Togaware Pty Ltd''',
     text: '''
 
-          Your book of life is written by you. This app provides support for you
-          to do just that, while retaining all your data encrypted and secure on
-          a Solid server of your choice.
+          GeoPod provides a graphic maps-based interface to locations of
+          interest that you have recorded or that are shared with you by their
+          custodians.
 
-          With this app you can store your **important numbers** so they are
-          available whenever you need them. Your **health data** can be
-          populated here and shared with your doctor. All data is stored
-          encrypted as a Pod in your Data Vault on a Solid Server of your
-          choice.
-
-          [Source code.](https://github.com/gjwgit/book_of_life)
+          [Source code.](https://github.com/gjwgit/geopod)
 
           ''',
   ),

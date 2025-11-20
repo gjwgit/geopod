@@ -29,7 +29,7 @@ import 'package:flutter/material.dart';
 
 import 'package:window_manager/window_manager.dart';
 
-import 'package:geopod/app.dart.~1~';
+import 'package:geopod/app.dart';
 import 'package:geopod/constants/app.dart';
 import 'package:geopod/utils/is_desktop.dart';
 

@@ -1,4 +1,4 @@
-# Book of Life
+# Geo Pod
 
 We identify here the high level changes for the app.
 

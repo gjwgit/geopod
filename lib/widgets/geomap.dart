@@ -1,6 +1,6 @@
-/// THe primary map widget.
+/// The primary map widget.
 ///
-// Time-stamp: <Friday 2025-11-21 08:37:45 +1100 Graham Williams>
+// Time-stamp: <Friday 2025-11-21 09:44:11 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute ANU
 ///
@@ -78,118 +78,114 @@ class _GeoMapState extends State<GeoMap> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('GeoPod'), elevation: 2),
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: const LatLng(-12.4634, 130.8456), // Darwin
-              initialZoom: 12.0,
-              minZoom: 3.0,
-              maxZoom: 18.0,
-              onTap: (_, _) {
-                setState(() {
-                  _selectedMarkerText = null;
-                });
-              },
+    return Stack(
+      children: [
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: const LatLng(-12.4634, 130.8456), // Darwin
+            initialZoom: 12.0,
+            minZoom: 3.0,
+            maxZoom: 18.0,
+            onTap: (_, _) {
+              setState(() {
+                _selectedMarkerText = null;
+              });
+            },
+          ),
+          children: [
+            // OpenStreetMap tile layer
+            TileLayer(
+              urlTemplate:
+                  'https://tile.openstreetmap.org/'
+                  '{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.togaware.geopod',
             ),
-            children: [
-              // OpenStreetMap tile layer
-              TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/'
-                    '{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.togaware.geopod',
-              ),
-              // Marker layer
-              MarkerLayer(
-                markers: _markers.map((markerData) {
-                  return Marker(
-                    point: markerData.position,
-                    width: 40,
-                    height: 40,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedMarkerText =
-                              '${markerData.title}\n${markerData.description}';
-                        });
-                      },
-                      child: const Icon(
-                        Icons.location_on,
-                        size: 40,
-                        color: Colors.red,
+            // Marker layer
+            MarkerLayer(
+              markers: _markers.map((markerData) {
+                return Marker(
+                  point: markerData.position,
+                  width: 40,
+                  height: 40,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedMarkerText =
+                            '${markerData.title}\n${markerData.description}';
+                      });
+                    },
+                    child: const Icon(
+                      Icons.location_on,
+                      size: 40,
+                      color: Colors.red,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+        // Popup for selected marker
+        if (_selectedMarkerText != null)
+          Positioned(
+            bottom: 20,
+            left: 20,
+            right: 20,
+            child: Card(
+              elevation: 8,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _selectedMarkerText!,
+                        style: const TextStyle(fontSize: 16),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-          // Popup for selected marker
-          if (_selectedMarkerText != null)
-            Positioned(
-              bottom: 20,
-              left: 20,
-              right: 20,
-              child: Card(
-                elevation: 8,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _selectedMarkerText!,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          setState(() {
-                            _selectedMarkerText = null;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        setState(() {
+                          _selectedMarkerText = null;
+                        });
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),
-        ],
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: 'zoom_in',
-            mini: true,
-            child: const Icon(Icons.add),
-            onPressed: () {
-              _mapController.move(
-                _mapController.camera.center,
-                _mapController.camera.zoom + 1,
-              );
-            },
           ),
-          const SizedBox(height: 8),
-          FloatingActionButton(
-            heroTag: 'zoom_out',
-            mini: true,
-            child: const Icon(Icons.remove),
-            onPressed: () {
-              _mapController.move(
-                _mapController.camera.center,
-                _mapController.camera.zoom - 1,
-              );
-            },
-          ),
-        ],
-      ),
+      ],
     );
+    // floatingActionButton: Column(
+    //   mainAxisAlignment: MainAxisAlignment.end,
+    //   children: [
+    //     FloatingActionButton(
+    //       heroTag: 'zoom_in',
+    //       mini: true,
+    //       child: const Icon(Icons.add),
+    //       onPressed: () {
+    //         _mapController.move(
+    //           _mapController.camera.center,
+    //           _mapController.camera.zoom + 1,
+    //         );
+    //       },
+    //     ),
+    //     const SizedBox(height: 8),
+    //     FloatingActionButton(
+    //       heroTag: 'zoom_out',
+    //       mini: true,
+    //       child: const Icon(Icons.remove),
+    //       onPressed: () {
+    //         _mapController.move(
+    //           _mapController.camera.center,
+    //           _mapController.camera.zoom - 1,
+    //         );
+    //       },
+    //     ),
+    //  ],
   }
 }
 

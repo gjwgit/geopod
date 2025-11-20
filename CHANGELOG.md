@@ -11,18 +11,6 @@ version_widget package.
 
 You can run the app online: [**web**](https://geopod.solidcommunity.au).
 
-Download the latest version:
-GNU/Linux
-[**deb**](https://solidcommunity.au/installers/geopod_amd64.deb) or
-[**zip**](https://solidcommunity.au/installers/geopod-dev-linux.zip) -
-Android
-[**apk**](https://solidcommunity.au/installers/geopod.apk) -
-macOS
-[**zip**](https://solidcommunity.au/installers/geopod-dev-macos.zip) -
-Windows
-[**zip**](https://solidcommunity.au/installers/geopod-dev-windows.zip) or
-[**inno**](https://solidcommunity.au/installers/geopod-dev-windows-inno.exe).
-
 ## 0.1 First beta release of a solidui template
 
 + Add solid login and solid scaffold [0.0.2 20251121 gjw]

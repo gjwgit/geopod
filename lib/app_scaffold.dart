@@ -1,6 +1,6 @@
 /// The primary [MaterialApp] widget.
 ///
-// Time-stamp: <Friday 2025-11-21 09:25:41 +1100 Graham Williams>
+// Time-stamp: <Friday 2025-11-21 19:37:19 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -46,19 +46,19 @@ var appScaffold = SolidScaffold(
       child: Home(title: appTitle),
     ),
     const SolidMenuItem(
-      icon: Icons.interpreter_mode,
-      title: 'Interests',
+      icon: Icons.location_on,
+      title: 'Locations',
       tooltip: '''
 
-            **Interests:** Tap here to access the list of points of interest you
-              have access to. Here you can add and remove points and check those
-              that are shared with you. You can also share your points of
-              interest with other users through their Pods.
+            **Locations:** Tap here to access the list of locations of interest
+              you have access to. Here you can add and remove locations and
+              check those that are shared with you. You can also share your
+              locations of interest with other users through their Pods.
 
             ''',
       child: Center(
         child: Text(
-          'RSN List of Points of Interest',
+          'List of Locations of Interest',
           style: TextStyle(fontSize: 24),
         ),
       ),
@@ -68,13 +68,13 @@ var appScaffold = SolidScaffold(
       title: 'Audio',
       tooltip: '''
 
-            **Audio:** Tap here to listen to and review audio commentary for the
-              points of interest.
+            **Audio:** Tap here to listen to and review audio commentary for
+            specific locations of interest.
 
             ''',
       child: Center(
         child: Text(
-          'RSN Library of Audio for Locations of Interest',
+          'List of Audio for specific Locations of Interest',
           style: TextStyle(fontSize: 24),
         ),
       ),
@@ -84,13 +84,13 @@ var appScaffold = SolidScaffold(
       title: 'Video',
       tooltip: '''
 
-            **Video:** Tap here to view and review videos for your points of
-              interest.
+            **Video:** Tap here to view and review videos for specific locations
+              of interest.
 
             ''',
       child: Center(
         child: Text(
-          'RSN Video Library for Locations of Interest',
+          'Video Library for Locations of Interest',
           style: TextStyle(fontSize: 24),
         ),
       ),

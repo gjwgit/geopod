@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 #
+# Time-stamp: <Wednesday 2025-11-19 11:20:55 Jess Moore>
+#
 # 20251118 jesscmoore Generate new macos flavor for automating
 # a custom build configuration
 # Refs:

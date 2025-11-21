@@ -12,20 +12,10 @@ if ARGV.include?('-h') || ARGV.include?('--help') || ARGV.length != 1
   puts "Usage: ruby create_macos_flavor.rb [flavor]"
   puts ""
   puts "-h, --help: Show this help message."
+  puts "-l, --list: List build configurations and schemes."
   puts "flavor:     Where flavor is the name of the new flavor (Default: none)."
   exit
 end
-
-# Get scheme name from command line
-flavor = ARGV[0]
-debug_conf_name = "Debug-#{flavor}"
-profile_conf_name = "Profile-#{flavor}"
-release_conf_name = "Release-#{flavor}"
-project_path = '../macos/Runner.xcodeproj'
-shared_schemes_dir = File.join(project_path, 'xcshareddata', 'xcschemes')
-
-scheme = Xcodeproj::XCScheme.new
-project = Xcodeproj::Project.open(project_path)
 
 def list_build_configs(project)
     project.build_configurations.each do |configuration|
@@ -44,6 +34,30 @@ def list_schemes(shared_schemes_dir)
         puts "  No shared schemes found."
     end
 end
+
+project_path = '../macos/Runner.xcodeproj'
+shared_schemes_dir = File.join(project_path, 'xcshareddata', 'xcschemes')
+project = Xcodeproj::Project.open(project_path)
+
+
+if ARGV.include?('-l') || ARGV.include?('--list')
+  # List build configurations
+    puts "Build configurations:"
+    list_build_configs(project)
+
+    # List schemes
+    puts "Schemes (flavors):"
+    list_schemes(shared_schemes_dir)
+    exit
+end
+
+# Get scheme name from command line
+flavor = ARGV[0]
+debug_conf_name = "Debug-#{flavor}"
+profile_conf_name = "Profile-#{flavor}"
+release_conf_name = "Release-#{flavor}"
+
+scheme = Xcodeproj::XCScheme.new
 
 # Generate new build configurations by duplicating existing build config
 def copy_configuration(project, base_name, new_config_name, symbol_name)
@@ -72,15 +86,6 @@ def copy_configuration(project, base_name, new_config_name, symbol_name)
 end
 
 
-# List build configurations
-puts "Initial build configurations for project '#{project.path.basename}':"
-list_build_configs(project)
-
-# List schemes
-puts "Initial shared schemes (flavors) for project '#{project.path.basename}':"
-list_schemes(shared_schemes_dir)
-
-
 # Create the build configurations
 copy_configuration(project, 'Debug', debug_conf_name, :debug)
 copy_configuration(project, 'Profile', profile_conf_name, :release)
@@ -95,12 +100,3 @@ scheme.profile_action.build_configuration=profile_conf_name
 scheme.analyze_action.build_configuration=debug_conf_name
 scheme.archive_action.build_configuration=release_conf_name
 scheme.save_as(project_path, flavor)
-
-# list build configurations
-puts ""
-puts "Final build configurations for project '#{project.path.basename}':"
-list_build_configs(project)
-
-# list schemes
-puts "Final schemes (flavors) for project '#{project.path.basename}':"
-list_schemes(shared_schemes_dir)

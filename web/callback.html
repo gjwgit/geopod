@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Authentication Callback</title>
+  <script>
+    // This script helps solid_auth handle the OAuth callback.
+    // It passes the authorization code back to the parent window
+    // and closes the popup if applicable.
+    const AUTH_DESTINATION_KEY = "openidconnect_auth_destination_url";
+    const AUTH_RESPONSE_KEY = "openidconnect_auth_response_info";
+    
+    window.onload = function () {
+      // Check if this is a popup window
+      if (window.opener && window.opener !== window) {
+        // Pass the full URL (including code) to the parent window
+        window.opener.postMessage(window.location.href, "*");
+        window.close();
+      } else {
+        // If not a popup, redirect to the main app with the code
+        // This handles the case where the browser doesn't support popups
+        const currentUrl = window.location.href;
+        if (currentUrl.includes('code=')) {
+          // Store the response info for the main window to pick up
+          localStorage.setItem(AUTH_RESPONSE_KEY, currentUrl);
+          // Redirect to the base URL (the main app will pick up the code)
+          window.location.href = window.location.origin + window.location.pathname.replace('/callback.html', '/');
+        }
+      }
+    }
+  </script>
+</head>
+<body>
+  <p>Authentication complete. You can close this window.</p>
+  <p>If this window does not close automatically, please close it manually.</p>
+</body>
+</html>
+

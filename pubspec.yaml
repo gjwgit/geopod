@@ -20,7 +20,9 @@ dependencies:
     sdk: flutter
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
+  solidpod: 0.8.5
   solidui: ^0.0.8
+  web: ^1.1.0
   window_manager: ^0.5.0
   universal_io: any
 

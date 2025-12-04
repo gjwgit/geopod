@@ -65,8 +65,8 @@ class App extends StatelessWidget {
       child: verifiedChild,
     );
 
-    // Wrap with session status banner to show current login state.
-    final loginWithStatus = _SessionStatusBanner(child: loginWidget);
+    // Session status banner disabled - deemed redundant.
+    // final loginWithStatus = _SessionStatusBanner(child: loginWidget);
 
     return SolidThemeApp(
       debugShowCheckedModeBanner: false,
@@ -74,7 +74,7 @@ class App extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
       ),
-      home: kIsWeb ? _WebAuthHandler(child: loginWithStatus) : loginWithStatus,
+      home: kIsWeb ? _WebAuthHandler(child: loginWidget) : loginWidget,
     );
   }
 }

@@ -415,7 +415,7 @@ class _GeoMapState extends State<GeoMap> {
                           : Colors.grey.shade500,
                     ),
                   ),
-                ),
+    ),
               ],
             ),
             const SizedBox(height: 12),
@@ -441,35 +441,35 @@ class _GeoMapState extends State<GeoMap> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
+      children: [
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
               initialCenter: const LatLng(-35.2809, 149.1300),
               initialZoom: 13.0,
-              minZoom: 3.0,
-              maxZoom: 18.0,
+            minZoom: 3.0,
+            maxZoom: 18.0,
               onTap: _onMapTap,
               onLongPress: (tapPosition, latLng) {
                 _showAddPlaceDialog(
                   latitude: latLng.latitude,
                   longitude: latLng.longitude,
                 );
-              },
-            ),
-            children: [
-              TileLayer(
+            },
+          ),
+          children: [
+            TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.togaware.geopod',
+              userAgentPackageName: 'com.togaware.geopod',
                 tileProvider: CancellableNetworkTileProvider(),
-              ),
-              MarkerLayer(
+            ),
+            MarkerLayer(
                 markers: _allMarkers.map((markerData) {
-                  return Marker(
-                    point: markerData.position,
-                    width: 40,
-                    height: 40,
-                    child: GestureDetector(
+                return Marker(
+                  point: markerData.position,
+                  width: 40,
+                  height: 40,
+                  child: GestureDetector(
                       onTap: () => _showMarkerDetails(markerData),
                       child: markerData.isSaving
                           ? Stack(
@@ -494,18 +494,18 @@ class _GeoMapState extends State<GeoMap> {
                               ],
                             )
                           : Icon(
-                              Icons.location_on,
-                              size: 40,
+                      Icons.location_on,
+                      size: 40,
                               color: markerData.isDefault
                                   ? Colors.red
                                   : Colors.green,
-                            ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
           if (_isLoadingPlaces)
             const Positioned(
               top: 0,
@@ -535,12 +535,12 @@ class _GeoMapState extends State<GeoMap> {
                         ? 'Loading places...'
                         : 'Tap map to add place',
                     style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+      ],
       ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,

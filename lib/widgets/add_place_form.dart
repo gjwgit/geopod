@@ -30,8 +30,17 @@ import 'package:flutter/services.dart';
 
 import 'package:geopod/services/places_service.dart';
 
+/// Result returned from AddPlaceForm containing the place data.
+/// Used for optimistic updates - the Place is returned immediately
+/// before the save completes.
+class AddPlaceResult {
+  final Place place;
+
+  AddPlaceResult({required this.place});
+}
+
 /// A form widget that allows users to add a new place with coordinates and
-/// a note, then save it to their Solid Pod.
+/// a note. Returns immediately with optimistic data for instant UI updates.
 class AddPlaceForm extends StatefulWidget {
   const AddPlaceForm({
     super.key,
@@ -58,8 +67,6 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
   final _noteController = TextEditingController();
-
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -119,84 +126,29 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
     return null;
   }
 
-  /// Saves the place data to the user's Solid Pod.
-  Future<void> _saveToPod() async {
+  /// INSTANT SAVE: Returns immediately with optimistic Place data.
+  /// The actual save (geocoding + writePod) happens in the parent widget.
+  void _handleSave() {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    final lat = double.parse(_latitudeController.text.trim());
+    final lng = double.parse(_longitudeController.text.trim());
 
-    try {
-      // Create the place object.
-      final timestamp = DateTime.now().toUtc().toIso8601String();
-      final place = Place(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        lat: double.parse(_latitudeController.text.trim()),
-        lng: double.parse(_longitudeController.text.trim()),
-        note: _noteController.text.trim(),
-        timestamp: timestamp,
-      );
+    // Create optimistic Place with "Loading..." address.
+    final timestamp = DateTime.now().toUtc().toIso8601String();
+    final place = Place(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      lat: lat,
+      lng: lng,
+      note: _noteController.text.trim(),
+      timestamp: timestamp,
+      address: 'Loading address...', // Placeholder - updated after geocoding.
+    );
 
-      // Add the place using PlacesService (handles read-append-write).
-      // ignore: use_build_context_synchronously
-      final success = await PlacesService.addPlace(
-        place,
-        context,
-        widget.returnWidget,
-      );
-
-      if (success) {
-        // Success - close the dialog and show success message.
-        if (mounted) {
-          Navigator.pop(context, true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(child: Text('Place saved successfully!')),
-                ],
-              ),
-              backgroundColor: Colors.green.shade600,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          );
-        }
-      } else {
-        throw Exception('Failed to save place');
-      }
-    } catch (e) {
-      // Error - show error message.
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Failed to save: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    }
+    // INSTANT: Close dialog and return Place for optimistic update.
+    Navigator.pop(context, AddPlaceResult(place: place));
   }
 
   @override
@@ -235,7 +187,6 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                     FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
                   ],
                   validator: _validateLatitude,
-                  enabled: !_isLoading,
                 ),
                 const SizedBox(height: 16),
 
@@ -256,7 +207,6 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                     FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
                   ],
                   validator: _validateLongitude,
-                  enabled: !_isLoading,
                 ),
                 const SizedBox(height: 16),
 
@@ -272,7 +222,6 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                   ),
                   maxLines: 4,
                   validator: _validateNote,
-                  enabled: !_isLoading,
                 ),
               ],
             ),
@@ -281,19 +230,13 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
       ),
       actions: [
         TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         ElevatedButton.icon(
-          onPressed: _isLoading ? null : _saveToPod,
-          icon: _isLoading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.cloud_upload),
-          label: Text(_isLoading ? 'Saving...' : 'Save to Pod'),
+          onPressed: _handleSave,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Place'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
             foregroundColor: Colors.white,

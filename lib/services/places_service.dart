@@ -29,10 +29,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'package:http/http.dart' as http;
 import 'package:solidpod/solidpod.dart';
 
-/// The file name for storing all places (single file with JSON array).
-const String placesFileName = 'places.json';
+/// The file name for storing all places.
+const String _placesFileName = 'places.json';
 
 /// Data model representing a saved place.
 class Place {
@@ -41,6 +42,7 @@ class Place {
   final double lng;
   final String note;
   final String timestamp;
+  final String? address;
 
   Place({
     required this.id,
@@ -48,6 +50,7 @@ class Place {
     required this.lng,
     required this.note,
     required this.timestamp,
+    this.address,
   });
 
   /// Creates a Place from JSON map.
@@ -59,6 +62,7 @@ class Place {
       lng: (json['lng'] as num).toDouble(),
       note: json['note'] as String? ?? '',
       timestamp: json['timestamp'] as String? ?? '',
+      address: json['address'] as String?,
     );
   }
 
@@ -70,6 +74,7 @@ class Place {
       'lng': lng,
       'note': note,
       'timestamp': timestamp,
+      if (address != null) 'address': address,
     };
   }
 
@@ -85,6 +90,20 @@ class Place {
   String get coordinates =>
       '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
 
+  /// Returns the address or coordinates if address is not available.
+  String get displayAddress => address ?? coordinates;
+
+  /// Returns a short version of the address for display in limited space.
+  String get shortAddress {
+    if (address == null || address!.isEmpty) {
+      return coordinates;
+    }
+    if (address!.length > 40) {
+      return '${address!.substring(0, 37)}...';
+    }
+    return address!;
+  }
+
   /// Returns formatted date string.
   String get formattedDate {
     try {
@@ -99,68 +118,122 @@ class Place {
 
 /// Service for reading and managing places from the Solid Pod.
 ///
-/// Uses a single JSON file (places.json) containing an array of places.
-/// This approach:
-/// - Reads existing places before writing
-/// - Appends new places to the list
-/// - Writes the complete list back
+/// Uses direct HTTP requests for JSON files.
 class PlacesService {
+  /// Gets the full file path within the app's data directory.
+  static Future<String> _getFullFilePath() async {
+    final dataDirPath = await getDataDirPath();
+    return '$dataDirPath/$_placesFileName';
+  }
+
+  /// Reads a JSON file directly from the Pod using HTTP.
+  static Future<String?> _readJsonFile() async {
+    try {
+      final filePath = await _getFullFilePath();
+      final fileUrl = await getFileUrl(filePath);
+      final (:accessToken, :dPopToken) = await getTokensForResource(
+        fileUrl,
+        'GET',
+      );
+
+      final response = await http.get(
+        Uri.parse(fileUrl),
+        headers: <String, String>{
+          'Accept': 'application/json, */*',
+          'Authorization': 'DPoP $accessToken',
+          'Connection': 'keep-alive',
+          'DPoP': dPopToken,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return response.body;
+      } else if (response.statusCode == 404) {
+        return null;
+      } else {
+        return null;
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Writes a JSON file directly to the Pod using HTTP PUT.
+  static Future<bool> _writeJsonFile(String content) async {
+    try {
+      final filePath = await _getFullFilePath();
+      final fileUrl = await getFileUrl(filePath);
+      final (:accessToken, :dPopToken) = await getTokensForResource(
+        fileUrl,
+        'PUT',
+      );
+
+      final response = await http.put(
+        Uri.parse(fileUrl),
+        headers: <String, String>{
+          'Accept': '*/*',
+          'Authorization': 'DPoP $accessToken',
+          'Connection': 'keep-alive',
+          'Content-Type': 'application/json',
+          'DPoP': dPopToken,
+        },
+        body: content,
+      );
+
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Fetches all saved places from the user's Pod.
-  ///
-  /// Returns an empty list if:
-  /// - User is not logged in
-  /// - File doesn't exist
-  /// - File is empty or corrupt
   static Future<List<Place>> fetchPlaces() async {
     final places = <Place>[];
 
     try {
-      // Check if user is logged in.
       if (!await checkLoggedIn()) {
-        debugPrint('PlacesService: User not logged in');
         return places;
       }
 
-      // Try to read the places file.
+      final content = await _readJsonFile();
+
+      if (content == null || content.trim().isEmpty) {
+        return places;
+      }
+
       try {
-        final content = await readPod(placesFileName);
+        final dynamic decoded = jsonDecode(content);
 
-        // Parse the JSON content.
-        final decoded = jsonDecode(content);
-
-        // Handle both array and object formats for backwards compatibility.
         if (decoded is List) {
           for (final item in decoded) {
             if (item is Map<String, dynamic>) {
-              places.add(Place.fromJson(item));
+              try {
+                places.add(Place.fromJson(item));
+              } catch (_) {
+                // Skip malformed entries.
+              }
             }
           }
         } else if (decoded is Map<String, dynamic>) {
-          // Single object - wrap in list (backwards compatibility).
-          places.add(Place.fromJson(decoded));
+          try {
+            places.add(Place.fromJson(decoded));
+          } catch (_) {
+            // Skip if malformed.
+          }
         }
-
-        debugPrint('PlacesService: Loaded ${places.length} places');
-      } catch (e) {
-        // File might not exist yet - that's okay, return empty list.
-        debugPrint('PlacesService: Could not read places file: $e');
+      } on FormatException {
+        return places;
       }
 
-      // Sort by timestamp (newest first).
       places.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    } catch (e) {
-      debugPrint('PlacesService: Error fetching places: $e');
+    } catch (_) {
+      // Return empty list on error.
     }
 
     return places;
   }
 
   /// Adds a new place to the Pod.
-  ///
-  /// This method:
-  /// 1. Reads the existing places list
-  /// 2. Appends the new place
-  /// 3. Writes the complete list back
   static Future<bool> addPlace(
     Place place,
     BuildContext context,
@@ -168,32 +241,17 @@ class PlacesService {
   ) async {
     try {
       if (!await checkLoggedIn()) {
-        throw Exception('User is not authenticated. Please log in first.');
+        return false;
       }
 
-      // Read existing places.
       final existingPlaces = await fetchPlaces();
+      existingPlaces.insert(0, place);
 
-      // Add the new place.
-      existingPlaces.insert(0, place); // Add at the beginning (newest first).
-
-      // Convert to JSON array.
       final jsonList = existingPlaces.map((p) => p.toJson()).toList();
       final jsonContent = jsonEncode(jsonList);
 
-      // Write back to Pod.
-      // ignore: use_build_context_synchronously
-      final status = await writePod(
-        placesFileName,
-        jsonContent,
-        context,
-        returnWidget,
-        encrypted: false,
-      );
-
-      return status == SolidFunctionCallStatus.success;
-    } catch (e) {
-      debugPrint('PlacesService: Error adding place: $e');
+      return await _writeJsonFile(jsonContent);
+    } catch (_) {
       return false;
     }
   }
@@ -209,29 +267,14 @@ class PlacesService {
         return false;
       }
 
-      // Read existing places.
       final existingPlaces = await fetchPlaces();
-
-      // Remove the place with matching ID.
       existingPlaces.removeWhere((p) => p.id == placeId);
 
-      // Convert to JSON array.
       final jsonList = existingPlaces.map((p) => p.toJson()).toList();
       final jsonContent = jsonEncode(jsonList);
 
-      // Write back to Pod.
-      // ignore: use_build_context_synchronously
-      final status = await writePod(
-        placesFileName,
-        jsonContent,
-        context,
-        returnWidget,
-        encrypted: false,
-      );
-
-      return status == SolidFunctionCallStatus.success;
-    } catch (e) {
-      debugPrint('PlacesService: Error deleting place: $e');
+      return await _writeJsonFile(jsonContent);
+    } catch (_) {
       return false;
     }
   }

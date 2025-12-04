@@ -32,6 +32,8 @@ import 'package:solidpod/solidpod.dart';
 import 'package:geopod/services/places_service.dart';
 
 /// A page that displays all saved locations from the user's Solid Pod.
+///
+/// Optimized for instant rendering using cached state.
 class LocationsPage extends StatefulWidget {
   const LocationsPage({super.key});
 
@@ -40,11 +42,20 @@ class LocationsPage extends StatefulWidget {
 }
 
 class _LocationsPageState extends State<LocationsPage> {
-  /// Future for loading places.
-  late Future<List<Place>> _placesFuture;
+  /// Cached places list.
+  List<Place> _places = [];
 
   /// Whether the user is logged in.
   bool _isLoggedIn = false;
+
+  /// Whether we're currently loading.
+  bool _isLoading = true;
+
+  /// Error message if loading failed.
+  String? _errorMessage;
+
+  /// Whether data has been loaded at least once.
+  bool _hasLoadedOnce = false;
 
   @override
   void initState() {
@@ -55,24 +66,58 @@ class _LocationsPageState extends State<LocationsPage> {
   /// Checks login status and loads places.
   Future<void> _checkLoginAndLoad() async {
     final loggedIn = await checkLoggedIn();
-    if (mounted) {
+
+    if (!mounted) return;
+
+    if (!loggedIn) {
       setState(() {
-        _isLoggedIn = loggedIn;
-        if (loggedIn) {
-          _placesFuture = PlacesService.fetchPlaces();
-        }
+        _isLoggedIn = false;
+        _isLoading = false;
       });
+      return;
+    }
+
+    setState(() => _isLoggedIn = true);
+
+    if (!_hasLoadedOnce) {
+      await _loadPlaces();
+    } else {
+      setState(() => _isLoading = false);
     }
   }
 
-  /// Refreshes the places list.
-  Future<void> _refresh() async {
+  /// Loads places from Pod.
+  Future<void> _loadPlaces() async {
     setState(() {
-      _placesFuture = PlacesService.fetchPlaces();
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      final places = await PlacesService.fetchPlaces();
+      if (mounted) {
+        setState(() {
+          _places = places;
+          _isLoading = false;
+          _hasLoadedOnce = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
   }
 
-  /// Deletes a place and refreshes the list.
+  /// Manual refresh.
+  Future<void> _refresh() async {
+    await _loadPlaces();
+  }
+
+  /// Deletes a place with optimistic update.
   Future<void> _deletePlace(Place place) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -98,34 +143,49 @@ class _LocationsPageState extends State<LocationsPage> {
       ),
     );
 
-    if (confirmed == true && mounted) {
-      final success = await PlacesService.deletePlace(
-        place.id,
-        context,
-        const LocationsPage(),
+    if (confirmed != true || !mounted) return;
+
+    final removedPlace = place;
+    final removedIndex = _places.indexOf(place);
+    setState(() => _places.remove(place));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Deleting place...'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    final success = await PlacesService.deletePlace(
+      place.id,
+      context,
+      const LocationsPage(),
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Place deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
       );
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Place deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        _refresh();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to delete place'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    } else {
+      setState(() {
+        _places.insert(removedIndex.clamp(0, _places.length), removedPlace);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to delete place'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show login prompt if not logged in.
     if (!_isLoggedIn) {
       return Center(
         child: Column(
@@ -148,128 +208,122 @@ class _LocationsPageState extends State<LocationsPage> {
       );
     }
 
-    return FutureBuilder<List<Place>>(
-      future: _placesFuture,
-      builder: (context, snapshot) {
-        // Loading state.
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+    if (_isLoading && !_hasLoadedOnce) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading your saved places...'),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading places',
+              style: TextStyle(fontSize: 18, color: Colors.red.shade600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage!,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _refresh,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_places.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.location_off, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'No saved places',
+              style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap the + button on the map to add a new place',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _refresh,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Loading your saved places...'),
+                const Icon(Icons.location_on, color: Colors.green),
+                const SizedBox(width: 8),
+                Text(
+                  'Saved Places (${_places.length})',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                if (_isLoading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _refresh,
+                    tooltip: 'Refresh',
+                  ),
               ],
             ),
-          );
-        }
-
-        // Error state.
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
-                const SizedBox(height: 16),
-                Text(
-                  'Error loading places',
-                  style: TextStyle(fontSize: 18, color: Colors.red.shade600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  snapshot.error.toString(),
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: _refresh,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Try Again'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final places = snapshot.data ?? [];
-
-        // Empty state.
-        if (places.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.location_off, size: 64, color: Colors.grey.shade400),
-                const SizedBox(height: 16),
-                Text(
-                  'No saved places',
-                  style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap the + button on the map to add a new place',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: _refresh,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Refresh'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // List of places.
-        return RefreshIndicator(
-          onRefresh: _refresh,
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.green),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Saved Places (${places.length})',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: _refresh,
-                      tooltip: 'Refresh',
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              // Places list
-              Expanded(
-                child: ListView.builder(
-                  itemCount: places.length,
-                  itemBuilder: (context, index) {
-                    final place = places[index];
-                    return _PlaceListTile(
-                      place: place,
-                      onDelete: () => _deletePlace(place),
-                    );
-                  },
-                ),
-              ),
-            ],
           ),
-        );
-      },
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _places.length,
+              itemBuilder: (context, index) {
+                final place = _places[index];
+                return _PlaceListTile(
+                  place: place,
+                  onDelete: () => _deletePlace(place),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -300,6 +354,30 @@ class _PlaceListTile extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: [
+                Icon(
+                  Icons.home_outlined,
+                  size: 14,
+                  color: place.address != null ? Colors.blue : Colors.grey,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    place.shortAddress,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: place.address != null
+                          ? Colors.blue.shade700
+                          : Colors.grey.shade600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
                 const Icon(Icons.location_on, size: 14, color: Colors.grey),
                 const SizedBox(width: 4),
                 Text(
@@ -328,29 +406,41 @@ class _PlaceListTile extends StatelessWidget {
         ),
         isThreeLine: true,
         onTap: () {
-          // Show full details in a dialog.
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Place Details'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              title: const Row(
                 children: [
-                  _DetailRow(label: 'Note', value: place.note),
-                  const SizedBox(height: 12),
-                  _DetailRow(
-                    label: 'Latitude',
-                    value: place.lat.toStringAsFixed(6),
-                  ),
-                  const SizedBox(height: 8),
-                  _DetailRow(
-                    label: 'Longitude',
-                    value: place.lng.toStringAsFixed(6),
-                  ),
-                  const SizedBox(height: 8),
-                  _DetailRow(label: 'Saved', value: place.formattedDate),
+                  Icon(Icons.place, color: Colors.green),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Place Details')),
                 ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _DetailRow(label: 'Note', value: place.note),
+                    const SizedBox(height: 12),
+                    _DetailRow(
+                      label: 'Address',
+                      value: place.address ?? 'No address available',
+                    ),
+                    const SizedBox(height: 12),
+                    _DetailRow(
+                      label: 'Latitude',
+                      value: place.lat.toStringAsFixed(6),
+                    ),
+                    const SizedBox(height: 8),
+                    _DetailRow(
+                      label: 'Longitude',
+                      value: place.lng.toStringAsFixed(6),
+                    ),
+                    const SizedBox(height: 8),
+                    _DetailRow(label: 'Saved', value: place.formattedDate),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(

@@ -25,21 +25,24 @@
 
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart';
 import 'package:geopod/widgets/add_place_form.dart';
 
 /// A map widget displaying points of interest with the ability to add new places.
 ///
-/// Users can:
-/// - Tap on the map to add a new place at that location
-/// - Long press on the map as an alternative way to add a place
-/// - Tap on markers to view details
-/// - Use the FAB to add a place without coordinates
+/// Features:
+/// - Optimistic updates: Places appear instantly before save completes
+/// - Background saving: Geocoding + writePod happens without blocking UI
+/// - Pre-loaded data: Places are fetched once and cached for instant access
 class GeoMap extends StatefulWidget {
   const GeoMap({super.key});
 
@@ -49,49 +52,54 @@ class GeoMap extends StatefulWidget {
 
 class _GeoMapState extends State<GeoMap> {
   final MapController _mapController = MapController();
-  String? _selectedMarkerText;
 
-  /// Places loaded from the Pod.
+  /// Places loaded from the Pod (cached in memory for instant access).
   List<Place> _podPlaces = [];
 
-  /// Whether places are being loaded.
+  /// IDs of places currently being saved in background.
+  final Set<String> _savingPlaceIds = {};
+
+  /// Whether initial load is in progress.
   bool _isLoadingPlaces = false;
 
-  // Define your points of interest - Larrakia significant sites near Darwin
+  /// Default markers for notable locations in Canberra.
   final List<MarkerData> _defaultMarkers = [
     MarkerData(
-      position: const LatLng(-12.4634, 130.8456), // Darwin city center
-      title: 'Garramilla (Darwin)',
+      position: const LatLng(-35.2809, 149.1300),
+      title: 'Parliament House',
       description:
-          'The traditional Larrakia name for Darwin, meaning "white stone"',
+          'The meeting place of the Parliament of Australia, opened in 1988.',
       isDefault: true,
     ),
     MarkerData(
-      position: const LatLng(-12.4686, 130.8403),
-      title: 'Stokes Hill',
+      position: const LatLng(-35.2835, 149.1245),
+      title: 'Old Parliament House',
       description:
-          'A site where the Larrakia people believe the spiritual ancestor '
-          '"Chinute Chinute" lives, manifesting as a tawny frogmouth.',
+          'The former seat of Australian government from 1927 to 1988, '
+          'now home to the Museum of Australian Democracy.',
       isDefault: true,
     ),
     MarkerData(
-      position: const LatLng(-12.4294, 130.8350),
-      title: 'Mindil Beach',
+      position: const LatLng(-35.3016, 149.1245),
+      title: 'Australian National University',
       description:
-          'One of several popular sites around Darwin that holds specific '
-          'cultural meaning for the Larrakia people.',
+          'Australia\'s national research university, '
+          'consistently ranked among the world\'s best.',
       isDefault: true,
     ),
     MarkerData(
-      position: const LatLng(-12.3771, 130.8765),
-      title: 'Rapid Creek',
-      description: 'An important Larrakia cultural site in Darwin.',
+      position: const LatLng(-35.2920, 149.1410),
+      title: 'National Gallery of Australia',
+      description:
+          'Australia\'s national art museum, housing over 166,000 works of art.',
       isDefault: true,
     ),
     MarkerData(
-      position: const LatLng(-12.3589, 130.8655),
-      title: 'Casuarina Beach',
-      description: 'Significant coastal site for Larrakia people',
+      position: const LatLng(-35.2955, 149.1501),
+      title: 'Lake Burley Griffin',
+      description:
+          'An artificial lake in the centre of Canberra, '
+          'created in 1963 as part of Walter Burley Griffin\'s design.',
       isDefault: true,
     ),
   ];
@@ -99,29 +107,29 @@ class _GeoMapState extends State<GeoMap> {
   @override
   void initState() {
     super.initState();
-    _loadPodPlaces();
+
+    // Pre-load data after first frame for instant sidebar access.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadPodPlaces();
+    });
   }
 
-  /// Loads places from the user's Pod.
+  /// Loads places from the user's Pod (called once, cached).
   Future<void> _loadPodPlaces() async {
-    setState(() {
-      _isLoadingPlaces = true;
-    });
+    setState(() => _isLoadingPlaces = true);
 
     try {
       final places = await PlacesService.fetchPlaces();
+
       if (mounted) {
         setState(() {
           _podPlaces = places;
           _isLoadingPlaces = false;
         });
       }
-    } catch (e) {
-      debugPrint('GeoMap: Error loading places: $e');
+    } catch (_) {
       if (mounted) {
-        setState(() {
-          _isLoadingPlaces = false;
-        });
+        setState(() => _isLoadingPlaces = false);
       }
     }
   }
@@ -133,7 +141,9 @@ class _GeoMapState extends State<GeoMap> {
         position: LatLng(place.lat, place.lng),
         title: place.displayTitle,
         description: place.note,
+        address: place.address,
         isDefault: false,
+        isSaving: _savingPlaceIds.contains(place.id),
       ),
     );
     return [..._defaultMarkers, ...podMarkers];
@@ -144,7 +154,7 @@ class _GeoMapState extends State<GeoMap> {
     double? latitude,
     double? longitude,
   }) async {
-    final result = await showDialog<bool>(
+    final result = await showDialog<AddPlaceResult>(
       context: context,
       builder: (context) => AddPlaceForm(
         initialLatitude: latitude,
@@ -153,26 +163,277 @@ class _GeoMapState extends State<GeoMap> {
       ),
     );
 
-    // If a place was saved successfully, refresh markers.
-    if (result == true) {
-      _loadPodPlaces();
+    if (result != null && mounted) {
+      _handleOptimisticSave(result.place);
+    }
+  }
+
+  /// Handles optimistic update and background save.
+  void _handleOptimisticSave(Place optimisticPlace) {
+    // Add to local list immediately.
+    setState(() {
+      _podPlaces.insert(0, optimisticPlace);
+      _savingPlaceIds.add(optimisticPlace.id);
+    });
+
+    // Show feedback snackbar.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text('Saving "${optimisticPlace.displayTitle}"...'),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.blue.shade600,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    // Fire background task.
+    unawaited(_performBackgroundSave(optimisticPlace));
+  }
+
+  /// Performs the heavy save operations in background.
+  Future<void> _performBackgroundSave(Place optimisticPlace) async {
+    try {
+      // Geocoding.
+      final address = await GeocodingService.getAddress(
+        optimisticPlace.lat,
+        optimisticPlace.lng,
+      );
+
+      // Create updated place with real address.
+      final updatedPlace = Place(
+        id: optimisticPlace.id,
+        lat: optimisticPlace.lat,
+        lng: optimisticPlace.lng,
+        note: optimisticPlace.note,
+        timestamp: optimisticPlace.timestamp,
+        address: address,
+      );
+
+      // Check mounted before using context.
+      if (!mounted) return;
+
+      // Write to Pod.
+      final success = await PlacesService.addPlace(
+        updatedPlace,
+        context,
+        const GeoMap(),
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        setState(() {
+          final index = _podPlaces.indexWhere(
+            (p) => p.id == optimisticPlace.id,
+          );
+          if (index != -1) {
+            _podPlaces[index] = updatedPlace;
+          }
+          _savingPlaceIds.remove(optimisticPlace.id);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('Place saved successfully!')),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        throw Exception('WritePod failed');
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _podPlaces.removeWhere((p) => p.id == optimisticPlace.id);
+        _savingPlaceIds.remove(optimisticPlace.id);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(child: Text('Failed to save: $e')),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
   /// Shows options when user taps on the map.
   void _onMapTap(TapPosition tapPosition, LatLng latLng) {
-    // First, dismiss any selected marker popup.
-    if (_selectedMarkerText != null) {
-      setState(() {
-        _selectedMarkerText = null;
-      });
-      return;
-    }
+    _showAddPlaceDialog(latitude: latLng.latitude, longitude: latLng.longitude);
+  }
 
-    // Show a quick dialog to add place at tapped location.
-    _showAddPlaceDialog(
-      latitude: latLng.latitude,
-      longitude: latLng.longitude,
+  /// Shows detailed information about a marker in a bottom sheet.
+  void _showMarkerDetails(MarkerData marker) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: marker.isDefault
+                        ? Colors.red.shade50
+                        : marker.isSaving
+                        ? Colors.orange.shade50
+                        : Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: marker.isSaving
+                      ? SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.orange.shade600,
+                          ),
+                        )
+                      : Icon(
+                          Icons.place,
+                          color: marker.isDefault ? Colors.red : Colors.green,
+                          size: 28,
+                        ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        marker.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (marker.isDefault)
+                        Text(
+                          'Default Location',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        )
+                      else if (marker.isSaving)
+                        Text(
+                          'Saving...',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange.shade600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 12),
+
+            if (marker.description.isNotEmpty) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.notes, size: 20, color: Colors.grey.shade600),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      marker.description,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.home_outlined,
+                  size: 20,
+                  color: marker.isSaving
+                      ? Colors.orange.shade600
+                      : Colors.blue.shade600,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    marker.address ?? 'Address not available',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: marker.isSaving
+                          ? Colors.orange.shade600
+                          : marker.address != null
+                          ? Colors.blue.shade700
+                          : Colors.grey.shade500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 20, color: Colors.grey.shade600),
+                const SizedBox(width: 12),
+                Text(
+                  marker.coordinates,
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
     );
   }
 
@@ -184,13 +445,11 @@ class _GeoMapState extends State<GeoMap> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: const LatLng(-12.4634, 130.8456), // Darwin
-              initialZoom: 12.0,
+              initialCenter: const LatLng(-35.2809, 149.1300),
+              initialZoom: 13.0,
               minZoom: 3.0,
               maxZoom: 18.0,
-              // Tap to add a new place.
               onTap: _onMapTap,
-              // Long press as alternative.
               onLongPress: (tapPosition, latLng) {
                 _showAddPlaceDialog(
                   latitude: latLng.latitude,
@@ -199,12 +458,11 @@ class _GeoMapState extends State<GeoMap> {
               },
             ),
             children: [
-              // OpenStreetMap tile layer
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.togaware.geopod',
+                tileProvider: CancellableNetworkTileProvider(),
               ),
-              // Marker layer
               MarkerLayer(
                 markers: _allMarkers.map((markerData) {
                   return Marker(
@@ -212,56 +470,52 @@ class _GeoMapState extends State<GeoMap> {
                     width: 40,
                     height: 40,
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedMarkerText =
-                              '${markerData.title}\n${markerData.description}';
-                        });
-                      },
-                      child: Icon(
-                        Icons.location_on,
-                        size: 40,
-                        // Default markers are red, user's markers are green.
-                        color: markerData.isDefault ? Colors.red : Colors.green,
-                      ),
+                      onTap: () => _showMarkerDetails(markerData),
+                      child: markerData.isSaving
+                          ? Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  Icons.location_on,
+                                  size: 40,
+                                  color: Colors.orange.shade400,
+                                ),
+                                const Positioned(
+                                  top: 8,
+                                  child: SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Icon(
+                              Icons.location_on,
+                              size: 40,
+                              color: markerData.isDefault
+                                  ? Colors.red
+                                  : Colors.green,
+                            ),
                     ),
                   );
                 }).toList(),
               ),
             ],
           ),
-          // Loading indicator for places.
           if (_isLoadingPlaces)
-            Positioned(
-              top: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    SizedBox(width: 8),
-                    Text('Loading places...'),
-                  ],
-                ),
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(
+                backgroundColor: Colors.transparent,
+                color: Colors.green,
               ),
             ),
-          // Hint for tap interaction.
           Positioned(
             top: 16,
             left: 16,
@@ -271,66 +525,44 @@ class _GeoMapState extends State<GeoMap> {
                 color: Colors.black.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.touch_app, color: Colors.white, size: 16),
-                  SizedBox(width: 6),
+                  const Icon(Icons.touch_app, color: Colors.white, size: 16),
+                  const SizedBox(width: 6),
                   Text(
-                    'Tap map to add place',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
+                    _isLoadingPlaces
+                        ? 'Loading places...'
+                        : 'Tap map to add place',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
               ),
             ),
           ),
-          // Popup for selected marker
-          if (_selectedMarkerText != null)
-            Positioned(
-              bottom: 80,
-              left: 20,
-              right: 20,
-              child: Card(
-                elevation: 8,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _selectedMarkerText!,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          setState(() {
-                            _selectedMarkerText = null;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          // Refresh button
           FloatingActionButton.small(
             heroTag: 'refresh',
-            onPressed: _loadPodPlaces,
+            onPressed: _isLoadingPlaces ? null : _loadPodPlaces,
             tooltip: 'Refresh Places',
-            backgroundColor: Colors.blue,
+            backgroundColor: _isLoadingPlaces ? Colors.grey : Colors.blue,
             foregroundColor: Colors.white,
-            child: const Icon(Icons.refresh),
+            child: _isLoadingPlaces
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.refresh),
           ),
           const SizedBox(height: 8),
-          // Add place button
           FloatingActionButton(
             heroTag: 'add',
             onPressed: () => _showAddPlaceDialog(),
@@ -350,12 +582,19 @@ class MarkerData {
   final LatLng position;
   final String title;
   final String description;
+  final String? address;
   final bool isDefault;
+  final bool isSaving;
 
   MarkerData({
     required this.position,
     required this.title,
     required this.description,
+    this.address,
     this.isDefault = false,
+    this.isSaving = false,
   });
+
+  String get coordinates =>
+      '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
 }

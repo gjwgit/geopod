@@ -19,6 +19,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_map: ^7.0.2
+  flutter_map_cancellable_tile_provider: ^3.0.2
+  http: ^1.2.2
   latlong2: ^0.9.1
   solidpod: 0.8.5
   solidui: ^0.0.8

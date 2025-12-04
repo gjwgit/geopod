@@ -49,21 +49,24 @@ const Duration _authTimeout = Duration(seconds: 30);
 
 /// The root application widget.
 ///
-/// On web, this widget handles OAuth redirect callbacks by checking for
-/// authorization codes in the URL and completing the authentication flow.
-/// On desktop platforms, authentication is handled entirely by solidui.
+/// Uses SolidLogin from solidui for authentication UI, with additional
+/// session verification to prevent false-positive login states.
 class App extends StatelessWidget {
   const App({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // On web, wrap with WebAuthHandler to process OAuth callbacks.
-    // On desktop, use the standard SolidLogin flow directly.
+    // Wrap appScaffold with session verifier to catch fake logins.
+    final verifiedChild = _SessionVerifier(child: appScaffold);
+
     final loginWidget = SolidLogin(
       image: const AssetImage('assets/images/app_image.png'),
       logo: const AssetImage('assets/images/app_icon.png'),
-      child: appScaffold,
+      child: verifiedChild,
     );
+
+    // Wrap with session status banner to show current login state.
+    final loginWithStatus = _SessionStatusBanner(child: loginWidget);
 
     return SolidThemeApp(
       debugShowCheckedModeBanner: false,
@@ -71,23 +74,260 @@ class App extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
       ),
-      home: kIsWeb ? _WebAuthHandler(child: loginWidget) : loginWidget,
+      home: kIsWeb ? _WebAuthHandler(child: loginWithStatus) : loginWithStatus,
     );
   }
 }
 
+/// Displays current login status as a banner on startup.
+///
+/// Does NOT auto-redirect - user still clicks "Continue" manually.
+/// Simply shows a visual hint indicating login status.
+class _SessionStatusBanner extends StatefulWidget {
+  const _SessionStatusBanner({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_SessionStatusBanner> createState() => _SessionStatusBannerState();
+}
+
+class _SessionStatusBannerState extends State<_SessionStatusBanner> {
+  /// Current user's WebID (null if not logged in).
+  String? _currentUserWebId;
+
+  /// Clean display name extracted from WebID.
+  String? _displayName;
+
+  /// Whether we've finished checking.
+  bool _hasChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSession();
+  }
+
+  /// Extracts a clean display name from WebID URL.
+  ///
+  /// Example:
+  ///   Input: "https://pods.solidcommunity.au/Miduo-Luo/profile/card#me"
+  ///   Output: "Miduo Luo"
+  String _extractNameFromWebId(String webId) {
+    try {
+      final uri = Uri.parse(webId);
+      final pathSegments = uri.pathSegments;
+
+      // Find the username segment (usually first non-empty segment).
+      String? username;
+      for (final segment in pathSegments) {
+        if (segment.isNotEmpty &&
+            segment != 'profile' &&
+            segment != 'card' &&
+            !segment.contains('#')) {
+          username = segment;
+          break;
+        }
+      }
+
+      if (username == null || username.isEmpty) {
+        return webId;
+      }
+
+      // Replace hyphens and underscores with spaces.
+      String cleaned = username.replaceAll('-', ' ').replaceAll('_', ' ');
+
+      // Capitalize each word.
+      cleaned = cleaned
+          .split(' ')
+          .map((word) {
+            if (word.isEmpty) return word;
+            return word[0].toUpperCase() + word.substring(1).toLowerCase();
+          })
+          .join(' ');
+
+      return cleaned;
+    } catch (_) {
+      return webId;
+    }
+  }
+
+  /// Checks for existing session on startup.
+  Future<void> _checkSession() async {
+    try {
+      final webId = await getWebId();
+
+      if (mounted) {
+        setState(() {
+          _currentUserWebId = webId;
+          _displayName = webId != null ? _extractNameFromWebId(webId) : null;
+          _hasChecked = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _hasChecked = true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        widget.child,
+
+        if (_hasChecked)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: _currentUserWebId != null
+                      ? Colors.green.shade50
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _currentUserWebId != null
+                        ? Colors.green.shade200
+                        : Colors.grey.shade300,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _currentUserWebId != null
+                          ? Icons.check_circle
+                          : Icons.info_outline,
+                      color: _currentUserWebId != null
+                          ? Colors.green
+                          : Colors.grey,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _currentUserWebId != null
+                            ? 'Logged in as $_displayName'
+                            : 'Not logged in',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: _currentUserWebId != null
+                              ? Colors.green.shade800
+                              : Colors.grey.shade700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Verifies session using getWebId().
+///
+/// According to solidpod documentation:
+/// - getWebId() returns null if user is not logged in
+/// - This is the definitive way to check if login was successful
+///
+/// This widget catches "fake logins" where SolidLogin shows success
+/// but the user actually cancelled the login dialog.
+class _SessionVerifier extends StatefulWidget {
+  const _SessionVerifier({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_SessionVerifier> createState() => _SessionVerifierState();
+}
+
+class _SessionVerifierState extends State<_SessionVerifier> {
+  /// Whether session is invalid (fake login detected).
+  bool _isInvalid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _verifySessionInBackground();
+  }
+
+  /// Verifies session in background WITHOUT blocking UI.
+  Future<void> _verifySessionInBackground() async {
+    try {
+      final webId = await getWebId();
+
+      if (webId == null || webId.isEmpty) {
+        await _handleFakeLogin();
+      }
+    } catch (_) {
+      await _handleFakeLogin();
+    }
+  }
+
+  Future<void> _handleFakeLogin() async {
+    try {
+      await deleteLogIn();
+    } catch (_) {
+      // Ignore errors when clearing session.
+    }
+
+    if (mounted) {
+      setState(() => _isInvalid = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isInvalid) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.login, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              const Text(
+                'Not logged in',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => web_utils.reloadPage(),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Return to Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return widget.child;
+  }
+}
+
 /// Handles OAuth redirect callbacks on web platform.
-///
-/// This widget checks for authorization codes in the URL query parameters
-/// and completes the authentication flow by exchanging the code for tokens.
-/// After successful authentication, it clears the URL to prevent re-auth
-/// on page refresh.
-///
-/// Features:
-/// - Robust error handling with try-catch-finally
-/// - Timeout protection to avoid hanging
-/// - Proper state reset on cancellation or failure
-/// - Clear session data on error to allow fresh retry
 class _WebAuthHandler extends StatefulWidget {
   const _WebAuthHandler({required this.child});
 
@@ -97,166 +337,95 @@ class _WebAuthHandler extends StatefulWidget {
   State<_WebAuthHandler> createState() => _WebAuthHandlerState();
 }
 
+/// Authentication status for clear state management.
+enum _AuthStatus { idle, processing, completed, failed }
+
 class _WebAuthHandlerState extends State<_WebAuthHandler> {
-  /// Lock flag to prevent concurrent authentication attempts.
-  /// CRITICAL: Must be reset in finally block to avoid permanent lock.
-  bool _isProcessingAuth = false;
-
-  /// Flag to track if authentication has been completed this session.
-  bool _authCompleted = false;
-
-  /// Flag to show loading indicator during auth processing.
-  bool _showLoading = false;
+  _AuthStatus _status = _AuthStatus.idle;
+  int _rebuildKey = 0;
 
   @override
   void initState() {
     super.initState();
-    // Schedule the auth check after the first frame to ensure context is ready.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAuthFromUrl();
+      _processOAuthCallback();
     });
   }
 
-  /// Displays a snackbar message to the user.
-  void _showSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline : Icons.info_outline,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: isError ? Colors.red.shade600 : Colors.blue.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        duration: Duration(seconds: isError ? 5 : 3),
-      ),
-    );
-  }
-
-  /// Clears partial session data to allow fresh retry.
-  ///
-  /// This is crucial when authentication fails mid-way, leaving
-  /// the session in an inconsistent state.
-  Future<void> _clearPartialSession() async {
-    try {
-      // Use deleteLogIn to clear auth data without full logout.
-      // This resets the auth state so user can try again.
-      await deleteLogIn();
-    } catch (e) {
-      // Silently ignore errors during cleanup.
-      debugPrint('Warning: Failed to clear partial session: $e');
-    }
-  }
-
-  /// Check for OAuth callback code in URL and complete authentication.
-  ///
-  /// This method handles the OAuth redirect flow with robust error handling:
-  /// 1. Checks if the URL contains a 'code' query parameter
-  /// 2. Uses a lock flag to prevent concurrent auth attempts
-  /// 3. Applies timeout to avoid hanging on slow responses
-  /// 4. Handles null returns (user cancellation)
-  /// 5. Clears URL query parameters to prevent re-authentication
-  /// 6. Resets state in finally block regardless of outcome
-  Future<void> _checkAuthFromUrl() async {
+  /// Processes OAuth callback from URL.
+  Future<void> _processOAuthCallback() async {
     final uri = Uri.base;
     final hasCode = uri.queryParameters.containsKey('code');
+    final hasError = uri.queryParameters.containsKey('error');
 
-    // Only proceed if we have an auth code and aren't already processing.
-    if (!hasCode || _isProcessingAuth || _authCompleted) {
+    if (hasError) {
+      _clearUrl();
+      unawaited(_resetSessionSilent());
       return;
     }
 
-    // Set lock to prevent multiple simultaneous calls.
-    // This will be reset in the finally block.
-    setState(() {
-      _isProcessingAuth = true;
-      _showLoading = true;
-    });
+    if (!hasCode) {
+      return;
+    }
+
+    if (_status == _AuthStatus.processing || _status == _AuthStatus.completed) {
+      return;
+    }
+
+    setState(() => _status = _AuthStatus.processing);
+    _clearUrl();
 
     try {
-      // First, clear the URL immediately to prevent re-processing
-      // on any rebuild or hot reload.
-      _clearUrlQueryParams();
-
-      // Check if already logged in (token might still be valid).
-      final alreadyLoggedIn = await checkLoggedIn();
-      if (alreadyLoggedIn) {
-        _authCompleted = true;
+      final existingWebId = await getWebId();
+      if (existingWebId != null && existingWebId.isNotEmpty) {
+        setState(() => _status = _AuthStatus.completed);
         return;
       }
 
-      // Attempt authentication with timeout protection.
       // ignore: use_build_context_synchronously
-      final authResult = await solidAuthenticate(solidIssuer, context).timeout(
+      final result = await solidAuthenticate(solidIssuer, context).timeout(
         _authTimeout,
-        onTimeout: () {
-          throw TimeoutException(
-            'Authentication timed out after ${_authTimeout.inSeconds} seconds',
-          );
-        },
+        onTimeout: () => throw TimeoutException('Timeout'),
       );
 
-      // Handle null result (user cancelled or error occurred).
-      if (authResult == null) {
-        // Show cancellation message.
-        _showSnackBar(
-          'Login was cancelled or failed. Please try again.',
-          isError: true,
-        );
-
-        // Clear any partial session data to allow fresh retry.
-        await _clearPartialSession();
-
+      if (result == null) {
+        unawaited(_resetSessionSilent());
         return;
       }
 
-      // Success - mark as completed.
-      _authCompleted = true;
-    } on TimeoutException catch (e) {
-      // Handle timeout specifically.
-      debugPrint('Auth timeout: $e');
-      _showSnackBar(
-        'Login timed out. Please check your network and try again.',
-        isError: true,
-      );
-
-      // Clear partial session on timeout.
-      await _clearPartialSession();
-    } catch (e) {
-      // Handle all other errors.
-      debugPrint('Auth error: $e');
-      _showSnackBar(
-        'Login failed: ${e.toString().replaceAll('Exception:', '').trim()}',
-        isError: true,
-      );
-
-      // Clear partial session on error.
-      await _clearPartialSession();
-    } finally {
-      // CRITICAL: Always reset the lock flag regardless of outcome.
-      // This ensures the user can retry if something went wrong.
-      if (mounted) {
-        setState(() {
-          _isProcessingAuth = false;
-          _showLoading = false;
-        });
+      final webId = await getWebId();
+      if (webId == null || webId.isEmpty) {
+        unawaited(_resetSessionSilent());
+        return;
       }
+
+      setState(() => _status = _AuthStatus.completed);
+    } on TimeoutException {
+      unawaited(_resetSessionSilent());
+    } catch (_) {
+      unawaited(_resetSessionSilent());
     }
   }
 
-  /// Clears the query parameters from the browser URL.
-  ///
-  /// This prevents the OAuth code from being reused on page refresh,
-  /// which would cause an error since codes are single-use.
-  void _clearUrlQueryParams() {
+  /// Clears session silently and forces UI rebuild.
+  Future<void> _resetSessionSilent() async {
+    try {
+      await deleteLogIn();
+    } catch (_) {
+      // Ignore errors.
+    }
+
+    if (mounted) {
+      setState(() {
+        _status = _AuthStatus.failed;
+        _rebuildKey++;
+      });
+    }
+  }
+
+  /// Clears query parameters from browser URL.
+  void _clearUrl() {
     final uri = Uri.base;
     final cleanUrl = Uri(
       scheme: uri.scheme,
@@ -264,14 +433,12 @@ class _WebAuthHandlerState extends State<_WebAuthHandler> {
       port: uri.port,
       path: uri.path,
     ).toString();
-
     web_utils.replaceUrlState(cleanUrl);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show loading overlay while processing authentication.
-    if (_showLoading) {
+    if (_status == _AuthStatus.processing) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
@@ -282,16 +449,8 @@ class _WebAuthHandlerState extends State<_WebAuthHandler> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(),
-                  SizedBox(height: 24),
-                  Text(
-                    'Completing login...',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Please wait while we verify your credentials.',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
+                  SizedBox(height: 16),
+                  Text('Completing login...'),
                 ],
               ),
             ),
@@ -300,6 +459,6 @@ class _WebAuthHandlerState extends State<_WebAuthHandler> {
       );
     }
 
-    return widget.child;
+    return KeyedSubtree(key: ValueKey<int>(_rebuildKey), child: widget.child);
   }
 }

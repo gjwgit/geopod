@@ -1,5 +1,6 @@
+DEPLOYMENT_TARGET = 15.1
 # Uncomment the next line to define a global platform for your project
-platform :osx, '15.1'
+platform :osx, DEPLOYMENT_TARGET
 
 target 'Runner' do
   # Comment the next line if you don't want to use dynamic frameworks

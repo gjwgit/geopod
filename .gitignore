@@ -156,6 +156,12 @@ linked_*.ds
 unlinked.ds
 unlinked_spec.ds
 
+# Backups of ios/macos project config yml and Podfile
+macos/Podfile-*
+ios/Podfile-*
+macos/project-*.yml
+ios/project-*.yml
+
 # If you're building an application, you may want to check-in the
 # pubspec.lock. Libraries should not include pubspec.lock, per
 # https://dart.dev/guides/libraries/private-files#pubspeclock.

@@ -1,0 +1,30 @@
+# Geo Pod
+
+Noted here are the high level changes for the GeoPod app.
+
+Guide: Each version update is noted here with a short user-oriented
+description of the update. Updates in the 0.0.n series are heading
+toward a 0.1 release. The `[version timestamp user]` string is
+utilised by the flutter version_widget package.
+
+Run the app online: [**web**](https://geopod.solidcommunity.au).
+
+The latest version of the app can be downloaded and installed from the
+[Solid Community AU](https://solidcommunity.au):
+
++ **GNU/Linux**
+[deb](https://solidcommunity.au/installers/geopod_amd64.deb) or
+[zip](https://solidcommunity.au/installers/geopod-dev-linux.zip);
++ **Windows**
+[zip](https://solidcommunity.au/installers/geopod-dev-windows.zip) or
+[inno](https://solidcommunity.au/installers/geopod-dev-windows-inno.exe).
+
+Contributions are welcome. Visit
+[github](https://github.com/gjwgit/geopod) to submit an issue or,
+even better, fork the repository yourself, update the code, and submit
+a Pull Request. Thanks.
+
+## 0.1 First beta release of a solidui template
+
++ Add solid login and solid scaffold [0.0.2 20251121 gjw]
++ Initialise the app [0.0.1 20251119 gjw]

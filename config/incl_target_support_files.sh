@@ -77,7 +77,7 @@ for ((i = 0 ; i < nflavors ; i++)); do
     if cat "${config_file}" | grep "${target_support_file}" >/dev/null; then
         echo "Scheme target support file already included in config_file ${config_file}"
     else
-        echo "#include \"${target_support_file}\"" >> "${config_file}"
+        echo "#include? \"${target_support_file}\"" >> "${config_file}"
         echo "Added include $target_support_file in $config_file."
     fi
     echo ""

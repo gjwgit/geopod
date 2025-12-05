@@ -19,7 +19,7 @@ function usage() {
     echo ""
     echo "Arguments:"
     echo "  ios/macos:          Build folder (Default: macos)."
-    echo "  -b, --backup:       Backup generated xcode project file Runner.xcodeproj/project.pbxproj"
+    echo "  -b, --backup:       Backup generated xcode project file Runner.xcodeproj/project.pbxproj and Podfile"
     echo "  -n, --no-clean:     Skip 'flutter clean'."
     echo ""
     exit 1 # Exit with a non-zero status to indicate an error
@@ -55,7 +55,7 @@ if [[ "$GETOPT_BIN" == "/opt/homebrew/opt/gnu-getopt/bin/getopt" ]]; then
 else
     # Fallback for systems without GNU getopt or if it's not in PATH correctly
     # This might require manual parsing for long options if BSD getopt is used
-    echo "Warning: GNU getopt not found or not prioritized in PATH. Long options might not work as expected." >&2
+    echo "Warning: GNU getopt not found or not prioritized in PATH. Install GNU getopt and/or update PATH. Alternatively, short flags may work." >&2
     GETOPT_COMMAND="getopt"
     exit 1
 fi
@@ -179,13 +179,22 @@ bash ../config/incl_target_support_files.sh "${PROJECT_FILE}"
 
 
 echo "======================================="
-echo "${BUILD_FOLDER} (cocoapods) initialise Podfile if doesn't exist"
+echo "${BUILD_FOLDER} (cocoapods) initialise Podfile if doesn't exist or moved to backup"
 
 PODFILE=Podfile
+
+if [[ "*${BACKUP}*" == "*true*" ]]; then
+    echo "Creating backup of project ${PODFILE} file"
+    NOW=$(date +"%Y%m%d%H%M")
+    PODFILE_BAK="Podfile-${NOW}"
+    mv "${PODFILE}" "${PODFILE_BAK}"
+    # ls -lt Podfile*
+fi
 
 if [ ! -f "$PODFILE" ]; then
     pod init
     echo "Ran pod init to initialise ${PODFILE}."
+    ls -lt Podfile*
 else
     echo "${PODFILE} already exists."
 fi

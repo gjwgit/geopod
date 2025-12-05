@@ -156,6 +156,9 @@ linked_*.ds
 unlinked.ds
 unlinked_spec.ds
 
+# ios/macos generated project files
+macos/Runner.xcodeproj
+
 # Backups of ios/macos project config yml and Podfile
 macos/Podfile-*
 ios/Podfile-*

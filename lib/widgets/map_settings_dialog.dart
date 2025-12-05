@@ -1,0 +1,336 @@
+/// Dialog for configuring map display settings.
+///
+// Time-stamp: <2025-12-05 Miduo>
+///
+/// Copyright (C) 2025, Software Innovation Institute, ANU.
+///
+/// Licensed under the GNU General Public License, Version 3 (the "License").
+///
+/// License: https://opensource.org/license/gpl-3-0.
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, either version 3 of the License, or (at your option) any later
+// version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+// details.
+//
+// You should have received a copy of the GNU General Public License along with
+// this program.  If not, see <https://opensource.org/license/gpl-3-0>.
+///
+/// Authors: Graham Williams, Miduo
+
+library;
+
+import 'package:flutter/material.dart';
+
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+
+import 'package:geopod/services/map_settings_service.dart';
+
+/// Dialog for configuring map display settings.
+///
+/// Allows users to:
+/// - Toggle visibility of local (canned) example places
+/// - Customize colors for user places and example places
+class MapSettingsDialog extends StatefulWidget {
+  const MapSettingsDialog({
+    super.key,
+    required this.currentSettings,
+    required this.onSettingsChanged,
+  });
+
+  /// Current settings to display.
+  final MapSettings currentSettings;
+
+  /// Callback when settings are changed.
+  final void Function(MapSettings) onSettingsChanged;
+
+  @override
+  State<MapSettingsDialog> createState() => _MapSettingsDialogState();
+}
+
+class _MapSettingsDialogState extends State<MapSettingsDialog> {
+  late bool _showLocalPlaces;
+  late Color _userPlacesColor;
+  late Color _localPlacesColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _showLocalPlaces = widget.currentSettings.showLocalPlaces;
+    _userPlacesColor = widget.currentSettings.userPlacesColor;
+    _localPlacesColor = widget.currentSettings.localPlacesColor;
+  }
+
+  /// Saves current settings and notifies parent.
+  void _saveAndNotify() {
+    final newSettings = MapSettings(
+      showLocalPlaces: _showLocalPlaces,
+      userPlacesColor: _userPlacesColor,
+      localPlacesColor: _localPlacesColor,
+    );
+
+    // Save to SharedPreferences.
+    MapSettingsService.saveSettings(newSettings);
+
+    // Notify parent widget.
+    widget.onSettingsChanged(newSettings);
+  }
+
+  /// Shows color picker dialog for selecting a color.
+  Future<void> _showColorPicker({
+    required String title,
+    required Color currentColor,
+    required void Function(Color) onColorChanged,
+  }) async {
+    Color selectedColor = currentColor;
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: BlockPicker(
+            pickerColor: currentColor,
+            onColorChanged: (color) {
+              selectedColor = color;
+            },
+            availableColors: const [
+              Colors.red,
+              Colors.pink,
+              Colors.purple,
+              Colors.deepPurple,
+              Colors.indigo,
+              Colors.blue,
+              Colors.lightBlue,
+              Colors.cyan,
+              Colors.teal,
+              Colors.green,
+              Colors.lightGreen,
+              Colors.lime,
+              Colors.yellow,
+              Colors.amber,
+              Colors.orange,
+              Colors.deepOrange,
+              Colors.brown,
+              Colors.grey,
+              Colors.blueGrey,
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              onColorChanged(selectedColor);
+              Navigator.pop(context);
+            },
+            child: const Text('Select'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Resets all settings to defaults.
+  void _resetToDefaults() {
+    setState(() {
+      _showLocalPlaces = true;
+      _userPlacesColor = defaultUserColor;
+      _localPlacesColor = defaultLocalColor;
+    });
+    _saveAndNotify();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.settings, color: Colors.grey),
+          SizedBox(width: 12),
+          Text('Map Settings'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Visibility toggle.
+            const Text(
+              'Visibility',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Show Example Locations'),
+              subtitle: const Text('Display canned examples on map'),
+              value: _showLocalPlaces,
+              onChanged: (value) {
+                setState(() => _showLocalPlaces = value);
+                _saveAndNotify();
+              },
+              secondary: Icon(
+                _showLocalPlaces ? Icons.visibility : Icons.visibility_off,
+                color: _showLocalPlaces ? Colors.green : Colors.grey,
+              ),
+            ),
+            const Divider(height: 32),
+
+            // Color customization.
+            const Text(
+              'Marker Colors',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // User places color.
+            _ColorPickerTile(
+              label: 'My Places',
+              subtitle: 'Your saved locations',
+              color: _userPlacesColor,
+              onTap: () => _showColorPicker(
+                title: 'My Places Color',
+                currentColor: _userPlacesColor,
+                onColorChanged: (color) {
+                  setState(() => _userPlacesColor = color);
+                  _saveAndNotify();
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Local places color.
+            _ColorPickerTile(
+              label: 'Example Places',
+              subtitle: 'Canned example locations',
+              color: _localPlacesColor,
+              onTap: () => _showColorPicker(
+                title: 'Example Places Color',
+                currentColor: _localPlacesColor,
+                onColorChanged: (color) {
+                  setState(() => _localPlacesColor = color);
+                  _saveAndNotify();
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Reset button.
+            Center(
+              child: TextButton.icon(
+                onPressed: _resetToDefaults,
+                icon: const Icon(Icons.restore, size: 18),
+                label: const Text('Reset to Defaults'),
+                style: TextButton.styleFrom(foregroundColor: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Done'),
+        ),
+      ],
+    );
+  }
+}
+
+/// A tile widget for displaying and selecting a color.
+class _ColorPickerTile extends StatelessWidget {
+  const _ColorPickerTile({
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            // Color preview.
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.location_on,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Label and subtitle.
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Edit icon.
+            Icon(Icons.edit, color: Colors.grey.shade400, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

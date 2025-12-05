@@ -34,8 +34,10 @@ import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_ti
 import 'package:latlong2/latlong.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
+import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart';
 import 'package:geopod/widgets/add_place_form.dart';
+import 'package:geopod/widgets/map_settings_dialog.dart';
 
 /// A map widget displaying points of interest with the ability to add new places.
 ///
@@ -53,8 +55,8 @@ class GeoMap extends StatefulWidget {
 class _GeoMapState extends State<GeoMap> {
   final MapController _mapController = MapController();
 
-  /// Places loaded from the Pod (cached in memory for instant access).
-  List<Place> _podPlaces = [];
+  /// All places (local + Pod) loaded and cached for instant access.
+  List<Place> _allPlaces = [];
 
   /// IDs of places currently being saved in background.
   final Set<String> _savingPlaceIds = {};
@@ -62,47 +64,8 @@ class _GeoMapState extends State<GeoMap> {
   /// Whether initial load is in progress.
   bool _isLoadingPlaces = false;
 
-  /// Default markers for notable locations in Canberra.
-  final List<MarkerData> _defaultMarkers = [
-    MarkerData(
-      position: const LatLng(-35.2809, 149.1300),
-      title: 'Parliament House',
-      description:
-          'The meeting place of the Parliament of Australia, opened in 1988.',
-      isDefault: true,
-    ),
-    MarkerData(
-      position: const LatLng(-35.2835, 149.1245),
-      title: 'Old Parliament House',
-      description:
-          'The former seat of Australian government from 1927 to 1988, '
-          'now home to the Museum of Australian Democracy.',
-      isDefault: true,
-    ),
-    MarkerData(
-      position: const LatLng(-35.3016, 149.1245),
-      title: 'Australian National University',
-      description:
-          'Australia\'s national research university, '
-          'consistently ranked among the world\'s best.',
-      isDefault: true,
-    ),
-    MarkerData(
-      position: const LatLng(-35.2920, 149.1410),
-      title: 'National Gallery of Australia',
-      description:
-          'Australia\'s national art museum, housing over 166,000 works of art.',
-      isDefault: true,
-    ),
-    MarkerData(
-      position: const LatLng(-35.2955, 149.1501),
-      title: 'Lake Burley Griffin',
-      description:
-          'An artificial lake in the centre of Canberra, '
-          'created in 1963 as part of Walter Burley Griffin\'s design.',
-      isDefault: true,
-    ),
-  ];
+  /// Map display settings (colors, visibility).
+  MapSettings _mapSettings = const MapSettings();
 
   @override
   void initState() {
@@ -110,12 +73,34 @@ class _GeoMapState extends State<GeoMap> {
 
     // Pre-load data after first frame for instant sidebar access.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadPodPlaces();
+      _loadSettings();
+      _loadAllPlaces();
     });
   }
 
-  /// Loads places from the user's Pod (called once, cached).
-  Future<void> _loadPodPlaces() async {
+  /// Loads map settings from SharedPreferences.
+  Future<void> _loadSettings() async {
+    final settings = await MapSettingsService.loadSettings();
+    if (mounted) {
+      setState(() => _mapSettings = settings);
+    }
+  }
+
+  /// Shows the settings dialog.
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => MapSettingsDialog(
+        currentSettings: _mapSettings,
+        onSettingsChanged: (newSettings) {
+          setState(() => _mapSettings = newSettings);
+        },
+      ),
+    );
+  }
+
+  /// Loads all places (local + Pod) and caches them.
+  Future<void> _loadAllPlaces() async {
     setState(() => _isLoadingPlaces = true);
 
     try {
@@ -123,7 +108,7 @@ class _GeoMapState extends State<GeoMap> {
 
       if (mounted) {
         setState(() {
-          _podPlaces = places;
+          _allPlaces = places;
           _isLoadingPlaces = false;
         });
       }
@@ -134,19 +119,33 @@ class _GeoMapState extends State<GeoMap> {
     }
   }
 
-  /// Returns all markers (default + from Pod).
-  List<MarkerData> get _allMarkers {
-    final podMarkers = _podPlaces.map(
+  /// Returns filtered markers based on visibility settings.
+  ///
+  /// Color scheme (customizable via settings):
+  /// - Local (canned examples): localPlacesColor (default: Orange)
+  /// - Pod (user data): userPlacesColor (default: Blue)
+  /// - Saving in progress: Orange with spinner
+  List<MarkerData> get _filteredMarkers {
+    // Filter places based on visibility settings.
+    final visiblePlaces = _mapSettings.showLocalPlaces
+        ? _allPlaces
+        : _allPlaces.where((p) => !p.isLocal).toList();
+
+    return visiblePlaces.map(
       (place) => MarkerData(
+        id: place.id,
         position: LatLng(place.lat, place.lng),
         title: place.displayTitle,
         description: place.note,
         address: place.address,
-        isDefault: false,
+        isLocal: place.isLocal,
         isSaving: _savingPlaceIds.contains(place.id),
+        // Use custom colors from settings.
+        color: place.isLocal
+            ? _mapSettings.localPlacesColor
+            : _mapSettings.userPlacesColor,
       ),
-    );
-    return [..._defaultMarkers, ...podMarkers];
+    ).toList();
   }
 
   /// Shows the Add Place dialog with optional pre-filled coordinates.
@@ -170,9 +169,9 @@ class _GeoMapState extends State<GeoMap> {
 
   /// Handles optimistic update and background save.
   void _handleOptimisticSave(Place optimisticPlace) {
-    // Add to local list immediately.
+    // Add to local list immediately (at the beginning, before local places).
     setState(() {
-      _podPlaces.insert(0, optimisticPlace);
+      _allPlaces.insert(0, optimisticPlace);
       _savingPlaceIds.add(optimisticPlace.id);
     });
 
@@ -238,11 +237,11 @@ class _GeoMapState extends State<GeoMap> {
 
       if (success) {
         setState(() {
-          final index = _podPlaces.indexWhere(
+          final index = _allPlaces.indexWhere(
             (p) => p.id == optimisticPlace.id,
           );
           if (index != -1) {
-            _podPlaces[index] = updatedPlace;
+            _allPlaces[index] = updatedPlace;
           }
           _savingPlaceIds.remove(optimisticPlace.id);
         });
@@ -268,7 +267,7 @@ class _GeoMapState extends State<GeoMap> {
       if (!mounted) return;
 
       setState(() {
-        _podPlaces.removeWhere((p) => p.id == optimisticPlace.id);
+        _allPlaces.removeWhere((p) => p.id == optimisticPlace.id);
         _savingPlaceIds.remove(optimisticPlace.id);
       });
 
@@ -296,12 +295,15 @@ class _GeoMapState extends State<GeoMap> {
 
   /// Shows detailed information about a marker in a bottom sheet.
   void _showMarkerDetails(MarkerData marker) {
+    // Use marker's custom color for UI elements.
+    final markerColor = marker.color;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => Padding(
+      builder: (sheetContext) => Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -312,11 +314,9 @@ class _GeoMapState extends State<GeoMap> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: marker.isDefault
-                        ? Colors.red.shade50
-                        : marker.isSaving
+                    color: marker.isSaving
                         ? Colors.orange.shade50
-                        : Colors.green.shade50,
+                        : markerColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: marker.isSaving
@@ -328,11 +328,7 @@ class _GeoMapState extends State<GeoMap> {
                             color: Colors.orange.shade600,
                           ),
                         )
-                      : Icon(
-                          Icons.place,
-                          color: marker.isDefault ? Colors.red : Colors.green,
-                          size: 28,
-                        ),
+                      : Icon(Icons.place, color: markerColor, size: 28),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -346,28 +342,30 @@ class _GeoMapState extends State<GeoMap> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (marker.isDefault)
-                        Text(
-                          'Default Location',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        )
-                      else if (marker.isSaving)
+                      if (marker.isSaving)
                         Text(
                           'Saving...',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.orange.shade600,
                           ),
+                        )
+                      else if (marker.isLocal)
+                        Text(
+                          'Example Location',
+                          style: TextStyle(fontSize: 12, color: markerColor),
+                        )
+                      else
+                        Text(
+                          'Your Saved Place',
+                          style: TextStyle(fontSize: 12, color: markerColor),
                         ),
                     ],
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(sheetContext),
                 ),
               ],
             ),
@@ -398,9 +396,7 @@ class _GeoMapState extends State<GeoMap> {
                 Icon(
                   Icons.home_outlined,
                   size: 20,
-                  color: marker.isSaving
-                      ? Colors.orange.shade600
-                      : Colors.blue.shade600,
+                  color: marker.isSaving ? Colors.orange.shade600 : markerColor,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -411,11 +407,11 @@ class _GeoMapState extends State<GeoMap> {
                       color: marker.isSaving
                           ? Colors.orange.shade600
                           : marker.address != null
-                          ? Colors.blue.shade700
+                          ? markerColor
                           : Colors.grey.shade500,
                     ),
                   ),
-    ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -430,11 +426,136 @@ class _GeoMapState extends State<GeoMap> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+
+            // Delete button for user's saved places only.
+            if (!marker.isLocal && !marker.isSaving) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _confirmAndDeletePlace(marker);
+                  },
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete This Place'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
           ],
         ),
       ),
     );
+  }
+
+  /// Shows confirmation dialog and deletes the place if confirmed.
+  Future<void> _confirmAndDeletePlace(MarkerData marker) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Place'),
+        content: Text(
+          'Are you sure you want to delete "${marker.title}"?\n\n'
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // Optimistic delete: remove from UI immediately.
+    final removedPlace = _allPlaces.firstWhere(
+      (p) => p.id == marker.id,
+      orElse: () => Place(
+        id: marker.id,
+        lat: marker.position.latitude,
+        lng: marker.position.longitude,
+        note: marker.description,
+        timestamp: '',
+      ),
+    );
+    final removedIndex = _allPlaces.indexWhere((p) => p.id == marker.id);
+
+    setState(() {
+      _allPlaces.removeWhere((p) => p.id == marker.id);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Deleting place...'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    // Perform actual delete.
+    final success = await PlacesService.deletePlace(
+      marker.id,
+      context,
+      const GeoMap(),
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(child: Text('Place deleted successfully')),
+            ],
+          ),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      // Rollback on failure.
+      setState(() {
+        if (removedIndex >= 0 && removedIndex <= _allPlaces.length) {
+          _allPlaces.insert(removedIndex, removedPlace);
+        } else {
+          _allPlaces.add(removedPlace);
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(child: Text('Failed to delete place')),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -464,7 +585,7 @@ class _GeoMapState extends State<GeoMap> {
                 tileProvider: CancellableNetworkTileProvider(),
             ),
             MarkerLayer(
-                markers: _allMarkers.map((markerData) {
+                markers: _filteredMarkers.map((markerData) {
                 return Marker(
                   point: markerData.position,
                   width: 40,
@@ -496,9 +617,8 @@ class _GeoMapState extends State<GeoMap> {
                           : Icon(
                       Icons.location_on,
                       size: 40,
-                              color: markerData.isDefault
-                                  ? Colors.red
-                                  : Colors.green,
+                              // Use custom color from settings.
+                              color: markerData.color,
                     ),
                   ),
                 );
@@ -546,8 +666,17 @@ class _GeoMapState extends State<GeoMap> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton.small(
+            heroTag: 'settings',
+            onPressed: _showSettingsDialog,
+            tooltip: 'Map Settings',
+            backgroundColor: Colors.grey.shade700,
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.layers),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton.small(
             heroTag: 'refresh',
-            onPressed: _isLoadingPlaces ? null : _loadPodPlaces,
+            onPressed: _isLoadingPlaces ? null : _loadAllPlaces,
             tooltip: 'Refresh Places',
             backgroundColor: _isLoadingPlaces ? Colors.grey : Colors.blue,
             foregroundColor: Colors.white,
@@ -583,16 +712,28 @@ class MarkerData {
   final String title;
   final String description;
   final String? address;
-  final bool isDefault;
+
+  /// Unique identifier for this place (needed for delete operation).
+  final String id;
+
+  /// Whether this marker is from local assets (canned examples).
+  final bool isLocal;
+
+  /// Whether this marker is currently being saved.
   final bool isSaving;
+
+  /// Custom color for this marker (from settings).
+  final Color color;
 
   MarkerData({
     required this.position,
     required this.title,
     required this.description,
+    required this.id,
     this.address,
-    this.isDefault = false,
+    this.isLocal = false,
     this.isSaving = false,
+    this.color = Colors.blue,
   });
 
   String get coordinates =>

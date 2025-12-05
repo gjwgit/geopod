@@ -28,6 +28,7 @@ library;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:http/http.dart' as http;
 import 'package:solidpod/solidpod.dart';
@@ -44,6 +45,10 @@ class Place {
   final String timestamp;
   final String? address;
 
+  /// Whether this place is from local assets (canned examples).
+  /// Local places are read-only and cannot be deleted.
+  final bool isLocal;
+
   Place({
     required this.id,
     required this.lat,
@@ -51,22 +56,31 @@ class Place {
     required this.note,
     required this.timestamp,
     this.address,
+    this.isLocal = false,
   });
 
   /// Creates a Place from JSON map.
-  factory Place.fromJson(Map<String, dynamic> json) {
+  ///
+  /// [isLocalSource] indicates if the JSON comes from local assets.
+  factory Place.fromJson(
+    Map<String, dynamic> json, {
+    bool isLocalSource = false,
+  }) {
     return Place(
-      id: json['id'] as String? ??
+      id:
+          json['id'] as String? ??
           DateTime.now().millisecondsSinceEpoch.toString(),
       lat: (json['lat'] as num).toDouble(),
       lng: (json['lng'] as num).toDouble(),
       note: json['note'] as String? ?? '',
       timestamp: json['timestamp'] as String? ?? '',
       address: json['address'] as String?,
+      isLocal: isLocalSource,
     );
   }
 
   /// Converts Place to JSON map.
+  /// Note: isLocal is not serialized as it's determined by source.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -120,10 +134,45 @@ class Place {
 ///
 /// Uses direct HTTP requests for JSON files.
 class PlacesService {
+  /// Cached local places (loaded once from assets).
+  static List<Place>? _cachedLocalPlaces;
+
   /// Gets the full file path within the app's data directory.
   static Future<String> _getFullFilePath() async {
     final dataDirPath = await getDataDirPath();
     return '$dataDirPath/$_placesFileName';
+  }
+
+  /// Loads canned example places from local assets.
+  static Future<List<Place>> loadLocalPlaces() async {
+    // Return cached data if available.
+    if (_cachedLocalPlaces != null) {
+      return _cachedLocalPlaces!;
+    }
+
+    final places = <Place>[];
+
+    try {
+      final jsonString = await rootBundle.loadString('assets/data/places.json');
+      final dynamic decoded = jsonDecode(jsonString);
+
+      if (decoded is List) {
+        for (final item in decoded) {
+          if (item is Map<String, dynamic>) {
+            try {
+              places.add(Place.fromJson(item, isLocalSource: true));
+            } catch (_) {
+              // Skip malformed entries.
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Return empty list if asset fails to load.
+    }
+
+    _cachedLocalPlaces = places;
+    return places;
   }
 
   /// Reads a JSON file directly from the Pod using HTTP.
@@ -186,8 +235,27 @@ class PlacesService {
     }
   }
 
-  /// Fetches all saved places from the user's Pod.
+  /// Fetches all places: local (canned examples) + user's Pod data.
+  ///
+  /// Returns merged list with local places first, then Pod places sorted by date.
   static Future<List<Place>> fetchPlaces() async {
+    final allPlaces = <Place>[];
+
+    // Step 1: Load local canned examples.
+    final localPlaces = await loadLocalPlaces();
+
+    // Step 2: Load user's Pod places (if logged in).
+    final podPlaces = await fetchPodPlaces();
+
+    // Step 3: Merge - Pod places first (user data), then local examples.
+    allPlaces.addAll(podPlaces);
+    allPlaces.addAll(localPlaces);
+
+    return allPlaces;
+  }
+
+  /// Fetches only the user's saved places from the Pod.
+  static Future<List<Place>> fetchPodPlaces() async {
     final places = <Place>[];
 
     try {
@@ -208,7 +276,7 @@ class PlacesService {
           for (final item in decoded) {
             if (item is Map<String, dynamic>) {
               try {
-                places.add(Place.fromJson(item));
+                places.add(Place.fromJson(item, isLocalSource: false));
               } catch (_) {
                 // Skip malformed entries.
               }
@@ -216,7 +284,7 @@ class PlacesService {
           }
         } else if (decoded is Map<String, dynamic>) {
           try {
-            places.add(Place.fromJson(decoded));
+            places.add(Place.fromJson(decoded, isLocalSource: false));
           } catch (_) {
             // Skip if malformed.
           }
@@ -244,7 +312,8 @@ class PlacesService {
         return false;
       }
 
-      final existingPlaces = await fetchPlaces();
+      // Only fetch Pod places (not local) for updating.
+      final existingPlaces = await fetchPodPlaces();
       existingPlaces.insert(0, place);
 
       final jsonList = existingPlaces.map((p) => p.toJson()).toList();
@@ -257,6 +326,8 @@ class PlacesService {
   }
 
   /// Deletes a place from the Pod by its ID.
+  ///
+  /// Only Pod places can be deleted. Local (canned) places are read-only.
   static Future<bool> deletePlace(
     String placeId,
     BuildContext context,
@@ -267,7 +338,8 @@ class PlacesService {
         return false;
       }
 
-      final existingPlaces = await fetchPlaces();
+      // Only fetch Pod places (not local) for updating.
+      final existingPlaces = await fetchPodPlaces();
       existingPlaces.removeWhere((p) => p.id == placeId);
 
       final jsonList = existingPlaces.map((p) => p.toJson()).toList();

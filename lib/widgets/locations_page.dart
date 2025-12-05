@@ -42,7 +42,7 @@ class LocationsPage extends StatefulWidget {
 }
 
 class _LocationsPageState extends State<LocationsPage> {
-  /// Cached places list.
+  /// Cached places list (only user's Pod data, excluding local examples).
   List<Place> _places = [];
 
   /// Whether the user is logged in.
@@ -56,6 +56,9 @@ class _LocationsPageState extends State<LocationsPage> {
 
   /// Whether data has been loaded at least once.
   bool _hasLoadedOnce = false;
+
+  /// Returns only user's Pod places (filters out local canned examples).
+  List<Place> get _userPlaces => _places.where((p) => !p.isLocal).toList();
 
   @override
   void initState() {
@@ -249,7 +252,10 @@ class _LocationsPageState extends State<LocationsPage> {
       );
     }
 
-    if (_places.isEmpty) {
+    // Filter to only show user's Pod data (exclude local canned examples).
+    final userPlaces = _userPlaces;
+
+    if (userPlaces.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -284,10 +290,10 @@ class _LocationsPageState extends State<LocationsPage> {
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                const Icon(Icons.location_on, color: Colors.green),
+                const Icon(Icons.location_on, color: Colors.blue),
                 const SizedBox(width: 8),
                 Text(
-                  'Saved Places (${_places.length})',
+                  'My Places (${userPlaces.length})',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -312,9 +318,9 @@ class _LocationsPageState extends State<LocationsPage> {
           const Divider(height: 1),
           Expanded(
             child: ListView.builder(
-              itemCount: _places.length,
+              itemCount: userPlaces.length,
               itemBuilder: (context, index) {
-                final place = _places[index];
+                final place = userPlaces[index];
                 return _PlaceListTile(
                   place: place,
                   onDelete: () => _deletePlace(place),
@@ -328,7 +334,9 @@ class _LocationsPageState extends State<LocationsPage> {
   }
 }
 
-/// A list tile widget for displaying a single place.
+/// A list tile widget for displaying a single user place.
+///
+/// Only displays user's Pod data (not local canned examples).
 class _PlaceListTile extends StatelessWidget {
   const _PlaceListTile({required this.place, required this.onDelete});
 
@@ -341,7 +349,7 @@ class _PlaceListTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
         leading: const CircleAvatar(
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.blue,
           child: Icon(Icons.place, color: Colors.white),
         ),
         title: Text(
@@ -411,7 +419,7 @@ class _PlaceListTile extends StatelessWidget {
             builder: (context) => AlertDialog(
               title: const Row(
                 children: [
-                  Icon(Icons.place, color: Colors.green),
+                  Icon(Icons.place, color: Colors.blue),
                   SizedBox(width: 8),
                   Expanded(child: Text('Place Details')),
                 ],

@@ -1,0 +1,90 @@
+[
+    {
+      "id": "local_001",
+      "lat": -35.3075,
+      "lng": 149.1244,
+      "note": "Parliament House (ACT)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Parliament Drive, Canberra, ACT 2600"
+    },
+    {
+      "id": "local_002",
+      "lat": -33.8568,
+      "lng": 151.2153,
+      "note": "Sydney Opera House (NSW)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Bennelong Point, Sydney, NSW 2000"
+    },
+    {
+      "id": "local_003",
+      "lat": -33.8915,
+      "lng": 151.2767,
+      "note": "Bondi Beach (NSW)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Bondi Beach, NSW 2026"
+    },
+    {
+      "id": "local_004",
+      "lat": -37.8199,
+      "lng": 144.9834,
+      "note": "Melbourne Cricket Ground (VIC)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Brunton Ave, Richmond, VIC 3002"
+    },
+    {
+      "id": "local_005",
+      "lat": -38.6621,
+      "lng": 143.1051,
+      "note": "Twelve Apostles (VIC)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Great Ocean Rd, Princetown, VIC 3269"
+    },
+    {
+      "id": "local_006",
+      "lat": -20.2827,
+      "lng": 149.0397,
+      "note": "Great Barrier Reef - Whitehaven (QLD)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Whitsunday Island, QLD 4802"
+    },
+    {
+      "id": "local_007",
+      "lat": -28.0020,
+      "lng": 153.4296,
+      "note": "Surfers Paradise (QLD)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Gold Coast, QLD 4217"
+    },
+    {
+      "id": "local_008",
+      "lat": -25.3444,
+      "lng": 131.0369,
+      "note": "Uluru (NT)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Uluru-Kata Tjuta National Park, NT 0872"
+    },
+    {
+      "id": "local_009",
+      "lat": -32.0062,
+      "lng": 115.5123,
+      "note": "Rottnest Island (WA)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Rottnest Island, WA 6161"
+    },
+    {
+      "id": "local_010",
+      "lat": -34.9155,
+      "lng": 138.5961,
+      "note": "Adelaide Oval (SA)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "War Memorial Dr, North Adelaide, SA 5006"
+    },
+    {
+      "id": "local_011",
+      "lat": -41.6485,
+      "lng": 145.9642,
+      "note": "Cradle Mountain (TAS)",
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "address": "Cradle Mountain, TAS 7306"
+    }
+]

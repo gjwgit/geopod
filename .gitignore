@@ -158,6 +158,7 @@ unlinked_spec.ds
 
 # ios/macos generated project files
 macos/Runner.xcodeproj
+macos/Flutter/Flutter-*.xcconfig
 
 # Backups of ios/macos project config yml and Podfile
 macos/Podfile-*

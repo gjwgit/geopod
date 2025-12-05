@@ -50,6 +50,7 @@ void main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
   if (isDesktop) {
+    await windowManager.ensureInitialized();
     const windowOptions = WindowOptions(title: appTitle);
     await windowManager.waitUntilReadyToShow(windowOptions, () async {});
   }

@@ -29,13 +29,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
 
 import 'app_scaffold.dart';
 import 'constants/app.dart';
-
 // Conditionally import for web platform only.
 import 'utils/web_utils_stub.dart'
     if (dart.library.html) 'utils/web_utils_web.dart'
@@ -75,172 +73,6 @@ class App extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
       ),
       home: kIsWeb ? _WebAuthHandler(child: loginWidget) : loginWidget,
-    );
-  }
-}
-
-/// Displays current login status as a banner on startup.
-///
-/// Does NOT auto-redirect - user still clicks "Continue" manually.
-/// Simply shows a visual hint indicating login status.
-class _SessionStatusBanner extends StatefulWidget {
-  const _SessionStatusBanner({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_SessionStatusBanner> createState() => _SessionStatusBannerState();
-}
-
-class _SessionStatusBannerState extends State<_SessionStatusBanner> {
-  /// Current user's WebID (null if not logged in).
-  String? _currentUserWebId;
-
-  /// Clean display name extracted from WebID.
-  String? _displayName;
-
-  /// Whether we've finished checking.
-  bool _hasChecked = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkSession();
-  }
-
-  /// Extracts a clean display name from WebID URL.
-  ///
-  /// Example:
-  ///   Input: "https://pods.solidcommunity.au/Miduo-Luo/profile/card#me"
-  ///   Output: "Miduo Luo"
-  String _extractNameFromWebId(String webId) {
-    try {
-      final uri = Uri.parse(webId);
-      final pathSegments = uri.pathSegments;
-
-      // Find the username segment (usually first non-empty segment).
-      String? username;
-      for (final segment in pathSegments) {
-        if (segment.isNotEmpty &&
-            segment != 'profile' &&
-            segment != 'card' &&
-            !segment.contains('#')) {
-          username = segment;
-          break;
-        }
-      }
-
-      if (username == null || username.isEmpty) {
-        return webId;
-      }
-
-      // Replace hyphens and underscores with spaces.
-      String cleaned = username.replaceAll('-', ' ').replaceAll('_', ' ');
-
-      // Capitalize each word.
-      cleaned = cleaned
-          .split(' ')
-          .map((word) {
-            if (word.isEmpty) return word;
-            return word[0].toUpperCase() + word.substring(1).toLowerCase();
-          })
-          .join(' ');
-
-      return cleaned;
-    } catch (_) {
-      return webId;
-    }
-  }
-
-  /// Checks for existing session on startup.
-  Future<void> _checkSession() async {
-    try {
-      final webId = await getWebId();
-
-      if (mounted) {
-        setState(() {
-          _currentUserWebId = webId;
-          _displayName = webId != null ? _extractNameFromWebId(webId) : null;
-          _hasChecked = true;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _hasChecked = true);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        widget.child,
-
-        if (_hasChecked)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: _currentUserWebId != null
-                      ? Colors.green.shade50
-                      : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _currentUserWebId != null
-                        ? Colors.green.shade200
-                        : Colors.grey.shade300,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _currentUserWebId != null
-                          ? Icons.check_circle
-                          : Icons.info_outline,
-                      color: _currentUserWebId != null
-                          ? Colors.green
-                          : Colors.grey,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _currentUserWebId != null
-                            ? 'Logged in as $_displayName'
-                            : 'Not logged in',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: _currentUserWebId != null
-                              ? Colors.green.shade800
-                              : Colors.grey.shade700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
     );
   }
 }

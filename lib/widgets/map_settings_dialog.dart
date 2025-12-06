@@ -317,10 +317,7 @@ class _ColorPickerTile extends StatelessWidget {
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -333,4 +330,3 @@ class _ColorPickerTile extends StatelessWidget {
     );
   }
 }
-

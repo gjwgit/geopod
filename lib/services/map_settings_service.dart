@@ -82,10 +82,12 @@ class MapSettingsService {
 
       return MapSettings(
         showLocalPlaces: showLocal,
-        userPlacesColor:
-            userColorValue != null ? Color(userColorValue) : defaultUserColor,
-        localPlacesColor:
-            localColorValue != null ? Color(localColorValue) : defaultLocalColor,
+        userPlacesColor: userColorValue != null
+            ? Color(userColorValue)
+            : defaultUserColor,
+        localPlacesColor: localColorValue != null
+            ? Color(localColorValue)
+            : defaultLocalColor,
       );
     } catch (_) {
       // Return defaults on error.
@@ -99,8 +101,14 @@ class MapSettingsService {
       final prefs = await SharedPreferences.getInstance();
 
       await prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces);
-      await prefs.setInt(_keyUserPlacesColor, settings.userPlacesColor.toARGB32());
-      await prefs.setInt(_keyLocalPlacesColor, settings.localPlacesColor.toARGB32());
+      await prefs.setInt(
+        _keyUserPlacesColor,
+        settings.userPlacesColor.toARGB32(),
+      );
+      await prefs.setInt(
+        _keyLocalPlacesColor,
+        settings.localPlacesColor.toARGB32(),
+      );
 
       return true;
     } catch (_) {
@@ -154,4 +162,3 @@ class MapSettingsService {
     }
   }
 }
-

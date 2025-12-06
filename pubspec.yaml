@@ -16,6 +16,8 @@ environment:
 
 dependencies:
   cupertino_icons: ^1.0.8
+  file_picker: ^10.3.7
+  file_saver: ^0.2.14
   flutter:
     sdk: flutter
   flutter_colorpicker: ^1.1.0
@@ -26,6 +28,7 @@ dependencies:
   shared_preferences: ^2.3.3
   solidpod: ^0.8.6
   solidui: ^0.0.13
+  uuid: ^4.5.1
   web: ^1.1.0
   window_manager: ^0.5.0
   universal_io: any

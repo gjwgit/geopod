@@ -229,8 +229,11 @@ android/app/.cxx/
 **/ios/Runner/GeneratedPluginRegistrant.*
 
 # ios/macos generated project files
+ios/Flutter/
 ios/Runner.xcodeproj/
 ios/Runner.xcworkspace/
+ios/Runner/
+ios/RunnerTests/
 
 # Backups of ios/macos project config yml and Podfile
 ios/Podfile-*

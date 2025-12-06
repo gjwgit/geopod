@@ -1,6 +1,6 @@
-/// The primary [MaterialApp] widget.
+/// The primary app scaffold with navigation menu.
 ///
-// Time-stamp: <Friday 2025-11-21 19:37:19 +1100 Graham Williams>
+// Time-stamp: <2025-12-04 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -31,6 +31,7 @@ import 'package:solidui/solidui.dart';
 
 import 'constants/app.dart';
 import 'home.dart';
+import 'widgets/locations_page.dart';
 
 var appScaffold = SolidScaffold(
   // MENU
@@ -56,12 +57,7 @@ var appScaffold = SolidScaffold(
               locations of interest with other users through their Pods.
 
             ''',
-      child: Center(
-        child: Text(
-          'List of Locations of Interest',
-          style: TextStyle(fontSize: 24),
-        ),
-      ),
+      child: LocationsPage(),
     ),
     const SolidMenuItem(
       icon: Icons.headphones,

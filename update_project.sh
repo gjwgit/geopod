@@ -5,13 +5,13 @@
 # Update Xcode build project files and cocoa pods after ios/macos pods change or project build configuration changes
 
 function usage() {
-    echo "Usage: update_project.sh [ios/macos]" # [deployment_target]"
+    echo "Usage: update_project.sh [ios/macos]"
     echo ""
     echo "Description: Update Xcode build project files and cocoa pods after ios/macos pods"
     echo "change or project build configuration changes. Uses 'configFiles' variable of"
     echo "project.yml in ios/macos folder to add necessary target support file includes to"
     echo "the build mode .xcconfig file, required for 'pod update'. Run script project top"
-    echo "level folder."
+    echo "level folder. Requires xcodegen, bash v>=4.0, GNU getopts, GNU sed."
     echo ""
     echo "Examples:"
     echo "Recommended: for first time, to use '--backup' to create a backup of current project file [ios/macos]/Runner.xcodeproj/project.pbxproj:"
@@ -22,16 +22,22 @@ function usage() {
     echo "  -b, --backup:       Backup generated xcode project file Runner.xcodeproj/project.pbxproj and Podfile"
     echo "  -n, --no-clean:     Skip 'flutter clean'."
     echo ""
-    exit 1 # Exit with a non-zero status to indicate an error
+    exit 1
 }
 
 if [[ $* == *"help"* || $* == *"-h"* ]]; then
     usage
 fi
 
-YQ_CMD=$(which yq)
-if [[ "$YQ_CMD" == 'yq not found ' ]]; then
-    echo "Requires 'yq'. Run 'brew install yq'."
+YQ_BIN=$(which yq)
+if [[ "$YQ_BIN" == 'yq not found' ]]; then
+    echo "Requires 'yq'. Run 'brew install yq' or equivalent on your platform."
+    usage
+fi
+
+XCODEGEN_BIN=$(which xcodegen)
+if [[ "$XCODEGEN_BIN" == 'xcodegen not found' ]]; then
+    echo "Requires 'xcodegen'. Run 'brew install xcodegen' or equivalent on your platform."
     usage
 fi
 

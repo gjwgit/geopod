@@ -247,7 +247,7 @@ ios/project-*.yml
 
 # ios/macos generated project files
 macos/Runner.xcodeproj/
-macos/Flutter/Flutter-*.xcconfig
+macos/Runner.xcworkspace/
 
 # Backups of ios/macos project config yml and Podfile
 macos/Podfile-*

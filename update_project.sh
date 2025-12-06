@@ -176,7 +176,7 @@ xcodegen generate
 echo "======================================="
 echo "${BUILD_FOLDER} (cocoapods) include scheme pod target support files in main scheme config files"
 
-bash ../config/incl_target_support_files.sh "${PROJECT_FILE}"
+bash ../config/incl_target_support_files.sh "${BUILD_FOLDER}" "${PROJECT_FILE}"
 
 
 echo "======================================="
@@ -185,11 +185,14 @@ echo "${BUILD_FOLDER} (cocoapods) backup Podfile if requesed and initialise Podf
 PODFILE=Podfile
 
 if [[ "*${BACKUP}*" == "*true*" ]]; then
-    echo "Creating backup of project ${PODFILE} file"
+
+    # Backup if file exists
+    if [ -f "$PODFILE" ]; then
+        echo "Creating backup of project ${PODFILE} file"
     NOW=$(date +"%Y%m%d%H%M")
-    PODFILE_BAK="Podfile-${NOW}"
-    mv "${PODFILE}" "${PODFILE_BAK}"
-    # ls -lt Podfile*
+        PODFILE_BAK="Podfile-${NOW}"
+        mv "${PODFILE}" "${PODFILE_BAK}"
+    fi
 fi
 
 if [ ! -f "$PODFILE" ]; then

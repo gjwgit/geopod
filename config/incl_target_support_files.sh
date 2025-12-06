@@ -8,24 +8,26 @@
 # Usage: incl_target_support_files.sh
 
 function usage() {
-    echo "Usage: incl_target_support_files.sh [args...]"
+    echo "Usage: incl_target_support_files.sh [build_folder] [project_file]"
     echo ""
     echo "Description: Add include scheme pod target support files in"
     echo "main scheme config files (required for pod install/update)."
     echo "Usually run from within update_project.sh."
     echo ""
     echo "Arguments:"
+    echo "  build_folder: build folder, ie. ios/macos (No default)."
     echo "  project_file:   Path of project yml file."
     echo ""
     exit 1 # Exit with a non-zero status to indicate an error
 }
 
-if [[ $# -ne 1 || $* == *"help"* || $* == *"-h"* ]]; then
+if [[ $# -ne 2 || $* == *"help"* || $* == *"-h"* ]]; then
     usage
 fi
 
-if [[ $# -eq 1 ]]; then
-    PROJECT_FILE=$1
+if [[ $# -eq 2 ]]; then
+    BUILD_FOLDER=$1
+    PROJECT_FILE=$2
 fi
 
 if [ ! -f "$PROJECT_FILE" ]; then
@@ -46,7 +48,18 @@ readarray -t config_files <<< "$config_files_str"
 # This avoids including target support files for flavors not in the current
 # project.yml configuration.
 # Define include file for Flutter-Generated.xcconfig
-flutter_generated_file="ephemeral/Flutter-Generated.xcconfig"
+
+# Set filename of generated flutter config parameters
+if [[ ${BUILD_FOLDER} == "macos" ]]; then
+
+    flutter_generated_file="ephemeral/Flutter-Generated.xcconfig"
+
+elif [[ ${BUILD_FOLDER} == "ios" ]]; then
+
+    flutter_generated_file="Generated.xcconfig"
+
+fi
+
 for file in "${config_files[@]}"; do
     # Overwrite config file with include efor flutter generated config
     echo "#include \"${flutter_generated_file}\"" > "${file}"

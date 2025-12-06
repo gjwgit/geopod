@@ -1,8 +1,8 @@
 # Use `bash update_project.sh [platform]` to generate xcode project
 # build files from this project.yml
 #
-# Code signing: to code sign apps if Apple Developer certificate
-# update these build settings in the build flavors (configs):
+# Code signing: to set code sign/no code signing of apps with
+# Apple certificates update these build settings in the build flavors (configs):
 # CODE_SIGN_STYLE: "Automatic"
 # CODE_SIGN_IDENTITY: "-"
 # PROVISIONING_PROFILE_SPECIFIER: ""
@@ -10,6 +10,10 @@
 # CODE_SIGN_STYLE to "Manual"
 # CODE_SIGN_IDENTITY to signing certificate name
 # PROVISIONING_PROFILE_SPECIFIER to provisioning profile name
+# And ensure that developer team and entitlements are set, and
+# that entitlemnts file includes developer team
+# CODE_SIGN_ENTITLEMENTS: set to correct Runner/*.entitlemnts file
+# DEVELOPMENT_TEAM: [developer_team on Apple Developer account]
 
 name: Runner
 
@@ -36,6 +40,7 @@ configFiles:
 settings:
   base:
     PRODUCT_NAME: "$(TARGET_NAME)" # 'NONE'
+    DEVELOPMENT_TEAM: G7843T3SD3 # Togaware Apple Developer Team ID
     SWIFT_VERSION: "5.0"
 
 targets:
@@ -86,7 +91,8 @@ targets:
 
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.togaware.test
+        # Use App Bundle ID
+        PRODUCT_BUNDLE_IDENTIFIER: com.togaware.geopod
         ALWAYS_SEARCH_USER_PATHS: "NO"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "YES"
         ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"

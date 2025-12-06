@@ -49,17 +49,15 @@ fi
 NOCLEAN=false
 BACKUP=false
 
+# Check for GNU getopt
 GETOPT_BIN=$(which getopt)
-if [[ "$GETOPT_BIN" == "/opt/homebrew/opt/gnu-getopt/bin/getopt" ]]; then
-    GETOPT_COMMAND="getopt"
-else
+if [[ "$GETOPT_BIN" != *"/gnu-getopt"* ]]; then
     # Fallback for systems without GNU getopt or if it's not in PATH correctly
     # This might require manual parsing for long options if BSD getopt is used
     echo "Warning: GNU getopt not found or not prioritized in PATH. Install GNU getopt and/or update PATH. Alternatively, short flags may work." >&2
-    GETOPT_COMMAND="getopt"
     exit 1
 fi
-ARGS=$(${GETOPT_COMMAND} -o nb --long no-clean,backup -- "$@")
+ARGS=$(getopt -o nb --long no-clean,backup -- "$@")
 
 # Check if getopt encountered an error
 # shellcheck disable=SC2181
@@ -168,6 +166,9 @@ fi
 
 echo "======================================="
 echo "Generate Xcode project files"
+echo "Note: xcodegen expects config files \"Flutter/Flutter-*.xcconfig\" to exist"
+echo "These are generated the first time update_project.sh for each flavor in the project.yml."
+echo "Re-run update_project.sh if necessary for xcodegen to find these config files."
 
 xcodegen generate
 
@@ -179,7 +180,7 @@ bash ../config/incl_target_support_files.sh "${PROJECT_FILE}"
 
 
 echo "======================================="
-echo "${BUILD_FOLDER} (cocoapods) initialise Podfile if doesn't exist or moved to backup"
+echo "${BUILD_FOLDER} (cocoapods) backup Podfile if requesed and initialise Podfile if doesn't exist or moved to backup"
 
 PODFILE=Podfile
 
@@ -208,6 +209,16 @@ echo " deployment target."
 # Where project.yml considered source of truth
 
 bash ../config/update_deployment_target.sh "${BUILD_FOLDER}" "${PODFILE}" "${PROJECT_FILE}"
+
+
+echo "======================================="
+echo "${BUILD_FOLDER} (cocoapods) add support to Podfile for installing pods"
+
+
+# This adds support in Podfile for installing the pods comprising native code
+# for any packages that require it in pubspec
+
+bash ../config/add_pod_support.sh "${BUILD_FOLDER}" "${PODFILE}"
 
 
 echo "======================================="

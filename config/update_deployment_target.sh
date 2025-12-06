@@ -79,10 +79,10 @@ UPDATED_PLATFORM_LINE="platform :${PLATFORM}, DEPLOYMENT_TARGET"
 if ! grep -q "${UPDATED_PLATFORM_LINE}" "${PODFILE}"; then
     CURR_PLATFORM_LINE=$(cat "${PODFILE}" | grep "platform :")
     perl -pi -e "s|${CURR_PLATFORM_LINE}|${UPDATED_PLATFORM_LINE}|" "${PODFILE}"
-    echo "Podfile: updated set platform to:"
+    echo "Podfile: updated set deployment platform to:"
     cat "${PODFILE}" | grep "platform :"
 else
-    echo "Podfile: no platform update needed."
+    echo "Podfile: no deployment platform update needed."
     echo ""
 fi
 

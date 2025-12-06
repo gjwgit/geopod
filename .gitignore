@@ -228,6 +228,7 @@ android/app/.cxx/
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
+# ios/macos generated project files
 ios/Runner.xcodeproj/
 ios/Runner.xcworkspace/
 

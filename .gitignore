@@ -157,16 +157,6 @@ linked_*.ds
 unlinked.ds
 unlinked_spec.ds
 
-# ios/macos generated project files
-macos/Runner.xcodeproj
-macos/Flutter/Flutter-*.xcconfig
-
-# Backups of ios/macos project config yml and Podfile
-macos/Podfile-*
-ios/Podfile-*
-macos/project-*.yml
-ios/project-*.yml
-
 # If you're building an application, you may want to check-in the
 # pubspec.lock. Libraries should not include pubspec.lock, per
 # https://dart.dev/guides/libraries/private-files#pubspeclock.
@@ -238,11 +228,14 @@ android/app/.cxx/
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
-ios/Flutter/
 ios/Runner.xcodeproj/
 ios/Runner.xcworkspace/
 ios/Runner/
 ios/RunnerTests/
+
+# Backups of ios/macos project config yml and Podfile
+ios/Podfile-*
+ios/project-*.yml
 
 #-----------------------------------------------------------------------
 # macOS
@@ -253,6 +246,14 @@ ios/RunnerTests/
 **/macos/Flutter/GeneratedPluginRegistrant.swift
 **/macos/Flutter/ephemeral
 **/xcuserdata/
+
+# ios/macos generated project files
+macos/Runner.xcodeproj/
+macos/Flutter/Flutter-*.xcconfig
+
+# Backups of ios/macos project config yml and Podfile
+macos/Podfile-*
+macos/project-*.yml
 
 #-----------------------------------------------------------------------
 # Windows

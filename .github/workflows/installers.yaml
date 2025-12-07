@@ -179,7 +179,7 @@ jobs:
   ########################################################################
   # MACOS - UNSIGNED
 
-  # Build without signing certificate
+  # Test build without signing certificate
   # for testing by developers
   # Note: build without signing prevents build with keychain access capability
   # This means the app fails to use secure local storage and the use needs to

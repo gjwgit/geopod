@@ -26,6 +26,7 @@ a Pull Request. Thanks.
 
 ## 0.1 First beta release of a solidui template
 
++ Desktop window increased for SolidUI status [0.0.3 20251207 jesscmoore]
 + Automate macos+ios config and unsigned build [0.0.3 20251207 jesscmoore]
 + Add solid login and solid scaffold [0.0.2 20251121 gjw]
 + Initialise the app [0.0.1 20251119 gjw]

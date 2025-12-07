@@ -215,6 +215,7 @@ jobs:
       - name: Generate project build configuration files
         run: |
           brew install xcodegen
+          brew install gnu-getopt
           bash update_project.sh macos
 
       # Build an unsigned app

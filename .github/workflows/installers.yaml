@@ -216,6 +216,7 @@ jobs:
         run: |
           brew install xcodegen
           brew install gnu-getopt
+          echo 'export PATH="/opt/homebrew/opt/gnu-getopt/bin:$PATH"' >> /Users/runner/.bash_profile
           bash update_project.sh macos
 
       # Build an unsigned app

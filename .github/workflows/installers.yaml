@@ -36,7 +36,7 @@ on:
     branches:
       - dev
       - build
-      - jess/macos_installer
+      - jess/14_automate_build_config
 
 env:
   APP: geopod
@@ -179,7 +179,7 @@ jobs:
   ########################################################################
   # MACOS - UNSIGNED
 
-  # Test build without signing certificate
+  # Build without signing certificate
   # for testing by developers
   # Note: build without signing prevents build with keychain access capability
   # This means the app fails to use secure local storage and the use needs to

@@ -51,7 +51,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (isDesktop) {
     await windowManager.ensureInitialized();
-    const windowOptions = WindowOptions(title: appTitle);
+    // Size >= 900 x 700 required for SolidUI status bar to be shown
+    const windowOptions = WindowOptions(title: appTitle, size: Size(900, 700));
     await windowManager.waitUntilReadyToShow(windowOptions, () async {});
   }
 

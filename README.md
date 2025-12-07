@@ -65,7 +65,13 @@ access to through your Pod.
 
 ## MacOS/iOS
 
-This project uses a human readable `project.yml` in macos and ios folders, where Xcode build configuration files are generated automatically with `xcodegen generate`. To alter the build configuration for macos or ios, edit `project.yml` in macos/ios folder, re-run xcodegen to generate updated build configuration and update native pods with `pod install`, before building or running the flutter app. The script `update_project.sh` performs these steps and aligns Podfile with Xcode build config, so after a build config change, do:
+This project uses a human readable `project.yml` in macos and ios folders, where
+ Xcode build configuration files are generated automatically with
+ `xcodegen generate`. To alter the build configuration for macos or ios, edit
+ `project.yml` in macos/ios folder, re-run xcodegen to generate updated build
+ configuration and update native pods with `pod install`, before building or
+ running the flutter app. The script `update_project.sh` performs these steps
+ and aligns Podfile with Xcode build config, so after a build config change, do:
 
 ```bash
 bash update_project.sh [macos/ios]

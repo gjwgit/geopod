@@ -1,0 +1,7 @@
+# .shellcheckrc
+
+external-sources=true # Allow sourcing of external files
+
+disable=SC1091 # Allow sourcing of external files
+disable=SC2001 # Parameterisation for search/replace
+disable=SC2059 # Ignore dont used variables in printf

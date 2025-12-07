@@ -1,9 +1,9 @@
-DEPLOYMENT_TARGET = 15.1
+DEPLOYMENT_TARGET = 16.0
 # Uncomment the next line to define a global platform for your project
-platform :osx, DEPLOYMENT_TARGET
+platform :ios, DEPLOYMENT_TARGET
 
 def flutter_root
-  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__)
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
   unless File.exist?(generated_xcode_build_settings_path)
     raise "#{generated_xcode_build_settings_path} must exist. If you are running pod install manually, make sure 'flutter pub get' is executed first"
   end
@@ -17,15 +17,15 @@ end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
-flutter_macos_podfile_setup
+flutter_ios_podfile_setup
 
 
 target 'Runner' do
   # Comment the next line if you don't want to use dynamic frameworks
   use_frameworks!
-  use_modular_headers!
+  # use_modular_headers!
 
-  flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
   # Pods for Runner
 
@@ -38,6 +38,6 @@ end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
-    flutter_additional_macos_build_settings(target)
+    flutter_additional_ios_build_settings(target)
   end
 end

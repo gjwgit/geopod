@@ -1,6 +1,6 @@
-/// The application's home page.
+/// Web-specific utilities using package:web.
 ///
-// Time-stamp: <Friday 2025-11-21 09:21:38 +1100 Graham Williams>
+// Time-stamp: <2025-12-04 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -21,29 +21,23 @@
 // You should have received a copy of the GNU General Public License along with
 // this program.  If not, see <https://opensource.org/license/gpl-3-0>.
 ///
-/// Authors: Graham Williams
+/// Authors: Graham Williams, Miduo
 
 library;
 
-import 'package:flutter/material.dart';
+import 'package:web/web.dart' as web;
 
-import 'package:geopod/widgets/geomap.dart';
-
-/// Global key to access the GeoMap state for settings dialog.
-final GlobalKey<GeoMapWidgetState> geoMapKey = GlobalKey<GeoMapWidgetState>();
-
-class Home extends StatefulWidget {
-  const Home({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<Home> createState() => _HomeState();
+/// Replaces the current browser URL state without triggering a page reload.
+///
+/// This is used to clear OAuth query parameters from the URL after
+/// authentication is complete, preventing re-authentication on page refresh.
+void replaceUrlState(String url) {
+  web.window.history.replaceState(null, '', url);
 }
 
-class _HomeState extends State<Home> {
-  @override
-  Widget build(BuildContext context) {
-    return GeoMapWidget(key: geoMapKey);
-  }
+/// Reloads the current page.
+///
+/// This is used to return to the login screen when session is invalid.
+void reloadPage() {
+  web.window.location.reload();
 }

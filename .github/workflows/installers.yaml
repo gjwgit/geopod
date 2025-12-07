@@ -215,7 +215,9 @@ jobs:
       - name: Generate project build configuration files
         run: |
           brew install xcodegen
+          cd macos
           xcodegen generate
+          cd ..
           # brew install gnu-getopt
           # echo "/opt/homebrew/opt/gnu-getopt/bin:$GITHUB_PATH" >> $GITHUB_PATH
           # echo $GITHUB_PATH
@@ -225,6 +227,7 @@ jobs:
         run: |
           cd macos
           pod install --repo-update
+          cd ..
 
       # Build an unsigned app
 

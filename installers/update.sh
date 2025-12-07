@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# set -x
+
 # 20241024 gjw After a github action has built the bundles and stored
 # them as artefacts on github, we can upload them to the ${HOST} for
 # distribution.
@@ -92,39 +94,73 @@ if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
 
     echo ""
 
-    # echo '***** UPLOAD MACOS DMG'
+    echo '***** UPLOAD MACOS DMG UNSIGNED'
 
-    # ## gh run download ${bumpId} --name ${APP}-macos-zip
+    ## gh run download ${bumpId} --name ${APP}-macos-zip
 
-    # artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
-    # 		    --jq '.artifacts[] | select(.name | endswith("-macos-dmg")) | .id' | head -n 1)
-    # echo "artifact id: $artifactId"
-    # gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    # unzip artifact.zip
-    # rm -f artifact.zip
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-macos-unsigned-dmg")) | .id' | head -n 1)
+    echo "artifact id: $artifactId"
+    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+    unzip artifact.zip
+    rm -f artifact.zip
 
-    # rsync -avzh ${APP}-dev-macos-unsigned.dmg ${DEST}
-    # mv ${APP}-dev-macos-unsigned.dmg ARCHIVE/${APP}_${version}_macos_unsigned.dmg
-    # ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-unsigned.dmg"
+    rsync -avzh ${APP}-dev-macos-unsigned.dmg ${DEST}
+    mv ${APP}-dev-macos-unsigned.dmg ARCHIVE/${APP}_${version}_macos_unsigned.dmg
+    ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-unsigned.dmg"
 
-    # echo ""
+    echo ""
 
-    # echo '***** UPLOAD MACOS ZIP'
+    echo '***** UPLOAD MACOS DMG STAGING'
 
-    # ## gh run download ${bumpId} --name ${APP}-macos-zip
+    ## gh run download ${bumpId} --name ${APP}-macos-zip
 
-    # artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
-    # 		    --jq '.artifacts[] | select(.name | endswith("-macos-zip")) | .id' | head -n 1)
-    # echo "artifact id: $artifactId"
-    # gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    # unzip artifact.zip
-    # rm -f artifact.zip
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-macos-staging-dmg")) | .id' | head -n 1)
+    echo "artifact id: $artifactId"
+    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+    unzip artifact.zip
+    rm -f artifact.zip
 
-    # rsync -avzh ${APP}-dev-macos.zip ${DEST}
-    # mv ${APP}-dev-macos.zip ARCHIVE/${APP}_${version}_macos.zip
-    # ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-*.zip ${APP}-dev-*.exe"
+    rsync -avzh ${APP}-dev-macos-staging.dmg ${DEST}
+    mv ${APP}-dev-macos-staging.dmg ARCHIVE/${APP}_${version}_macos_staging.dmg
+    ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-staging.dmg"
 
-    # echo ""
+    echo ""
+
+    echo '***** UPLOAD MACOS DMG DEV'
+
+    ## gh run download ${bumpId} --name ${APP}-macos-zip
+
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-macos-dev-dmg")) | .id' | head -n 1)
+    echo "artifact id: $artifactId"
+    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+    unzip artifact.zip
+    rm -f artifact.zip
+
+    rsync -avzh ${APP}-dev-macos-dev.dmg ${DEST}
+    mv ${APP}-dev-macos-dev.dmg ARCHIVE/${APP}_${version}_macos_dev.dmg
+    ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-dev.dmg"
+
+    echo ""
+
+    echo '***** UPLOAD MACOS ZIP UNSIGNED'
+
+    ## gh run download ${bumpId} --name ${APP}-macos-zip
+
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-macos-unsigned-zip")) | .id' | head -n 1)
+    echo "artifact id: $artifactId"
+    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+    unzip artifact.zip
+    rm -f artifact.zip
+
+    rsync -avzh ${APP}-dev-macos-unsigned.zip ${DEST}
+    mv ${APP}-dev-macos-unsigned.zip ARCHIVE/${APP}_${version}_macos_unsigned.zip
+    ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-unsigned.zip"
+
+    echo ""
 
     echo '***** UPLOAD WINDOWS INNO'
 

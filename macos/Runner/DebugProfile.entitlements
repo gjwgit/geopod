@@ -8,5 +8,14 @@
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Note: keychain access entitlement is needed to use local secure storage and requires code signing app
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.togaware.geopod</string>
+	</array> -->
+	<key>keychain-access-groups</key>
+	</array>
 </dict>
 </plist>

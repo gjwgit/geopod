@@ -211,6 +211,12 @@ jobs:
       - name: Enable macOS desktop
         run: flutter config --enable-macos-desktop
 
+      # Configure project build configuration files
+      - name: Generate project build configuration files
+        run: |
+          brew install xcodegen
+          bash update_project.sh macos
+
       # Build an unsigned app
 
       - name: Build Flutter macOS app

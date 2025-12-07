@@ -543,6 +543,8 @@ class _LocationsPageState extends State<LocationsPage> {
       // Refresh to get the updated address if coordinates changed.
       if (coordinatesChanged) {
         await _loadPlaces();
+        // Check mounted status again after async operation
+        if (!mounted) return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

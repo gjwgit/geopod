@@ -22,7 +22,7 @@ https://pods.solidcommunity.au/
 
 https://sii.anu.edu.au/
 
-# OpenStreetMap APIs - require User-Agent headers (400 Bad Request in CI)
+# OpenStreetMap APIs - require User-Agent headers (403/400 in CI)
 
 https://nominatim.openstreetmap.org/reverse
 https://tile.openstreetmap.org/

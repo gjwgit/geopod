@@ -34,7 +34,6 @@ import 'package:solidui/solidui.dart';
 
 import 'app_scaffold.dart';
 import 'constants/app.dart';
-// Conditionally import for web platform only.
 import 'utils/web_utils_stub.dart'
     if (dart.library.html) 'utils/web_utils_web.dart'
     as web_utils;

@@ -117,24 +117,15 @@ var appScaffold = SolidScaffold(
 
     actions: [
       SolidAppBarAction(
-        icon: Icons.search,
-        onPressed: () => debugPrint('Search'),
-        tooltip: 'Search',
-      ),
-      SolidAppBarAction(
-        icon: Icons.notifications,
-        onPressed: () => debugPrint('Notifications'),
-        tooltip: 'Notifications',
+        icon: Icons.settings,
+        onPressed: () {
+          // Call the GeoMap's settings dialog
+          geoMapKey.currentState?.showSettingsDialog();
+        },
+        tooltip: 'Settings',
       ),
     ],
-    overflowItems: [
-      SolidOverflowMenuItem(
-        id: 'help',
-        icon: Icons.help,
-        label: 'Help',
-        onSelected: () => debugPrint('Help'),
-      ),
-    ],
+    overflowItems: [],
   ),
 
   // STATUS BAR

@@ -45,14 +45,14 @@ import 'package:geopod/widgets/map_settings_dialog.dart';
 /// - Optimistic updates: Places appear instantly before save completes
 /// - Background saving: Geocoding + writePod happens without blocking UI
 /// - Pre-loaded data: Places are fetched once and cached for instant access
-class GeoMap extends StatefulWidget {
-  const GeoMap({super.key});
+class GeoMapWidget extends StatefulWidget {
+  const GeoMapWidget({super.key});
 
   @override
-  State<GeoMap> createState() => _GeoMapState();
+  State<GeoMapWidget> createState() => GeoMapWidgetState();
 }
 
-class _GeoMapState extends State<GeoMap> {
+class GeoMapWidgetState extends State<GeoMapWidget> {
   final MapController _mapController = MapController();
 
   /// All places (local + Pod) loaded and cached for instant access.
@@ -97,6 +97,11 @@ class _GeoMapState extends State<GeoMap> {
         },
       ),
     );
+  }
+
+  /// Public method to show settings dialog (called from app bar).
+  void showSettingsDialog() {
+    _showSettingsDialog();
   }
 
   /// Loads all places (local + Pod) and caches them.
@@ -160,7 +165,7 @@ class _GeoMapState extends State<GeoMap> {
       builder: (context) => AddPlaceForm(
         initialLatitude: latitude,
         initialLongitude: longitude,
-        returnWidget: const GeoMap(),
+        returnWidget: const GeoMapWidget(),
       ),
     );
 
@@ -232,7 +237,7 @@ class _GeoMapState extends State<GeoMap> {
       final success = await PlacesService.addPlace(
         updatedPlace,
         context,
-        const GeoMap(),
+        const GeoMapWidget(),
       );
 
       if (!mounted) return;
@@ -515,7 +520,7 @@ class _GeoMapState extends State<GeoMap> {
     final success = await PlacesService.deletePlace(
       marker.id,
       context,
-      const GeoMap(),
+      const GeoMapWidget(),
     );
 
     if (!mounted) return;
@@ -667,15 +672,6 @@ class _GeoMapState extends State<GeoMap> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton.small(
-            heroTag: 'settings',
-            onPressed: _showSettingsDialog,
-            tooltip: 'Map Settings',
-            backgroundColor: Colors.grey.shade700,
-            foregroundColor: Colors.white,
-            child: const Icon(Icons.layers),
-          ),
-          const SizedBox(height: 8),
           FloatingActionButton.small(
             heroTag: 'refresh',
             onPressed: _isLoadingPlaces ? null : _loadAllPlaces,

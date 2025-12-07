@@ -29,6 +29,9 @@ import 'package:flutter/material.dart';
 
 import 'package:geopod/widgets/geomap.dart';
 
+/// Global key to access the GeoMap state for settings dialog.
+final GlobalKey<GeoMapWidgetState> geoMapKey = GlobalKey<GeoMapWidgetState>();
+
 class Home extends StatefulWidget {
   const Home({super.key, required this.title});
 
@@ -41,6 +44,6 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
-    return const GeoMap();
+    return GeoMapWidget(key: geoMapKey);
   }
 }

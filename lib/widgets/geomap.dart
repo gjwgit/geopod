@@ -1,6 +1,6 @@
 /// The primary map widget.
 ///
-// Time-stamp: <2025-12-04 Miduo>
+// Time-stamp: <Monday 2025-12-08 08:22:27 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -573,7 +573,8 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: const LatLng(-35.2809, 149.1300),
+              initialCenter: const LatLng(-12.46, 130.84), // Darwin
+              // initialCenter: const LatLng(-35.2809, 149.1300), // Canberra
               initialZoom: 13.0,
               minZoom: 3.0,
               maxZoom: 18.0,

@@ -27,6 +27,12 @@ https://sii.anu.edu.au/
 https://nominatim.openstreetmap.org/reverse
 https://tile.openstreetmap.org/
 
+# Ignore map tile templates (they contain {z}/{x}/{y} and return 404)
+https://tiles\.stadiamaps\.com/.*
+https://server\.arcgisonline\.com/.*
+https://tiles\.arcgis\.com/.*
+https://.*\.tile\.opentopomap\.org/.*
+
 # Ignore the template index file.
 
 web/**

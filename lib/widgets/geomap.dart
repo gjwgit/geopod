@@ -64,8 +64,10 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
   /// Whether initial load is in progress.
   bool _isLoadingPlaces = false;
 
-  /// Map display settings (colors, visibility).
-  MapSettings _mapSettings = const MapSettings();
+  /// Map display settings (colors, visibility, map source).
+  MapSettings _mapSettings = MapSettings(
+    mapSource: MapSettings.getDefaultMapSource(),
+  );
 
   @override
   void initState() {
@@ -567,6 +569,25 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Detect if app is in dark mode
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Check if current map source is already dark
+    final isMapAlreadyDark = _mapSettings.mapSource.isDarkSource;
+
+    // Midnight blue color matrix for dark mode
+    // Transforms bright maps into eye-friendly night vision
+    const midnightMatrix = <double>[
+      -0.33, -0.33, -0.33, 0, 255, // Red
+      -0.33, -0.33, -0.33, 0, 255, // Green
+      -0.33, -0.33, -0.33, 0, 255, // Blue
+      0, 0, 0, 1, 0,
+    ];
+    // Apply color filter only if:
+    // 1. App is in dark mode, AND
+    // 2. Map source is NOT already a dark map
+    final shouldApplyFilter = isDarkMode && !isMapAlreadyDark;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -587,11 +608,24 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
               },
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.togaware.geopod',
-                tileProvider: CancellableNetworkTileProvider(),
+              // Apply color filter ONLY to tile layer, not markers
+              ColorFiltered(
+                colorFilter: shouldApplyFilter
+                    ? const ColorFilter.matrix(midnightMatrix)
+                    : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+                child: TileLayer(
+                  key: ValueKey(_mapSettings.mapSource),
+                  urlTemplate: _mapSettings.mapSource.urlTemplate,
+                  subdomains: _mapSettings.mapSource.subdomains,
+                  userAgentPackageName: 'com.togaware.geopod',
+                  tileProvider: CancellableNetworkTileProvider(),
+                  keepBuffer: 3,
+                  maxZoom: 19,
+                  maxNativeZoom: 18,
+                ),
               ),
+
+              // Marker layer - NOT affected by color filter
               MarkerLayer(
                 markers: _filteredMarkers.map((markerData) {
                   return Marker(

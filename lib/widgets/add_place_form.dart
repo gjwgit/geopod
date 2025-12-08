@@ -25,9 +25,12 @@
 
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart';
 
 /// Result returned from AddPlaceForm containing the place data.
@@ -68,6 +71,10 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   final _longitudeController = TextEditingController();
   final _noteController = TextEditingController();
 
+  String? _addressPreview;
+  bool _isLoadingAddress = false;
+  Timer? _debounceTimer;
+
   @override
   void initState() {
     super.initState();
@@ -78,14 +85,86 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
     if (widget.initialLongitude != null) {
       _longitudeController.text = widget.initialLongitude!.toStringAsFixed(6);
     }
+
+    // Listen to coordinate changes for live preview
+    _latitudeController.addListener(_onCoordinateChanged);
+    _longitudeController.addListener(_onCoordinateChanged);
+
+    // Load initial address preview if coordinates provided
+    if (widget.initialLatitude != null && widget.initialLongitude != null) {
+      _loadAddressPreview();
+    }
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _latitudeController.dispose();
     _longitudeController.dispose();
     _noteController.dispose();
     super.dispose();
+  }
+
+  /// Called when coordinates change - triggers debounced address lookup
+  void _onCoordinateChanged() {
+    // Cancel previous timer
+    _debounceTimer?.cancel();
+
+    // Start new timer (wait 800ms after user stops typing)
+    _debounceTimer = Timer(const Duration(milliseconds: 800), () {
+      _loadAddressPreview();
+    });
+  }
+
+  /// Loads address preview from coordinates
+  Future<void> _loadAddressPreview() async {
+    final latText = _latitudeController.text.trim();
+    final lngText = _longitudeController.text.trim();
+
+    // Validate coordinates
+    final lat = double.tryParse(latText);
+    final lng = double.tryParse(lngText);
+
+    if (lat == null || lng == null) {
+      setState(() {
+        _addressPreview = null;
+        _isLoadingAddress = false;
+      });
+      return;
+    }
+
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setState(() {
+        _addressPreview = null;
+        _isLoadingAddress = false;
+      });
+      return;
+    }
+
+    // Show loading state
+    setState(() {
+      _isLoadingAddress = true;
+      _addressPreview = null;
+    });
+
+    try {
+      // Call geocoding API
+      final address = await GeocodingService.getAddress(lat, lng);
+
+      if (mounted) {
+        setState(() {
+          _addressPreview = address;
+          _isLoadingAddress = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _addressPreview = 'Failed to load address';
+          _isLoadingAddress = false;
+        });
+      }
+    }
   }
 
   /// Validates that the input is a valid latitude (-90 to 90).
@@ -209,6 +288,69 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                   validator: _validateLongitude,
                 ),
                 const SizedBox(height: 16),
+
+                // Address preview
+                if (_isLoadingAddress || _addressPreview != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          size: 20,
+                          color: Colors.blue.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Address Preview',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              if (_isLoadingAddress)
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.blue.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Loading address...',
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                  ],
+                                )
+                              else if (_addressPreview != null)
+                                Text(
+                                  _addressPreview!,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_isLoadingAddress || _addressPreview != null)
+                  const SizedBox(height: 16),
 
                 // Note field.
                 TextFormField(

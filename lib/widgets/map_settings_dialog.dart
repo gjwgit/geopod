@@ -57,6 +57,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late bool _showLocalPlaces;
   late Color _userPlacesColor;
   late Color _localPlacesColor;
+  late MapSource _mapSource;
 
   @override
   void initState() {
@@ -64,6 +65,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     _showLocalPlaces = widget.currentSettings.showLocalPlaces;
     _userPlacesColor = widget.currentSettings.userPlacesColor;
     _localPlacesColor = widget.currentSettings.localPlacesColor;
+    _mapSource = widget.currentSettings.mapSource;
   }
 
   /// Saves current settings and notifies parent.
@@ -72,6 +74,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
       showLocalPlaces: _showLocalPlaces,
       userPlacesColor: _userPlacesColor,
       localPlacesColor: _localPlacesColor,
+      mapSource: _mapSource,
     );
 
     // Save to SharedPreferences.
@@ -145,6 +148,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
       _showLocalPlaces = true;
       _userPlacesColor = defaultUserColor;
       _localPlacesColor = defaultLocalColor;
+      _mapSource = MapSettings.getDefaultMapSource();
     });
     _saveAndNotify();
   }
@@ -187,6 +191,75 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 color: _showLocalPlaces ? Colors.green : Colors.grey,
               ),
             ),
+            const Divider(height: 32),
+
+            // Map Source Selection
+            const Text(
+              'Map Source',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: DropdownButton<MapSource>(
+                value: _mapSource,
+                isExpanded: true,
+                underline: const SizedBox(),
+                icon: const Icon(Icons.arrow_drop_down),
+                items: MapSource.values.map((source) {
+                  return DropdownMenuItem<MapSource>(
+                    value: source,
+                    child: Row(
+                      children: [
+                        Icon(
+                          source.icon,
+                          size: 20,
+                          color: Colors.grey.shade700,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                source.displayName,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                source.description,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (MapSource? newValue) {
+                  if (newValue != null) {
+                    setState(() => _mapSource = newValue);
+                    _saveAndNotify();
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
             const Divider(height: 32),
 
             // Color customization.

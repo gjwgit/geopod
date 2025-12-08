@@ -36,7 +36,7 @@ on:
     branches:
       - dev
       - build
-      - jess/14_automate_build_config
+      - jess/macos_installer
 
 env:
   APP: geopod

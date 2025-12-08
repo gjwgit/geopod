@@ -86,5 +86,35 @@
       "note": "Cradle Mountain (TAS)",
       "timestamp": "2025-01-01T00:00:00.000Z",
       "address": "Cradle Mountain, TAS 7306"
+    },
+    {
+	"lat": -12.4634,
+	"lng": 130.8456,
+        "note": "Garramilla (Darwin) The traditional Larrakia name for Darwin, meaning white stone."
+    },
+    {
+	"lat": -12.4686,
+	"lng": 130.8403,
+        "note": "Stokes Hill A site where the Larrakia people believe the spiritual ancestor Chinute Chinute lives, manifesting as a tawny frogmouth."
+    },
+    {
+	"lat": -12.4294,
+	"lng": 130.8350,
+        "note": "Mindil Beach One of several popular sites around Darwin that holds specific cultural meaning for the Larrakia people."
+    },
+    {
+	"lat": -12.3771,
+	"lng": 130.8765,
+        "note": "Rapid Creek An important Larrakia cultural site in Darwin."
+    },
+    {
+	"lat": -12.3589,
+	"lng": 130.8655,
+        "note": "Casuarina Beach Significant coastal site for Larrakia people"
+    },
+    {
+	"lat": -16.91,
+	"lng": 145.87,
+        "note": "Yarrabah"
     }
 ]

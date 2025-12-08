@@ -27,3 +27,6 @@
 library;
 
 const String appTitle = 'GeoPod - Points of Interest on your Map';
+
+const double windowHeightMacOS = 700;
+const double windowWidthMacOS = 900;

@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:window_manager/window_manager.dart';
+import 'package:universal_io/io.dart' show Platform;
 
 import 'package:geopod/app.dart';
 import 'package:geopod/constants/app.dart';
@@ -51,9 +52,23 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (isDesktop) {
     await windowManager.ensureInitialized();
-    // Size >= 900 x 700 required for SolidUI status bar to be shown
-    const windowOptions = WindowOptions(title: appTitle, size: Size(900, 700));
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {});
+
+    const windowOptionsMacOS = WindowOptions(
+      title: appTitle,
+      // Size >= 900 x 700 required for SolidUI status bar to be shown
+      // on macOS
+      size: Size(windowWidthMacOS, windowHeightMacOS),
+    );
+    const windowOptionsOtherDesktop = WindowOptions(title: appTitle);
+
+    if (Platform.isMacOS) {
+      await windowManager.waitUntilReadyToShow(windowOptionsMacOS, () async {});
+    } else {
+      await windowManager.waitUntilReadyToShow(
+        windowOptionsOtherDesktop,
+        () async {},
+      );
+    }
   }
 
   // The runApp() function takes the given Widget and makes it the root of the

@@ -27,6 +27,12 @@ https://sii.anu.edu.au/
 https://nominatim.openstreetmap.org/reverse
 https://tile.openstreetmap.org/
 
+# Map Tile Providers (Regex patterns)
+https://tiles\.stadiamaps\.com/.*
+https://server\.arcgisonline\.com/.*
+https://.*\.basemaps\.cartocdn\.com/.*
+https://.*\.tile-cyclosm\.openstreetmap\.fr/.*
+
 # Ignore the template index file.
 
 web/**

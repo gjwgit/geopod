@@ -210,12 +210,9 @@ class MapSettings {
   }) : mapSource = mapSource ?? MapSource.openStreetMap;
 
   /// Time-based default map source.
+  /// Always defaults to OpenStreetMap.
+  /// Night mode styling is handled by app theme + color filter.
   static MapSource getDefaultMapSource() {
-    final hour = DateTime.now().hour;
-    // Use Dark Matter at night
-    if (hour >= 18 || hour < 6) {
-      return MapSource.cartoDarkMatter;
-    }
     return MapSource.openStreetMap;
   }
 

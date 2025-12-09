@@ -50,8 +50,8 @@ class _LocationsPageState extends State<LocationsPage> {
   /// Whether the user is logged in (assume true until proven otherwise).
   bool _isLoggedIn = true;
 
-  /// Whether we're currently loading.
-  bool _isLoading = true;
+  /// Whether we're currently loading. Initialize based on cache availability.
+  late bool _isLoading;
 
   /// Error message if loading failed.
   String? _errorMessage;
@@ -65,6 +65,17 @@ class _LocationsPageState extends State<LocationsPage> {
   @override
   void initState() {
     super.initState();
+
+    // Check if we have cached places - if so, don't show loading animation
+    final cachedPlaces = PlacesCacheManager().podPlaces;
+    if (cachedPlaces != null) {
+      _places = cachedPlaces;
+      _isLoading = false;
+      _hasLoadedOnce = true;
+    } else {
+      _isLoading = true;
+    }
+
     _checkLoginAndLoad();
   }
 
@@ -72,22 +83,9 @@ class _LocationsPageState extends State<LocationsPage> {
   /// Assumes user is logged in, but verifies in background.
   /// Uses cache if available to avoid loading animation on subsequent visits.
   Future<void> _checkLoginAndLoad() async {
-    // First, check if we have cached places from previous load
-    final cachedPlaces = PlacesCacheManager().podPlaces;
-
-    if (cachedPlaces != null && !_hasLoadedOnce) {
-      // Use cached data directly - no loading animation
-      setState(() {
-        _places = cachedPlaces;
-        _isLoading = false;
-        _hasLoadedOnce = true;
-      });
-    } else if (!_hasLoadedOnce) {
-      // No cache, need to load from Pod
+    // If we haven't loaded yet, fetch from Pod
+    if (!_hasLoadedOnce) {
       await _loadPlaces();
-    } else {
-      // Already loaded once, no need to show loading
-      setState(() => _isLoading = false);
     }
 
     // Verify login status in background

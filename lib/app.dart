@@ -55,13 +55,10 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Wrap appScaffold with session verifier to catch fake logins.
-    final verifiedChild = _SessionVerifier(child: appScaffold);
-
     final loginWidget = SolidLogin(
       image: const AssetImage('assets/images/app_image.png'),
       logo: const AssetImage('assets/images/app_icon.png'),
-      child: verifiedChild,
+      child: appScaffold,
     );
 
     // Session status banner disabled - deemed redundant.
@@ -78,146 +75,7 @@ class App extends StatelessWidget {
   }
 }
 
-/// Verifies session using getWebId().
-///
-/// According to solidpod documentation:
-/// - getWebId() returns null if user is not logged in
-/// - This is the definitive way to check if login was successful
-///
-/// This widget catches "fake logins" where SolidLogin shows success
-/// but the user actually cancelled the login dialog.
-///
-/// CRITICAL: When a fake login is detected, this widget shows a "Not logged in"
-/// screen and forces the user to return to login. This prevents the bug where
-/// users would see "Login Successfully!" even after logout due to SolidLogin's
-/// internal state caching.
-class _SessionVerifier extends StatefulWidget {
-  const _SessionVerifier({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_SessionVerifier> createState() => _SessionVerifierState();
-}
-
-class _SessionVerifierState extends State<_SessionVerifier> {
-  /// Whether session is invalid (fake login detected).
-  bool _isInvalid = false;
-
-  /// Timer for periodic session verification.
-  Timer? _sessionVerifyTimer;
-
-  /// Interval for session verification (every 2 seconds).
-  static const Duration _verifyInterval = Duration(seconds: 2);
-
-  @override
-  void initState() {
-    super.initState();
-    debugPrint('_SessionVerifier: initState() called - starting session verification');
-    _verifySessionInBackground();
-    // Start periodic session verification to detect logout
-    _startSessionVerification();
-  }
-
-  @override
-  void dispose() {
-    _sessionVerifyTimer?.cancel();
-    super.dispose();
-  }
-
-  /// Starts periodic session verification.
-  void _startSessionVerification() {
-    _sessionVerifyTimer = Timer.periodic(_verifyInterval, (_) async {
-      if (!mounted) return;
-      await _verifySessionInBackground();
-    });
-  }
-
-  /// Verifies session in background WITHOUT blocking UI.
-  Future<void> _verifySessionInBackground() async {
-    // Skip if already detected invalid session
-    if (_isInvalid) {
-      _sessionVerifyTimer?.cancel();
-      return;
-    }
-
-    try {
-      final webId = await getWebId();
-
-      if (webId == null || webId.isEmpty) {
-        await _handleFakeLogin();
-      } else {
-        // Session is valid - log it for debugging
-        debugPrint('_SessionVerifier: Session verified - WebID present');
-      }
-    } catch (e) {
-      debugPrint('_SessionVerifier: Error checking session: $e');
-      await _handleFakeLogin();
-    }
-  }
-
-  Future<void> _handleFakeLogin() async {
-    // Skip if already handling fake login
-    if (_isInvalid) {
-      return;
-    }
-
-    try {
-      await deleteLogIn();
-      // Clear all cached places when logging out
-      await PlacesService.clearCache();
-    } catch (e) {
-      debugPrint('_handleFakeLogin: Error clearing session: $e');
-      // Continue anyway - we still need to update UI
-    }
-
-    if (mounted) {
-      setState(() {
-        _isInvalid = true;
-        _sessionVerifyTimer?.cancel();
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isInvalid) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.login, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              const Text(
-                'Not logged in',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => web_utils.reloadPage(),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Return to Login'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Critical: Perform immediate session validation when building child widget.
-    // This ensures that when "Continue" button is clicked, we validate session
-    // BEFORE showing the child content, preventing false "Login Successfully" messages.
-    // Schedule post-frame callback to avoid blocking UI.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (mounted && !_isInvalid) {
-        await _verifySessionInBackground();
-      }
-    });
-
-    return widget.child;
-  }
-}
+// _SessionVerifier removed - no longer needed with guest mode and web reload on logout
 
 /// Handles OAuth redirect callbacks on web platform.
 class _WebAuthHandler extends StatefulWidget {
@@ -291,6 +149,8 @@ class _WebAuthHandlerState extends State<_WebAuthHandler> {
         unawaited(_resetSessionSilent());
         return;
       }
+
+      debugPrint('_WebAuthHandler: Login successful, webId=$webId');
 
       setState(() => _status = _AuthStatus.completed);
     } on TimeoutException {

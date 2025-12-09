@@ -25,6 +25,7 @@
 
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:solidpod/solidpod.dart';
@@ -32,6 +33,9 @@ import 'package:solidpod/solidpod.dart';
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, PlacesCacheManager, Place;
+import 'package:geopod/utils/web_utils_stub.dart'
+    if (dart.library.html) 'package:geopod/utils/web_utils_web.dart'
+    as web_utils;
 
 /// A page that displays all saved locations from the user's Solid Pod.
 ///
@@ -98,7 +102,7 @@ class _LocationsPageState extends State<LocationsPage> {
     if (!loggedIn) {
       // Clear both in-memory and SharedPreferences caches
       await PlacesService.clearCache();
-      
+
       setState(() {
         _isLoggedIn = false;
         _isLoading = false;
@@ -617,9 +621,13 @@ class _LocationsPageState extends State<LocationsPage> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: _checkLoginAndLoad,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Check Again'),
+              onPressed: () {
+                if (kIsWeb) {
+                  web_utils.reloadPage();
+                }
+              },
+              icon: const Icon(Icons.login),
+              label: const Text('Login to View'),
             ),
           ],
         ),

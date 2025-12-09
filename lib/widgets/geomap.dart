@@ -27,17 +27,22 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart';
 import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/map_settings_dialog.dart';
+import 'package:geopod/utils/web_utils_stub.dart'
+    if (dart.library.html) 'package:geopod/utils/web_utils_web.dart'
+    as web_utils;
 
 /// A map widget displaying points of interest with the ability to add new places.
 ///
@@ -167,6 +172,41 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     double? latitude,
     double? longitude,
   }) async {
+    // Check if user is logged in
+    final webId = await getWebId();
+    if (webId == null || webId.isEmpty) {
+      // Show dialog prompting user to login
+      if (!mounted) return;
+
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Login Required'),
+          content: const Text(
+            'Please log in to add places to your collection.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (kIsWeb) {
+                  web_utils.reloadPage();
+                }
+              },
+              child: const Text('Login'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
     final result = await showDialog<AddPlaceResult>(
       context: context,
       builder: (context) => AddPlaceForm(
@@ -306,7 +346,39 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
   }
 
   /// Shows options when user taps on the map.
-  void _onMapTap(TapPosition tapPosition, LatLng latLng) {
+  void _onMapTap(TapPosition tapPosition, LatLng latLng) async {
+    // Check if user is logged in
+    final webId = await getWebId();
+    if (webId == null || webId.isEmpty) {
+      // Show dialog prompting user to login
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Login Required'),
+          content: const Text(
+            'Please log in to add places to your collection.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (kIsWeb) {
+                  web_utils.reloadPage();
+                }
+              },
+              child: const Text('Login'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     _showAddPlaceDialog(latitude: latLng.latitude, longitude: latLng.longitude);
   }
 
@@ -729,7 +801,7 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
                   Text(
                     _isLoadingPlaces
                         ? 'Loading places...'
-                        : 'Tap map to add place',
+                        : 'Login to add place',
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],

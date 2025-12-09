@@ -119,7 +119,8 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
 
       if (mounted) {
         setState(() {
-          _allPlaces = places;
+          // Create a mutable copy to avoid reference issues
+          _allPlaces = List.from(places);
           _isLoadingPlaces = false;
         });
       }
@@ -519,21 +520,26 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
 
     if (confirmed != true || !mounted) return;
 
-    // Optimistic delete: remove from UI immediately.
-    final removedPlace = _allPlaces.firstWhere(
-      (p) => p.id == marker.id,
-      orElse: () => Place(
-        id: marker.id,
-        lat: marker.position.latitude,
-        lng: marker.position.longitude,
-        note: marker.description,
-        timestamp: '',
-      ),
-    );
+    // Find the place and its index before deletion
     final removedIndex = _allPlaces.indexWhere((p) => p.id == marker.id);
 
+    // Safety check: ensure place exists before deletion
+    if (removedIndex == -1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Place not found'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    final removedPlace = _allPlaces[removedIndex];
+
     setState(() {
-      _allPlaces.removeWhere((p) => p.id == marker.id);
+      _allPlaces.removeAt(removedIndex);
     });
 
     ScaffoldMessenger.of(context).showSnackBar(

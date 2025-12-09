@@ -80,8 +80,9 @@ class _LocationsPageState extends State<LocationsPage> {
 
     if (cached != null && cached.isNotEmpty) {
       // We have cached data, assume user is logged in
+      // Create a mutable copy to avoid reference issues
       setState(() {
-        _places = cached;
+        _places = List.from(cached);
         _isLoggedIn = true;
         _hasLoadedOnce = true;
         _isLoading = false;
@@ -126,7 +127,8 @@ class _LocationsPageState extends State<LocationsPage> {
       );
       if (mounted) {
         setState(() {
-          _places = places;
+          // Create a mutable copy to avoid reference issues
+          _places = List.from(places);
           _isLoading = false;
           _hasLoadedOnce = true;
         });
@@ -387,9 +389,26 @@ class _LocationsPageState extends State<LocationsPage> {
 
     if (confirmed != true || !mounted) return;
 
+    // Store the place and its index before deletion
     final removedPlace = place;
-    final removedIndex = _places.indexOf(place);
-    setState(() => _places.remove(place));
+    final removedIndex = _places.indexWhere((p) => p.id == place.id);
+
+    // Safety check: ensure place exists before deletion
+    if (removedIndex == -1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Place not found'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _places.removeAt(removedIndex);
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -407,6 +426,9 @@ class _LocationsPageState extends State<LocationsPage> {
     if (!mounted) return;
 
     if (success) {
+      // Update in-memory cache so the data stays consistent
+      PlacesCacheManager().cacheAllPlaces(_places);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Place deleted successfully'),
@@ -414,8 +436,14 @@ class _LocationsPageState extends State<LocationsPage> {
         ),
       );
     } else {
+      // Rollback on failure - restore the place at its original position
       setState(() {
-        _places.insert(removedIndex.clamp(0, _places.length), removedPlace);
+        if (removedIndex >= 0 && removedIndex <= _places.length) {
+          _places.insert(removedIndex, removedPlace);
+        } else {
+          // If index is invalid, add to the end
+          _places.add(removedPlace);
+        }
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -484,6 +512,9 @@ class _LocationsPageState extends State<LocationsPage> {
     if (!mounted) return;
 
     if (success) {
+      // Update in-memory cache so the data stays consistent
+      PlacesCacheManager().cacheAllPlaces(_places);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -523,13 +554,25 @@ class _LocationsPageState extends State<LocationsPage> {
     final coordinatesChanged =
         result.lat != place.lat || result.lng != place.lng;
 
-    // Optimistic update.
+    // Optimistic update - find by ID, not object reference
     final oldPlace = place;
-    final index = _places.indexOf(place);
-    setState(() {
-      if (index != -1) {
-        _places[index] = result;
+    final index = _places.indexWhere((p) => p.id == place.id);
+
+    // Safety check: ensure place exists before updating
+    if (index == -1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Place not found'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
+      return;
+    }
+
+    setState(() {
+      _places[index] = result;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -572,7 +615,11 @@ class _LocationsPageState extends State<LocationsPage> {
         await _loadPlaces();
         // Check mounted status again after async operation
         if (!mounted) return;
+      } else {
+        // Update in-memory cache if we didn't reload
+        PlacesCacheManager().cacheAllPlaces(_places);
       }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
@@ -586,10 +633,11 @@ class _LocationsPageState extends State<LocationsPage> {
         ),
       );
     } else {
-      // Rollback on failure.
+      // Rollback on failure - restore old place
       setState(() {
-        if (index != -1) {
-          _places[index] = oldPlace;
+        final rollbackIndex = _places.indexWhere((p) => p.id == place.id);
+        if (rollbackIndex != -1) {
+          _places[rollbackIndex] = oldPlace;
         }
       });
       ScaffoldMessenger.of(context).showSnackBar(

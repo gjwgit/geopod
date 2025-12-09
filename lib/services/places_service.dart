@@ -529,9 +529,11 @@ class PlacesService {
 
       // Only fetch Pod places (not local) for updating.
       final existingPlaces = await fetchPodPlaces();
-      existingPlaces.insert(0, place);
 
-      final jsonList = existingPlaces.map((p) => p.toJson()).toList();
+      // Create a mutable copy and add the new place
+      final updatedPlaces = List<Place>.from(existingPlaces)..insert(0, place);
+
+      final jsonList = updatedPlaces.map((p) => p.toJson()).toList();
       final jsonContent = jsonEncode(jsonList);
 
       final success = await _writeJsonFile(jsonContent);
@@ -562,9 +564,12 @@ class PlacesService {
 
       // Only fetch Pod places (not local) for updating.
       final existingPlaces = await fetchPodPlaces();
-      existingPlaces.removeWhere((p) => p.id == placeId);
 
-      final jsonList = existingPlaces.map((p) => p.toJson()).toList();
+      // Create a mutable copy and filter out the deleted place
+      final updatedPlaces = List<Place>.from(existingPlaces)
+        ..removeWhere((p) => p.id == placeId);
+
+      final jsonList = updatedPlaces.map((p) => p.toJson()).toList();
       final jsonContent = jsonEncode(jsonList);
 
       final success = await _writeJsonFile(jsonContent);
@@ -840,11 +845,14 @@ class PlacesService {
       }
 
       final existingPlaces = await fetchPodPlaces();
-      final index = existingPlaces.indexWhere((p) => p.id == updatedPlace.id);
+
+      // Create a mutable copy
+      final updatedPlaces = List<Place>.from(existingPlaces);
+      final index = updatedPlaces.indexWhere((p) => p.id == updatedPlace.id);
 
       if (index == -1) {
         // Place not found, add as new.
-        existingPlaces.insert(0, updatedPlace);
+        updatedPlaces.insert(0, updatedPlace);
       } else {
         // If coordinates changed, fetch new address.
         Place placeToSave = updatedPlace;
@@ -863,10 +871,10 @@ class PlacesService {
             isLocal: false,
           );
         }
-        existingPlaces[index] = placeToSave;
+        updatedPlaces[index] = placeToSave;
       }
 
-      final jsonList = existingPlaces.map((p) => p.toJson()).toList();
+      final jsonList = updatedPlaces.map((p) => p.toJson()).toList();
       final jsonContent = jsonEncode(jsonList);
 
       final success = await _writeJsonFile(jsonContent);

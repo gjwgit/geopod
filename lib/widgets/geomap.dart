@@ -38,11 +38,11 @@ import 'package:solidpod/solidpod.dart';
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart';
-import 'package:geopod/widgets/add_place_form.dart';
-import 'package:geopod/widgets/map_settings_dialog.dart';
 import 'package:geopod/utils/web_utils_stub.dart'
     if (dart.library.html) 'package:geopod/utils/web_utils_web.dart'
     as web_utils;
+import 'package:geopod/widgets/add_place_form.dart';
+import 'package:geopod/widgets/map_settings_dialog.dart';
 
 /// A map widget displaying points of interest with the ability to add new places.
 ///

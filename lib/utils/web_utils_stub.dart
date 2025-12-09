@@ -1,6 +1,6 @@
-/// The application's home page.
+/// Stub implementation for non-web platforms.
 ///
-// Time-stamp: <Friday 2025-11-21 09:21:38 +1100 Graham Williams>
+// Time-stamp: <2025-12-04 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -21,29 +21,17 @@
 // You should have received a copy of the GNU General Public License along with
 // this program.  If not, see <https://opensource.org/license/gpl-3-0>.
 ///
-/// Authors: Graham Williams
+/// Authors: Graham Williams, Miduo
 
 library;
 
-import 'package:flutter/material.dart';
-
-import 'package:geopod/widgets/geomap.dart';
-
-/// Global key to access the GeoMap state for settings dialog.
-final GlobalKey<GeoMapWidgetState> geoMapKey = GlobalKey<GeoMapWidgetState>();
-
-class Home extends StatefulWidget {
-  const Home({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<Home> createState() => _HomeState();
+/// Stub: Does nothing on non-web platforms.
+void replaceUrlState(String url) {
+  // No-op for non-web platforms.
 }
 
-class _HomeState extends State<Home> {
-  @override
-  Widget build(BuildContext context) {
-    return GeoMapWidget(key: geoMapKey);
-  }
+/// Stub: Does nothing on non-web platforms.
+/// On desktop, SolidLogin handles the login flow differently.
+void reloadPage() {
+  // No-op for non-web platforms.
 }

@@ -46,8 +46,8 @@ class _LocationsPageState extends State<LocationsPage> {
   /// Cached places list (only user's Pod data, excluding local examples).
   List<Place> _places = [];
 
-  /// Whether the user is logged in.
-  bool _isLoggedIn = false;
+  /// Whether the user is logged in (null = checking, true = logged in, false = not logged in).
+  bool? _isLoggedIn;
 
   /// Whether we're currently loading.
   bool _isLoading = true;
@@ -64,7 +64,29 @@ class _LocationsPageState extends State<LocationsPage> {
   @override
   void initState() {
     super.initState();
+
+    // Try to load from cache immediately (synchronous if cached)
+    _tryLoadFromCache();
+
+    // Then check login status and load fresh data
     _checkLoginAndLoad();
+  }
+
+  /// Tries to load places from in-memory cache synchronously.
+  /// This provides instant display if user was previously logged in.
+  void _tryLoadFromCache() {
+    final cacheManager = PlacesCacheManager();
+    final cached = cacheManager.allPlaces;
+
+    if (cached != null && cached.isNotEmpty) {
+      // We have cached data, assume user is logged in
+      setState(() {
+        _places = cached;
+        _isLoggedIn = true;
+        _hasLoadedOnce = true;
+        _isLoading = false;
+      });
+    }
   }
 
   /// Checks login status and loads places.
@@ -90,15 +112,18 @@ class _LocationsPageState extends State<LocationsPage> {
     }
   }
 
-  /// Loads places from Pod.
-  Future<void> _loadPlaces() async {
+  /// Loads places from Pod (or cache if available).
+  Future<void> _loadPlaces({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final places = await PlacesService.fetchPlaces();
+      // Use cache-aware fetch (instant if cached, slow if not)
+      final places = await PlacesService.fetchPlaces(
+        forceRefresh: forceRefresh,
+      );
       if (mounted) {
         setState(() {
           _places = places;
@@ -116,9 +141,9 @@ class _LocationsPageState extends State<LocationsPage> {
     }
   }
 
-  /// Manual refresh.
+  /// Manual refresh (forces data reload from Pod).
   Future<void> _refresh() async {
-    await _loadPlaces();
+    await _loadPlaces(forceRefresh: true);
   }
 
   /// Exports user's places to a JSON file.
@@ -338,8 +363,10 @@ class _LocationsPageState extends State<LocationsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Place'),
-        content: Text(
-          'Are you sure you want to delete "${place.displayTitle}"?',
+        content: SingleChildScrollView(
+          child: Text(
+            'Are you sure you want to delete "${place.displayTitle}"?',
+          ),
         ),
         actions: [
           TextButton(
@@ -576,7 +603,22 @@ class _LocationsPageState extends State<LocationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isLoggedIn) {
+    // Show loading indicator while checking login status
+    if (_isLoggedIn == null) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Checking login status...'),
+          ],
+        ),
+      );
+    }
+
+    // Show login prompt if not logged in
+    if (_isLoggedIn == false) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -598,6 +640,7 @@ class _LocationsPageState extends State<LocationsPage> {
       );
     }
 
+    // Show loading indicator for data
     if (_isLoading && !_hasLoadedOnce) {
       return const Center(
         child: Column(
@@ -807,6 +850,8 @@ class _PlaceListTile extends StatelessWidget {
         title: Text(
           place.displayTitle,
           style: const TextStyle(fontWeight: FontWeight.w500),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1589,6 +1634,8 @@ class _ImportPreviewDialogState extends State<_ImportPreviewDialog> {
                                   ? FontStyle.italic
                                   : FontStyle.normal,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
                             place.coordinates,

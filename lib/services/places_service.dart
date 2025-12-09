@@ -34,6 +34,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solidpod/solidpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -41,6 +42,79 @@ import 'package:geopod/services/geocoding_service.dart';
 
 /// The file name for storing all places.
 const String _placesFileName = 'places.json';
+
+/// Cache keys for SharedPreferences
+const String _keyPodPlacesCache = 'pod_places_cache';
+const String _keyPodPlacesCacheTimestamp = 'pod_places_cache_timestamp';
+
+/// Cache expiry duration (5 minutes)
+const Duration _cacheExpiry = Duration(minutes: 5);
+
+/// In-memory cache manager for instant access to places data.
+class PlacesCacheManager {
+  // Singleton pattern
+  static final PlacesCacheManager _instance = PlacesCacheManager._internal();
+  factory PlacesCacheManager() => _instance;
+  PlacesCacheManager._internal();
+
+  /// Cached all places (local + Pod)
+  List<Place>? _allPlacesCache;
+
+  /// Cached Pod-only places
+  List<Place>? _podPlacesCache;
+
+  /// Last cache update timestamp
+  DateTime? _lastCacheTime;
+
+  /// Cache validity duration (in-memory cache, shorter than SharedPreferences)
+  static const Duration _memoryCacheExpiry = Duration(minutes: 2);
+
+  /// Gets all cached places (local + Pod)
+  List<Place>? get allPlaces {
+    if (_allPlacesCache == null || _isCacheExpired()) {
+      return null;
+    }
+    return List.unmodifiable(_allPlacesCache!);
+  }
+
+  /// Gets cached Pod places only
+  List<Place>? get podPlaces {
+    if (_podPlacesCache == null || _isCacheExpired()) {
+      return null;
+    }
+    return List.unmodifiable(_podPlacesCache!);
+  }
+
+  /// Caches all places data
+  void cacheAllPlaces(List<Place> places) {
+    _allPlacesCache = List.from(places);
+    _lastCacheTime = DateTime.now();
+  }
+
+  /// Caches Pod places data
+  void cachePodPlaces(List<Place> places) {
+    _podPlacesCache = List.from(places);
+    _lastCacheTime = DateTime.now();
+  }
+
+  /// Checks if in-memory cache is expired
+  bool _isCacheExpired() {
+    if (_lastCacheTime == null) return true;
+    return DateTime.now().difference(_lastCacheTime!) > _memoryCacheExpiry;
+  }
+
+  /// Clears all in-memory cache
+  void clearCache() {
+    _allPlacesCache = null;
+    _podPlacesCache = null;
+    _lastCacheTime = null;
+  }
+
+  /// Forces cache refresh on next fetch
+  void invalidateCache() {
+    _lastCacheTime = null;
+  }
+}
 
 /// Data model representing a saved place.
 class Place {
@@ -99,11 +173,9 @@ class Place {
   }
 
   /// Returns a formatted display string for the place.
+  /// Now returns the full note without truncation.
   String get displayTitle {
-    if (note.length > 30) {
-      return '${note.substring(0, 30)}...';
-    }
-    return note;
+    return note.isNotEmpty ? note : '(No title)';
   }
 
   /// Returns formatted coordinates string.
@@ -244,31 +316,75 @@ class PlacesService {
   /// Fetches all places: local (canned examples) + user's Pod data.
   ///
   /// Returns merged list with local places first, then Pod places sorted by date.
-  static Future<List<Place>> fetchPlaces() async {
+  /// Uses in-memory cache + parallel loading to minimize startup time.
+  static Future<List<Place>> fetchPlaces({bool forceRefresh = false}) async {
+    final cacheManager = PlacesCacheManager();
+
+    // Step 1: Try in-memory cache first (instant - 0ms)
+    if (!forceRefresh) {
+      final cachedAll = cacheManager.allPlaces;
+      if (cachedAll != null) {
+        return cachedAll;
+      }
+    }
+
     final allPlaces = <Place>[];
 
-    // Step 1: Load local canned examples.
-    final localPlaces = await loadLocalPlaces();
+    // Step 2: Parallel loading - Load local and Pod data simultaneously
+    final results = await Future.wait([
+      loadLocalPlaces(), // Fast: local asset file (~10-50ms)
+      fetchPodPlaces(
+        forceRefresh: forceRefresh,
+      ), // Slow: network request (~500-2000ms)
+    ]);
 
-    // Step 2: Load user's Pod places (if logged in).
-    final podPlaces = await fetchPodPlaces();
+    final localPlaces = results[0];
+    final podPlaces = results[1];
 
-    // Step 3: Merge - Pod places first (user data), then local examples.
+    // Merge - Pod places first (user data), then local examples
     allPlaces.addAll(podPlaces);
     allPlaces.addAll(localPlaces);
+
+    // Cache the merged result in memory
+    cacheManager.cacheAllPlaces(allPlaces);
 
     return allPlaces;
   }
 
   /// Fetches only the user's saved places from the Pod.
-  static Future<List<Place>> fetchPodPlaces() async {
+  /// Uses in-memory cache + SharedPreferences cache for instant access.
+  static Future<List<Place>> fetchPodPlaces({bool forceRefresh = false}) async {
     final places = <Place>[];
+    final cacheManager = PlacesCacheManager();
 
     try {
       if (!await checkLoggedIn()) {
         return places;
       }
 
+      // Step 1: Try in-memory cache first (instant - 0ms)
+      if (!forceRefresh) {
+        final memoryCache = cacheManager.podPlaces;
+        if (memoryCache != null) {
+          // Refresh in background if needed
+          _refreshPodPlacesInBackground();
+          return memoryCache;
+        }
+      }
+
+      // Step 2: Try SharedPreferences cache (fast - 1-5ms)
+      if (!forceRefresh) {
+        final cached = await _getCachedPodPlaces();
+        if (cached != null) {
+          // Cache in memory for next time
+          cacheManager.cachePodPlaces(cached);
+          // Return cached immediately, but refresh in background
+          _refreshPodPlacesInBackground();
+          return cached;
+        }
+      }
+
+      // Step 3: No cache - fetch from Pod (slow - 500-2000ms)
       final content = await _readJsonFile();
 
       if (content == null || content.trim().isEmpty) {
@@ -300,11 +416,104 @@ class PlacesService {
       }
 
       places.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+      // Cache the result for next time (both SharedPreferences and memory)
+      await _cachePodPlaces(content);
+      cacheManager.cachePodPlaces(places);
     } catch (_) {
       // Return empty list on error.
     }
 
     return places;
+  }
+
+  /// Gets cached Pod places if available and not expired.
+  static Future<List<Place>?> _getCachedPodPlaces() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Check if cache exists
+      final cachedJson = prefs.getString(_keyPodPlacesCache);
+      final cachedTimestamp = prefs.getInt(_keyPodPlacesCacheTimestamp);
+
+      if (cachedJson == null || cachedTimestamp == null) {
+        return null;
+      }
+
+      // Check if cache is expired
+      final cacheTime = DateTime.fromMillisecondsSinceEpoch(cachedTimestamp);
+      final now = DateTime.now();
+      if (now.difference(cacheTime) > _cacheExpiry) {
+        return null; // Cache expired
+      }
+
+      // Parse cached data
+      final places = <Place>[];
+      final dynamic decoded = jsonDecode(cachedJson);
+
+      if (decoded is List) {
+        for (final item in decoded) {
+          if (item is Map<String, dynamic>) {
+            try {
+              places.add(Place.fromJson(item, isLocalSource: false));
+            } catch (_) {
+              // Skip malformed entries
+            }
+          }
+        }
+      }
+
+      places.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return places;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Caches Pod places data to SharedPreferences.
+  static Future<void> _cachePodPlaces(String jsonContent) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyPodPlacesCache, jsonContent);
+      await prefs.setInt(
+        _keyPodPlacesCacheTimestamp,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+    } catch (_) {
+      // Ignore cache errors - not critical
+    }
+  }
+
+  /// Refreshes Pod places in background (fire and forget).
+  static void _refreshPodPlacesInBackground() {
+    // Fire and forget - don't await
+    Future(() async {
+      try {
+        if (!await checkLoggedIn()) return;
+
+        final content = await _readJsonFile();
+        if (content != null && content.trim().isNotEmpty) {
+          await _cachePodPlaces(content);
+        }
+      } catch (_) {
+        // Ignore errors in background refresh
+      }
+    });
+  }
+
+  /// Clears the Pod places cache (both SharedPreferences and memory).
+  static Future<void> clearCache() async {
+    try {
+      // Clear in-memory cache
+      PlacesCacheManager().clearCache();
+
+      // Clear SharedPreferences cache
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyPodPlacesCache);
+      await prefs.remove(_keyPodPlacesCacheTimestamp);
+    } catch (_) {
+      // Ignore errors
+    }
   }
 
   /// Adds a new place to the Pod.
@@ -325,7 +534,14 @@ class PlacesService {
       final jsonList = existingPlaces.map((p) => p.toJson()).toList();
       final jsonContent = jsonEncode(jsonList);
 
-      return await _writeJsonFile(jsonContent);
+      final success = await _writeJsonFile(jsonContent);
+
+      // Clear cache after successful write
+      if (success) {
+        await clearCache();
+      }
+
+      return success;
     } catch (_) {
       return false;
     }
@@ -351,7 +567,14 @@ class PlacesService {
       final jsonList = existingPlaces.map((p) => p.toJson()).toList();
       final jsonContent = jsonEncode(jsonList);
 
-      return await _writeJsonFile(jsonContent);
+      final success = await _writeJsonFile(jsonContent);
+
+      // Clear cache after successful write
+      if (success) {
+        await clearCache();
+      }
+
+      return success;
     } catch (_) {
       return false;
     }
@@ -561,7 +784,14 @@ class PlacesService {
       final jsonList = mergedPlaces.map((p) => p.toJson()).toList();
       final jsonContent = jsonEncode(jsonList);
 
-      return await _writeJsonFile(jsonContent);
+      final success = await _writeJsonFile(jsonContent);
+
+      // Clear cache after successful write
+      if (success) {
+        await clearCache();
+      }
+
+      return success;
     } catch (_) {
       return false;
     }
@@ -580,7 +810,14 @@ class PlacesService {
       }
 
       // Write empty array to clear all places.
-      return await _writeJsonFile('[]');
+      final success = await _writeJsonFile('[]');
+
+      // Clear cache after successful write
+      if (success) {
+        await clearCache();
+      }
+
+      return success;
     } catch (_) {
       return false;
     }
@@ -632,7 +869,14 @@ class PlacesService {
       final jsonList = existingPlaces.map((p) => p.toJson()).toList();
       final jsonContent = jsonEncode(jsonList);
 
-      return await _writeJsonFile(jsonContent);
+      final success = await _writeJsonFile(jsonContent);
+
+      // Clear cache after successful write
+      if (success) {
+        await clearCache();
+      }
+
+      return success;
     } catch (_) {
       return false;
     }

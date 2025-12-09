@@ -106,12 +106,16 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     _showSettingsDialog();
   }
 
-  /// Loads all places (local + Pod) and caches them.
-  Future<void> _loadAllPlaces() async {
+  /// Loads all places (local + Pod) using cache-aware fetch.
+  /// This will be instant if data is already cached in memory.
+  Future<void> _loadAllPlaces({bool forceRefresh = false}) async {
     setState(() => _isLoadingPlaces = true);
 
     try {
-      final places = await PlacesService.fetchPlaces();
+      // Use cache-aware fetch - instant if cached, slow if not
+      final places = await PlacesService.fetchPlaces(
+        forceRefresh: forceRefresh,
+      );
 
       if (mounted) {
         setState(() {
@@ -255,6 +259,9 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
           _savingPlaceIds.remove(optimisticPlace.id);
         });
 
+        // Update in-memory cache so LocationsPage sees the new data immediately
+        PlacesCacheManager().cacheAllPlaces(_allPlaces);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Row(
@@ -300,6 +307,20 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
   /// Shows options when user taps on the map.
   void _onMapTap(TapPosition tapPosition, LatLng latLng) {
     _showAddPlaceDialog(latitude: latLng.latitude, longitude: latLng.longitude);
+  }
+
+  /// Zooms in the map by one level.
+  void _zoomIn() {
+    final currentZoom = _mapController.camera.zoom;
+    final newZoom = (currentZoom + 1).clamp(3.0, 18.0);
+    _mapController.move(_mapController.camera.center, newZoom);
+  }
+
+  /// Zooms out the map by one level.
+  void _zoomOut() {
+    final currentZoom = _mapController.camera.zoom;
+    final newZoom = (currentZoom - 1).clamp(3.0, 18.0);
+    _mapController.move(_mapController.camera.center, newZoom);
   }
 
   /// Shows detailed information about a marker in a bottom sheet.
@@ -350,6 +371,8 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (marker.isSaving)
                         Text(
@@ -471,9 +494,11 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Place'),
-        content: Text(
-          'Are you sure you want to delete "${marker.title}"?\n\n'
-          'This action cannot be undone.',
+        content: SingleChildScrollView(
+          child: Text(
+            'Are you sure you want to delete "${marker.title}"?\n\n'
+            'This action cannot be undone.',
+          ),
         ),
         actions: [
           TextButton(
@@ -528,6 +553,9 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     if (!mounted) return;
 
     if (success) {
+      // Update in-memory cache so LocationsPage sees the deletion immediately
+      PlacesCacheManager().cacheAllPlaces(_allPlaces);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(
@@ -707,6 +735,27 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          // Zoom In button
+          FloatingActionButton.small(
+            heroTag: 'zoomIn',
+            onPressed: _zoomIn,
+            tooltip: 'Zoom In',
+            backgroundColor: Colors.grey.shade800,
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.add, size: 20),
+          ),
+          const SizedBox(height: 8),
+          // Zoom Out button
+          FloatingActionButton.small(
+            heroTag: 'zoomOut',
+            onPressed: _zoomOut,
+            tooltip: 'Zoom Out',
+            backgroundColor: Colors.grey.shade800,
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.remove, size: 20),
+          ),
+          const SizedBox(height: 16),
+          // Refresh Places button
           FloatingActionButton.small(
             heroTag: 'refresh',
             onPressed: _isLoadingPlaces ? null : _loadAllPlaces,
@@ -725,6 +774,7 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
                 : const Icon(Icons.refresh),
           ),
           const SizedBox(height: 8),
+          // Add Place button
           FloatingActionButton(
             heroTag: 'add',
             onPressed: () => _showAddPlaceDialog(),

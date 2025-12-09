@@ -35,6 +35,7 @@ import 'package:solidui/solidui.dart';
 
 import 'app_scaffold.dart';
 import 'constants/app.dart';
+import 'services/places_service.dart';
 import 'utils/web_utils_stub.dart'
     if (dart.library.html) 'utils/web_utils_web.dart'
     as web_utils;
@@ -85,6 +86,11 @@ class App extends StatelessWidget {
 ///
 /// This widget catches "fake logins" where SolidLogin shows success
 /// but the user actually cancelled the login dialog.
+///
+/// CRITICAL: When a fake login is detected, this widget shows a "Not logged in"
+/// screen and forces the user to return to login. This prevents the bug where
+/// users would see "Login Successfully!" even after logout due to SolidLogin's
+/// internal state caching.
 class _SessionVerifier extends StatefulWidget {
   const _SessionVerifier({required this.child});
 
@@ -98,34 +104,78 @@ class _SessionVerifierState extends State<_SessionVerifier> {
   /// Whether session is invalid (fake login detected).
   bool _isInvalid = false;
 
+  /// Timer for periodic session verification.
+  Timer? _sessionVerifyTimer;
+
+  /// Interval for session verification (every 2 seconds).
+  static const Duration _verifyInterval = Duration(seconds: 2);
+
   @override
   void initState() {
     super.initState();
+    debugPrint('_SessionVerifier: initState() called - starting session verification');
     _verifySessionInBackground();
+    // Start periodic session verification to detect logout
+    _startSessionVerification();
+  }
+
+  @override
+  void dispose() {
+    _sessionVerifyTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Starts periodic session verification.
+  void _startSessionVerification() {
+    _sessionVerifyTimer = Timer.periodic(_verifyInterval, (_) async {
+      if (!mounted) return;
+      await _verifySessionInBackground();
+    });
   }
 
   /// Verifies session in background WITHOUT blocking UI.
   Future<void> _verifySessionInBackground() async {
+    // Skip if already detected invalid session
+    if (_isInvalid) {
+      _sessionVerifyTimer?.cancel();
+      return;
+    }
+
     try {
       final webId = await getWebId();
 
       if (webId == null || webId.isEmpty) {
         await _handleFakeLogin();
+      } else {
+        // Session is valid - log it for debugging
+        debugPrint('_SessionVerifier: Session verified - WebID present');
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('_SessionVerifier: Error checking session: $e');
       await _handleFakeLogin();
     }
   }
 
   Future<void> _handleFakeLogin() async {
+    // Skip if already handling fake login
+    if (_isInvalid) {
+      return;
+    }
+
     try {
       await deleteLogIn();
-    } catch (_) {
-      // Ignore errors when clearing session.
+      // Clear all cached places when logging out
+      await PlacesService.clearCache();
+    } catch (e) {
+      debugPrint('_handleFakeLogin: Error clearing session: $e');
+      // Continue anyway - we still need to update UI
     }
 
     if (mounted) {
-      setState(() => _isInvalid = true);
+      setState(() {
+        _isInvalid = true;
+        _sessionVerifyTimer?.cancel();
+      });
     }
   }
 
@@ -154,6 +204,16 @@ class _SessionVerifierState extends State<_SessionVerifier> {
         ),
       );
     }
+
+    // Critical: Perform immediate session validation when building child widget.
+    // This ensures that when "Continue" button is clicked, we validate session
+    // BEFORE showing the child content, preventing false "Login Successfully" messages.
+    // Schedule post-frame callback to avoid blocking UI.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted && !_isInvalid) {
+        await _verifySessionInBackground();
+      }
+    });
 
     return widget.child;
   }
@@ -244,6 +304,8 @@ class _WebAuthHandlerState extends State<_WebAuthHandler> {
   Future<void> _resetSessionSilent() async {
     try {
       await deleteLogIn();
+      // Clear all cached places when session reset fails
+      await PlacesService.clearCache();
     } catch (_) {
       // Ignore errors.
     }

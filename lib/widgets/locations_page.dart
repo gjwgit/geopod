@@ -83,22 +83,37 @@ class _LocationsPageState extends State<LocationsPage> {
   /// Assumes user is logged in, but verifies in background.
   /// Uses cache if available to avoid loading animation on subsequent visits.
   Future<void> _checkLoginAndLoad() async {
-    // If we haven't loaded yet, fetch from Pod
-    if (!_hasLoadedOnce) {
-      await _loadPlaces();
+    // First, actively check login status using getWebId()
+    bool loggedIn = false;
+    try {
+      final webId = await getWebId();
+      loggedIn = webId != null && webId.isNotEmpty;
+    } catch (_) {
+      loggedIn = false;
     }
-
-    // Verify login status in background
-    final loggedIn = await checkLoggedIn();
 
     if (!mounted) return;
 
-    // If login check fails, mark as logged out
+    // If login check fails, mark as logged out and clear all caches
     if (!loggedIn) {
+      // Clear both in-memory and SharedPreferences caches
+      await PlacesService.clearCache();
+      
       setState(() {
         _isLoggedIn = false;
         _isLoading = false;
+        _places = [];
+        _hasLoadedOnce = false;
       });
+      return;
+    }
+
+    // User is logged in, proceed with loading places
+    setState(() => _isLoggedIn = true);
+
+    // If we haven't loaded yet, fetch from Pod
+    if (!_hasLoadedOnce) {
+      await _loadPlaces();
     }
   }
 

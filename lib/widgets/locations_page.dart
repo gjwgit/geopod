@@ -30,7 +30,8 @@ import 'package:flutter/material.dart';
 import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
-import 'package:geopod/services/places_service.dart';
+import 'package:geopod/services/places_service.dart'
+    show PlacesService, PlacesCacheManager, Place;
 
 /// A page that displays all saved locations from the user's Solid Pod.
 ///
@@ -46,11 +47,11 @@ class _LocationsPageState extends State<LocationsPage> {
   /// Cached places list (only user's Pod data, excluding local examples).
   List<Place> _places = [];
 
-  /// Whether the user is logged in.
-  bool _isLoggedIn = false;
+  /// Whether the user is logged in (assume true until proven otherwise).
+  bool _isLoggedIn = true;
 
-  /// Whether we're currently loading.
-  bool _isLoading = true;
+  /// Whether we're currently loading. Initialize based on cache availability.
+  late bool _isLoading;
 
   /// Error message if loading failed.
   String? _errorMessage;
@@ -64,29 +65,55 @@ class _LocationsPageState extends State<LocationsPage> {
   @override
   void initState() {
     super.initState();
+
+    // Check if we have cached places - if so, don't show loading animation
+    final cachedPlaces = PlacesCacheManager().podPlaces;
+    if (cachedPlaces != null) {
+      _places = cachedPlaces;
+      _isLoading = false;
+      _hasLoadedOnce = true;
+    } else {
+      _isLoading = true;
+    }
+
     _checkLoginAndLoad();
   }
 
   /// Checks login status and loads places.
+  /// Assumes user is logged in, but verifies in background.
+  /// Uses cache if available to avoid loading animation on subsequent visits.
   Future<void> _checkLoginAndLoad() async {
-    final loggedIn = await checkLoggedIn();
+    // First, actively check login status using getWebId()
+    bool loggedIn = false;
+    try {
+      final webId = await getWebId();
+      loggedIn = webId != null && webId.isNotEmpty;
+    } catch (_) {
+      loggedIn = false;
+    }
 
     if (!mounted) return;
 
+    // If login check fails, mark as logged out and clear all caches
     if (!loggedIn) {
+      // Clear both in-memory and SharedPreferences caches
+      await PlacesService.clearCache();
+      
       setState(() {
         _isLoggedIn = false;
         _isLoading = false;
+        _places = [];
+        _hasLoadedOnce = false;
       });
       return;
     }
 
+    // User is logged in, proceed with loading places
     setState(() => _isLoggedIn = true);
 
+    // If we haven't loaded yet, fetch from Pod
     if (!_hasLoadedOnce) {
       await _loadPlaces();
-    } else {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -576,6 +603,7 @@ class _LocationsPageState extends State<LocationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Show not logged in only if verification failed
     if (!_isLoggedIn) {
       return Center(
         child: Column(

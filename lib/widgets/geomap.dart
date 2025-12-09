@@ -313,14 +313,14 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
   /// Zooms in the map by one level.
   void _zoomIn() {
     final currentZoom = _mapController.camera.zoom;
-    final newZoom = (currentZoom + 1).clamp(3.0, 18.0);
+    final newZoom = (currentZoom + 0.6).clamp(3.0, 18.0);
     _mapController.move(_mapController.camera.center, newZoom);
   }
 
   /// Zooms out the map by one level.
   void _zoomOut() {
     final currentZoom = _mapController.camera.zoom;
-    final newZoom = (currentZoom - 1).clamp(3.0, 18.0);
+    final newZoom = (currentZoom - 0.6).clamp(3.0, 18.0);
     _mapController.move(_mapController.camera.center, newZoom);
   }
 

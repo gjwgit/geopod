@@ -30,7 +30,8 @@ import 'package:flutter/material.dart';
 import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
-import 'package:geopod/services/places_service.dart';
+import 'package:geopod/services/places_service.dart'
+    show PlacesService, PlacesCacheManager, Place;
 
 /// A page that displays all saved locations from the user's Solid Pod.
 ///
@@ -46,8 +47,8 @@ class _LocationsPageState extends State<LocationsPage> {
   /// Cached places list (only user's Pod data, excluding local examples).
   List<Place> _places = [];
 
-  /// Whether the user is logged in (null = checking, true = logged in, false = not logged in).
-  bool? _isLoggedIn;
+  /// Whether the user is logged in (assume true until proven otherwise).
+  bool _isLoggedIn = true;
 
   /// Whether we're currently loading.
   bool _isLoading = true;
@@ -64,71 +65,57 @@ class _LocationsPageState extends State<LocationsPage> {
   @override
   void initState() {
     super.initState();
-
-    // Try to load from cache immediately (synchronous if cached)
-    _tryLoadFromCache();
-
-    // Then check login status and load fresh data
     _checkLoginAndLoad();
   }
 
-  /// Tries to load places from in-memory cache synchronously.
-  /// This provides instant display if user was previously logged in.
-  void _tryLoadFromCache() {
-    final cacheManager = PlacesCacheManager();
-    final cached = cacheManager.allPlaces;
-
-    if (cached != null && cached.isNotEmpty) {
-      // We have cached data, assume user is logged in
-      // Create a mutable copy to avoid reference issues
-      setState(() {
-        _places = List.from(cached);
-        _isLoggedIn = true;
-        _hasLoadedOnce = true;
-        _isLoading = false;
-      });
-    }
-  }
-
   /// Checks login status and loads places.
+  /// Assumes user is logged in, but verifies in background.
+  /// Uses cache if available to avoid loading animation on subsequent visits.
   Future<void> _checkLoginAndLoad() async {
+    // First, check if we have cached places from previous load
+    final cachedPlaces = PlacesCacheManager().podPlaces;
+
+    if (cachedPlaces != null && !_hasLoadedOnce) {
+      // Use cached data directly - no loading animation
+      setState(() {
+        _places = cachedPlaces;
+        _isLoading = false;
+        _hasLoadedOnce = true;
+      });
+    } else if (!_hasLoadedOnce) {
+      // No cache, need to load from Pod
+      await _loadPlaces();
+    } else {
+      // Already loaded once, no need to show loading
+      setState(() => _isLoading = false);
+    }
+
+    // Verify login status in background
     final loggedIn = await checkLoggedIn();
 
     if (!mounted) return;
 
+    // If login check fails, mark as logged out
     if (!loggedIn) {
       setState(() {
         _isLoggedIn = false;
         _isLoading = false;
       });
-      return;
-    }
-
-    setState(() => _isLoggedIn = true);
-
-    if (!_hasLoadedOnce) {
-      await _loadPlaces();
-    } else {
-      setState(() => _isLoading = false);
     }
   }
 
-  /// Loads places from Pod (or cache if available).
-  Future<void> _loadPlaces({bool forceRefresh = false}) async {
+  /// Loads places from Pod.
+  Future<void> _loadPlaces() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      // Use cache-aware fetch (instant if cached, slow if not)
-      final places = await PlacesService.fetchPlaces(
-        forceRefresh: forceRefresh,
-      );
+      final places = await PlacesService.fetchPlaces();
       if (mounted) {
         setState(() {
-          // Create a mutable copy to avoid reference issues
-          _places = List.from(places);
+          _places = places;
           _isLoading = false;
           _hasLoadedOnce = true;
         });
@@ -143,9 +130,9 @@ class _LocationsPageState extends State<LocationsPage> {
     }
   }
 
-  /// Manual refresh (forces data reload from Pod).
+  /// Manual refresh.
   Future<void> _refresh() async {
-    await _loadPlaces(forceRefresh: true);
+    await _loadPlaces();
   }
 
   /// Exports user's places to a JSON file.
@@ -365,10 +352,8 @@ class _LocationsPageState extends State<LocationsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Place'),
-        content: SingleChildScrollView(
-          child: Text(
-            'Are you sure you want to delete "${place.displayTitle}"?',
-          ),
+        content: Text(
+          'Are you sure you want to delete "${place.displayTitle}"?',
         ),
         actions: [
           TextButton(
@@ -389,26 +374,9 @@ class _LocationsPageState extends State<LocationsPage> {
 
     if (confirmed != true || !mounted) return;
 
-    // Store the place and its index before deletion
     final removedPlace = place;
-    final removedIndex = _places.indexWhere((p) => p.id == place.id);
-
-    // Safety check: ensure place exists before deletion
-    if (removedIndex == -1) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Place not found'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
-    }
-
-    setState(() {
-      _places.removeAt(removedIndex);
-    });
+    final removedIndex = _places.indexOf(place);
+    setState(() => _places.remove(place));
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -426,9 +394,6 @@ class _LocationsPageState extends State<LocationsPage> {
     if (!mounted) return;
 
     if (success) {
-      // Update in-memory cache so the data stays consistent
-      PlacesCacheManager().cacheAllPlaces(_places);
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Place deleted successfully'),
@@ -436,14 +401,8 @@ class _LocationsPageState extends State<LocationsPage> {
         ),
       );
     } else {
-      // Rollback on failure - restore the place at its original position
       setState(() {
-        if (removedIndex >= 0 && removedIndex <= _places.length) {
-          _places.insert(removedIndex, removedPlace);
-        } else {
-          // If index is invalid, add to the end
-          _places.add(removedPlace);
-        }
+        _places.insert(removedIndex.clamp(0, _places.length), removedPlace);
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -512,9 +471,6 @@ class _LocationsPageState extends State<LocationsPage> {
     if (!mounted) return;
 
     if (success) {
-      // Update in-memory cache so the data stays consistent
-      PlacesCacheManager().cacheAllPlaces(_places);
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -554,25 +510,13 @@ class _LocationsPageState extends State<LocationsPage> {
     final coordinatesChanged =
         result.lat != place.lat || result.lng != place.lng;
 
-    // Optimistic update - find by ID, not object reference
+    // Optimistic update.
     final oldPlace = place;
-    final index = _places.indexWhere((p) => p.id == place.id);
-
-    // Safety check: ensure place exists before updating
-    if (index == -1) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Place not found'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
-    }
-
+    final index = _places.indexOf(place);
     setState(() {
-      _places[index] = result;
+      if (index != -1) {
+        _places[index] = result;
+      }
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -615,11 +559,7 @@ class _LocationsPageState extends State<LocationsPage> {
         await _loadPlaces();
         // Check mounted status again after async operation
         if (!mounted) return;
-      } else {
-        // Update in-memory cache if we didn't reload
-        PlacesCacheManager().cacheAllPlaces(_places);
       }
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
@@ -633,11 +573,10 @@ class _LocationsPageState extends State<LocationsPage> {
         ),
       );
     } else {
-      // Rollback on failure - restore old place
+      // Rollback on failure.
       setState(() {
-        final rollbackIndex = _places.indexWhere((p) => p.id == place.id);
-        if (rollbackIndex != -1) {
-          _places[rollbackIndex] = oldPlace;
+        if (index != -1) {
+          _places[index] = oldPlace;
         }
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -651,22 +590,8 @@ class _LocationsPageState extends State<LocationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Show loading indicator while checking login status
-    if (_isLoggedIn == null) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Checking login status...'),
-          ],
-        ),
-      );
-    }
-
-    // Show login prompt if not logged in
-    if (_isLoggedIn == false) {
+    // Show not logged in only if verification failed
+    if (!_isLoggedIn) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -688,7 +613,6 @@ class _LocationsPageState extends State<LocationsPage> {
       );
     }
 
-    // Show loading indicator for data
     if (_isLoading && !_hasLoadedOnce) {
       return const Center(
         child: Column(
@@ -898,8 +822,6 @@ class _PlaceListTile extends StatelessWidget {
         title: Text(
           place.displayTitle,
           style: const TextStyle(fontWeight: FontWeight.w500),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1682,8 +1604,6 @@ class _ImportPreviewDialogState extends State<_ImportPreviewDialog> {
                                   ? FontStyle.italic
                                   : FontStyle.normal,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
                             place.coordinates,

@@ -27,20 +27,17 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart';
+import 'package:solidui/solidui.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart';
-import 'package:geopod/utils/web_utils_stub.dart'
-    if (dart.library.html) 'package:geopod/utils/web_utils_web.dart'
-    as web_utils;
 import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/map_settings_dialog.dart';
 
@@ -323,9 +320,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                if (kIsWeb) {
-                  web_utils.reloadPage();
-                }
+                SolidAuthHandler.instance.handleLogin(context);
               },
               child: const Text('Login'),
             ),
@@ -497,9 +492,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                if (kIsWeb) {
-                  web_utils.reloadPage();
-                }
+                SolidAuthHandler.instance.handleLogin(context);
               },
               child: const Text('Login'),
             ),

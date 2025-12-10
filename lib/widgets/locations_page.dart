@@ -25,17 +25,14 @@
 
 library;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:solidpod/solidpod.dart';
+import 'package:solidui/solidui.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, PlacesCacheManager, Place;
-import 'package:geopod/utils/web_utils_stub.dart'
-    if (dart.library.html) 'package:geopod/utils/web_utils_web.dart'
-    as web_utils;
 
 /// A page that displays all saved locations from the user's Solid Pod.
 ///
@@ -617,11 +614,7 @@ class _LocationsPageState extends State<LocationsPage> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () {
-                if (kIsWeb) {
-                  web_utils.reloadPage();
-                }
-              },
+              onPressed: () => SolidAuthHandler.instance.handleLogin(context),
               icon: const Icon(Icons.login),
               label: const Text('Login to View'),
             ),

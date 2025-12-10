@@ -30,7 +30,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
@@ -55,12 +54,14 @@ class GeoMapWidget extends StatefulWidget {
 }
 
 class GeoMapWidgetState extends State<GeoMapWidget>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final MapController _mapController = MapController();
 
-  /// Global tile provider instance - shared across all map rebuilds
-  /// This ensures tile cache is preserved even when widget is recreated
-  static final _tileProvider = CancellableNetworkTileProvider();
+  /// Tile provider instance for downloading map tiles
+  /// Recreated when app resumes from background to avoid connection issues
+  /// Using NetworkTileProvider (built-in) instead of CancellableNetworkTileProvider
+  /// to avoid Dio adapter closure problems on Android
+  TileProvider _tileProvider = NetworkTileProvider();
 
   /// All places (local + Pod) loaded and cached for instant access.
   List<Place> _allPlaces = [];
@@ -147,13 +148,31 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         _animationController.forward();
       }
     });
+
+    // Register lifecycle observer to handle app resume/pause
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     authStateNotifier.removeListener(_onAuthStateChanged);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // Recreate tile provider when app resumes from background
+    // This fixes connection issues on Android after app pause/resume
+    if (state == AppLifecycleState.resumed) {
+      setState(() {
+        _tileProvider = NetworkTileProvider();
+      });
+      debugPrint('GeoMap: Recreated tile provider after app resume');
+    }
   }
 
   /// Called when auth state changes (login/logout)
@@ -227,7 +246,18 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       builder: (context) => MapSettingsDialog(
         currentSettings: _mapSettings,
         onSettingsChanged: (newSettings) {
-          setState(() => _mapSettings = newSettings);
+          setState(() {
+            // Check if map source changed - need new tile provider
+            final mapSourceChanged = _mapSettings.mapSource != newSettings.mapSource;
+            _mapSettings = newSettings;
+            
+            // Recreate tile provider when map source changes
+            // This prevents "Client is already closed" errors
+            if (mapSourceChanged) {
+              _tileProvider = NetworkTileProvider();
+              debugPrint('GeoMap: Recreated tile provider after map source change');
+            }
+          });
         },
       ),
     );

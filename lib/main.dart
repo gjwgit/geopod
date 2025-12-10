@@ -27,6 +27,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:solidpod/solidpod.dart' show KeyManager;
 import 'package:solidui/solidui.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -62,6 +63,11 @@ void main() async {
       appImage: const AssetImage('assets/images/app_image.png'),
       appLogo: const AssetImage('assets/images/app_icon.png'),
       loginSuccessWidget: appScaffold,
+      // Clear security key on logout to ensure clean state
+      onSecurityKeyReset: () async {
+        await KeyManager.clear();
+        debugPrint('GeoPod: Security key cleared on logout');
+      },
     ),
   );
   

@@ -56,10 +56,13 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Wrap appScaffold to ensure preload happens on navigation
+    final appWithPreload = _AppScaffoldWrapper(child: appScaffold);
+    
     final loginWidget = SolidLogin(
       image: const AssetImage('assets/images/app_image.png'),
       logo: const AssetImage('assets/images/app_icon.png'),
-      child: appScaffold,
+      child: appWithPreload,
     );
 
     // Session status banner disabled - deemed redundant.
@@ -73,6 +76,40 @@ class App extends StatelessWidget {
       ),
       home: kIsWeb ? _WebAuthHandler(child: loginWidget) : loginWidget,
     );
+  }
+}
+
+/// Wrapper that triggers preload when navigated to (for Continue button on non-Web)
+class _AppScaffoldWrapper extends StatefulWidget {
+  const _AppScaffoldWrapper({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_AppScaffoldWrapper> createState() => _AppScaffoldWrapperState();
+}
+
+class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    
+    // Trigger preload when this widget is mounted
+    // This covers the case when user clicks Continue button
+    // On Web: _WebAuthHandler already preloads on startup, but NOT after Continue navigation
+    // On Non-Web: No _WebAuthHandler, so this is the only preload trigger
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Preload places data (local + Pod if logged in)
+      unawaited(preloadPlacesData());
+      // Preload map settings (not login-dependent)
+      unawaited(preloadMapSettings());
+      debugPrint('App: Triggered preload on Continue navigation');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
 

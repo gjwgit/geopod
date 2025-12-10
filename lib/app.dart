@@ -35,6 +35,7 @@ import 'package:solidui/solidui.dart';
 
 import 'app_scaffold.dart';
 import 'constants/app.dart';
+import 'services/map_settings_service.dart';
 import 'services/places_service.dart';
 import 'utils/web_utils_stub.dart'
     if (dart.library.html) 'utils/web_utils_web.dart'
@@ -98,7 +99,13 @@ class _WebAuthHandlerState extends State<_WebAuthHandler> {
   void initState() {
     super.initState();
 
+    // Preload all data on app startup (both guests and logged-in users)
+    // This makes the map page feel instant when user navigates to it
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Preload places data (local + Pod if logged in)
+      unawaited(preloadPlacesData());
+      // Preload map settings (not login-dependent)
+      unawaited(preloadMapSettings());
       _processOAuthCallback();
     });
   }
@@ -151,10 +158,6 @@ class _WebAuthHandlerState extends State<_WebAuthHandler> {
       }
 
       debugPrint('_WebAuthHandler: Login successful, webId=$webId');
-
-      // Preload places data in background to warm up cache
-      // This makes the map page feel instant when user lands on it
-      unawaited(preloadPlacesData());
 
       setState(() => _status = _AuthStatus.completed);
     } on TimeoutException {

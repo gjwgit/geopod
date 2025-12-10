@@ -57,8 +57,13 @@ class GeoMapWidget extends StatefulWidget {
   State<GeoMapWidget> createState() => GeoMapWidgetState();
 }
 
-class GeoMapWidgetState extends State<GeoMapWidget> {
+class GeoMapWidgetState extends State<GeoMapWidget>
+    with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
+
+  /// Global tile provider instance - shared across all map rebuilds
+  /// This ensures tile cache is preserved even when widget is recreated
+  static final _tileProvider = CancellableNetworkTileProvider();
 
   /// All places (local + Pod) loaded and cached for instant access.
   List<Place> _allPlaces = [];
@@ -74,27 +79,142 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     mapSource: MapSettings.getDefaultMapSource(),
   );
 
+  /// Track user login status for UI updates
+  bool _isLoggedIn = false;
+
+  /// Animation controller for smooth map entrance
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  /// Track if initial animation has completed
+  bool _initialAnimationComplete = false;
+
+  /// Track if this is a post-login data refresh (to replay animations)
+  bool _isPostLoginRefresh = false;
+
   @override
   void initState() {
     super.initState();
 
-    // Pre-load data after first frame for instant sidebar access.
-    // Use short delay to let UI render first, improving perceived speed
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadSettings();
-      // Delay places loading slightly to prioritize UI rendering
-      Future.delayed(const Duration(milliseconds: 50), () {
-        if (mounted) _loadAllPlaces();
+    // Initialize animation controller for smooth entrance (300ms)
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    // Create fade-in animation with smooth curve
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    );
+
+    // Mark animation as complete when done
+    _animationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          _initialAnimationComplete = true;
+          _isPostLoginRefresh = false; // Clear post-login flag after animation
+        });
+      }
+    });
+
+    // Check initial login state synchronously
+    _isLoggedIn = AuthDataManager.isLoggedInSync();
+
+    // Listen for login/logout events
+    authStateNotifier.addListener(_onAuthStateChanged);
+
+    // Load settings SYNCHRONOUSLY from cache (should be preloaded on app startup)
+    // This ensures UI renders with correct settings immediately, not defaults
+    _loadSettingsSync();
+
+    // Check if places are already cached (preloaded on app startup)
+    final cacheManager = PlacesCacheManager();
+    final cachedPlaces = cacheManager.allPlaces;
+
+    if (cachedPlaces != null) {
+      // Cache hit! Use it immediately for instant rendering
+      _allPlaces = List.from(cachedPlaces);
+    } else {
+      // No cache - load places in background
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _loadAllPlaces();
+        }
       });
+    }
+
+    // Start fade-in animation after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _animationController.forward();
+      }
     });
   }
 
-  /// Loads map settings from SharedPreferences.
-  Future<void> _loadSettings() async {
-    final settings = await MapSettingsService.loadSettings();
+  @override
+  void dispose() {
+    _animationController.dispose();
+    authStateNotifier.removeListener(_onAuthStateChanged);
+    super.dispose();
+  }
+
+  /// Called when auth state changes (login/logout)
+  void _onAuthStateChanged() {
     if (mounted) {
-      setState(() => _mapSettings = settings);
+      final wasLoggedIn = _isLoggedIn;
+      final isNowLoggedIn = authStateNotifier.value;
+
+      setState(() {
+        _isLoggedIn = isNowLoggedIn;
+      });
+
+      // After login, check if we need to load Pod places
+      // If cache exists (from preload or previous load), don't reload
+      if (isNowLoggedIn && !wasLoggedIn) {
+        // User just logged in - prepare for smooth transition
+        _isPostLoginRefresh = true;
+        _initialAnimationComplete = false; // Allow markers to animate again
+
+        final cacheManager = PlacesCacheManager();
+        final cachedPlaces = cacheManager.allPlaces;
+
+        if (cachedPlaces != null) {
+          // Cache exists - use it immediately with animation
+          _allPlaces = List.from(cachedPlaces);
+
+          // Replay entrance animation for smooth transition
+          _animationController.reset();
+          Future.delayed(const Duration(milliseconds: 50), () {
+            if (mounted) {
+              _animationController.forward();
+            }
+          });
+        } else {
+          // No cache - need to load (should be rare since we preload)
+          _loadAllPlaces(forceRefresh: false);
+        }
+      } else if (!isNowLoggedIn && wasLoggedIn) {
+        // User logged out - reset animation state
+        _isPostLoginRefresh = false;
+        _initialAnimationComplete = false;
+      }
     }
+  }
+
+  /// Loads map settings SYNCHRONOUSLY from cache.
+  /// Should be instant since settings are preloaded on app startup.
+  void _loadSettingsSync() {
+    // Use fire-and-forget async call but apply immediately when ready
+    MapSettingsService.loadSettings()
+        .then((settings) {
+          if (mounted) {
+            setState(() => _mapSettings = settings);
+          }
+        })
+        .catchError((_) {
+          // Ignore errors - will use default settings
+        });
   }
 
   /// Shows the settings dialog.
@@ -121,7 +241,7 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     // Skip loading indicator if cache is warm (instant response expected)
     final cacheManager = PlacesCacheManager();
     final hasCache = cacheManager.allPlaces != null;
-    
+
     if (!hasCache) {
       setState(() => _isLoadingPlaces = true);
     }
@@ -707,82 +827,103 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     return Scaffold(
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: const LatLng(-12.46, 130.84), // Darwin
-              // initialCenter: const LatLng(-35.2809, 149.1300), // Canberra
-              initialZoom: 13.0,
-              minZoom: 3.0,
-              maxZoom: 18.0,
-              onTap: _onMapTap,
-              onLongPress: (tapPosition, latLng) {
-                _showAddPlaceDialog(
-                  latitude: latLng.latitude,
-                  longitude: latLng.longitude,
-                );
-              },
-            ),
-            children: [
-              // Apply color filter ONLY to tile layer, not markers
-              ColorFiltered(
-                colorFilter: shouldApplyFilter
-                    ? const ColorFilter.matrix(midnightMatrix)
-                    : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
-                child: TileLayer(
-                  key: ValueKey(_mapSettings.mapSource),
-                  urlTemplate: _mapSettings.mapSource.urlTemplate,
-                  subdomains: _mapSettings.mapSource.subdomains,
-                  userAgentPackageName: 'com.togaware.geopod',
-                  tileProvider: CancellableNetworkTileProvider(),
-                  keepBuffer: 3,
-                  maxZoom: 19,
-                  maxNativeZoom: 18,
-                ),
+          // Fade-in animation for smooth entrance
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: const LatLng(-12.46, 130.84), // Darwin
+                // initialCenter: const LatLng(-35.2809, 149.1300), // Canberra
+                initialZoom: 13.0,
+                minZoom: 3.0,
+                maxZoom: 18.0,
+                onTap: _onMapTap,
+                onLongPress: (tapPosition, latLng) {
+                  _showAddPlaceDialog(
+                    latitude: latLng.latitude,
+                    longitude: latLng.longitude,
+                  );
+                },
               ),
+              children: [
+                // Apply color filter ONLY to tile layer, not markers
+                ColorFiltered(
+                  colorFilter: shouldApplyFilter
+                      ? const ColorFilter.matrix(midnightMatrix)
+                      : const ColorFilter.mode(
+                          Colors.transparent,
+                          BlendMode.dst,
+                        ),
+                  child: TileLayer(
+                    key: ValueKey(_mapSettings.mapSource),
+                    urlTemplate: _mapSettings.mapSource.urlTemplate,
+                    subdomains: _mapSettings.mapSource.subdomains,
+                    userAgentPackageName: 'com.togaware.geopod',
+                    tileProvider: _tileProvider,
+                    // Increased buffer to reduce white edges when zooming out
+                    // keepBuffer: number of tile layers to keep outside visible area
+                    // Higher value = more tiles cached = smoother zoom but more memory
+                    keepBuffer: 6,
+                    maxZoom: 19,
+                    maxNativeZoom: 18,
+                    // Preemptively load tiles around visible area
+                    panBuffer: 2,
+                  ),
+                ),
 
-              // Marker layer - NOT affected by color filter
-              MarkerLayer(
-                markers: _filteredMarkers.map((markerData) {
-                  return Marker(
-                    point: markerData.position,
-                    width: 40,
-                    height: 40,
-                    child: GestureDetector(
-                      onTap: () => _showMarkerDetails(markerData),
-                      child: markerData.isSaving
-                          ? Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Icon(
+                // Marker layer - NOT affected by color filter
+                MarkerLayer(
+                  markers: _filteredMarkers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final markerData = entry.value;
+
+                    return Marker(
+                      point: markerData.position,
+                      width: 40,
+                      height: 40,
+                      child: _MarkerWithAnimation(
+                        index: index,
+                        // Animate on initial load OR after login refresh
+                        shouldAnimate:
+                            !_initialAnimationComplete || _isPostLoginRefresh,
+                        child: GestureDetector(
+                          onTap: () => _showMarkerDetails(markerData),
+                          child: markerData.isSaving
+                              ? Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 40,
+                                      color: Colors.orange.shade400,
+                                    ),
+                                    const Positioned(
+                                      top: 8,
+                                      child: SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Icon(
                                   Icons.location_on,
                                   size: 40,
-                                  color: Colors.orange.shade400,
+                                  // Use custom color from settings.
+                                  color: markerData.color,
                                 ),
-                                const Positioned(
-                                  top: 8,
-                                  child: SizedBox(
-                                    width: 12,
-                                    height: 12,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Icon(
-                              Icons.location_on,
-                              size: 40,
-                              // Use custom color from settings.
-                              color: markerData.color,
-                            ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
           ),
           if (_isLoadingPlaces)
             const Positioned(
@@ -811,6 +952,8 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
                   Text(
                     _isLoadingPlaces
                         ? 'Loading places...'
+                        : _isLoggedIn
+                        ? 'Tap to add place'
                         : 'Login to add place',
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
@@ -873,6 +1016,87 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Animated marker widget with delayed entrance animation
+class _MarkerWithAnimation extends StatefulWidget {
+  const _MarkerWithAnimation({
+    required this.index,
+    required this.shouldAnimate,
+    required this.child,
+  });
+
+  final int index;
+  final bool shouldAnimate;
+  final Widget child;
+
+  @override
+  State<_MarkerWithAnimation> createState() => _MarkerWithAnimationState();
+}
+
+class _MarkerWithAnimationState extends State<_MarkerWithAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.shouldAnimate) {
+      // Create animation controller with staggered delay based on index
+      _controller = AnimationController(
+        duration: const Duration(milliseconds: 400),
+        vsync: this,
+      );
+
+      // Scale animation: bounce effect (0.0 → 1.0 with overshoot)
+      _scaleAnimation = CurvedAnimation(
+        parent: _controller,
+        curve: Curves.elasticOut,
+      );
+
+      // Fade animation: smooth fade-in
+      _fadeAnimation = CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOut,
+      );
+
+      // Start animation with staggered delay (50ms per marker)
+      Future.delayed(Duration(milliseconds: 100 + (widget.index * 50)), () {
+        if (mounted) {
+          _controller.forward();
+        }
+      });
+    } else {
+      // No animation needed - create dummy controller
+      _controller = AnimationController(duration: Duration.zero, vsync: this)
+        ..value = 1.0;
+
+      _scaleAnimation = const AlwaysStoppedAnimation(1.0);
+      _fadeAnimation = const AlwaysStoppedAnimation(1.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.shouldAnimate) {
+      // No animation - return child directly
+      return widget.child;
+    }
+
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
 }

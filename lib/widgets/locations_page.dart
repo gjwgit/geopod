@@ -101,7 +101,7 @@ class _LocationsPageState extends State<LocationsPage> {
   /// Called when auth state changes (login/logout)
   void _onAuthStateChanged() {
     final isLoggedIn = authStateNotifier.value;
-    
+
     if (!isLoggedIn && mounted) {
       // User logged out - clear data
       PlacesService.clearCache();

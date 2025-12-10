@@ -67,8 +67,8 @@ class PlacesCacheManager {
   /// Last cache update timestamp
   DateTime? _lastCacheTime;
 
-  /// Cache validity duration (in-memory cache, shorter than SharedPreferences)
-  static const Duration _memoryCacheExpiry = Duration(minutes: 2);
+  /// Cache validity duration (in-memory cache, should be long enough for login)
+  static const Duration _memoryCacheExpiry = Duration(minutes: 30);
 
   /// Gets all cached places (local + Pod)
   List<Place>? get allPlaces {
@@ -914,26 +914,22 @@ class ImportResult {
 }
 
 /// Preloads places data in the background to warm up cache.
-/// Call this early (e.g., right after login) to reduce perceived lag.
+/// Call this early (e.g., on app startup or after login) to reduce perceived lag.
 /// This is fire-and-forget - errors are silently ignored.
 Future<void> preloadPlacesData() async {
   try {
-    debugPrint('PlacesService: Starting background preload...');
-    
-    // Check if user is logged in first
-    final isLoggedIn = await checkLoggedIn();
-    if (!isLoggedIn) {
-      debugPrint('PlacesService: Preload skipped - user not logged in');
-      return;
-    }
-    
-    // Fire parallel loads without blocking caller
-    unawaited(PlacesService.fetchPlaces(forceRefresh: false).then((places) {
-      debugPrint('PlacesService: Preload complete - ${places.length} places cached');
-    }).catchError((e) {
-      debugPrint('PlacesService: Preload failed (non-critical): $e');
-    }));
-  } catch (e) {
-    debugPrint('PlacesService: Preload error (non-critical): $e');
+    // Skip login check - let fetchPlaces handle it internally
+    // This allows preload to be called anytime (before/after login)
+    // If not logged in, it will just load local places which is still useful
+
+    // Fire preload without blocking caller
+    unawaited(
+      PlacesService.fetchPlaces(forceRefresh: false).catchError((_) {
+        // Silently ignore preload errors - return empty list
+        return <Place>[];
+      }),
+    );
+  } catch (_) {
+    // Silently ignore preload errors
   }
 }

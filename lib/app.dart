@@ -152,6 +152,10 @@ class _WebAuthHandlerState extends State<_WebAuthHandler> {
 
       debugPrint('_WebAuthHandler: Login successful, webId=$webId');
 
+      // Preload places data in background to warm up cache
+      // This makes the map page feel instant when user lands on it
+      unawaited(preloadPlacesData());
+
       setState(() => _status = _AuthStatus.completed);
     } on TimeoutException {
       unawaited(_resetSessionSilent());

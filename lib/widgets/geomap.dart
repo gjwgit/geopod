@@ -79,9 +79,13 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     super.initState();
 
     // Pre-load data after first frame for instant sidebar access.
+    // Use short delay to let UI render first, improving perceived speed
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadSettings();
-      _loadAllPlaces();
+      // Delay places loading slightly to prioritize UI rendering
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (mounted) _loadAllPlaces();
+      });
     });
   }
 
@@ -114,7 +118,13 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
   /// Loads all places (local + Pod) using cache-aware fetch.
   /// This will be instant if data is already cached in memory.
   Future<void> _loadAllPlaces({bool forceRefresh = false}) async {
-    setState(() => _isLoadingPlaces = true);
+    // Skip loading indicator if cache is warm (instant response expected)
+    final cacheManager = PlacesCacheManager();
+    final hasCache = cacheManager.allPlaces != null;
+    
+    if (!hasCache) {
+      setState(() => _isLoadingPlaces = true);
+    }
 
     try {
       // Use cache-aware fetch - instant if cached, slow if not

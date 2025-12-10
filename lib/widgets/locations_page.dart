@@ -80,44 +80,40 @@ class _LocationsPageState extends State<LocationsPage> {
       _isLoading = true;
     }
 
-    _checkLoginAndLoad();
+    // Use synchronous login check (instant, no await needed)
+    _isLoggedIn = AuthDataManager.isLoggedInSync();
+
+    // Listen for auth state changes (logout events)
+    authStateNotifier.addListener(_onAuthStateChanged);
+
+    // Load places if logged in and not cached
+    if (_isLoggedIn && !_hasLoadedOnce) {
+      _loadPlaces();
+    }
   }
 
-  /// Checks login status and loads places.
-  /// Assumes user is logged in, but verifies in background.
-  /// Uses cache if available to avoid loading animation on subsequent visits.
-  Future<void> _checkLoginAndLoad() async {
-    // First, actively check login status using getWebId()
-    bool loggedIn = false;
-    try {
-      final webId = await getWebId();
-      loggedIn = webId != null && webId.isNotEmpty;
-    } catch (_) {
-      loggedIn = false;
-    }
+  @override
+  void dispose() {
+    authStateNotifier.removeListener(_onAuthStateChanged);
+    super.dispose();
+  }
 
-    if (!mounted) return;
-
-    // If login check fails, mark as logged out and clear all caches
-    if (!loggedIn) {
-      // Clear both in-memory and SharedPreferences caches
-      await PlacesService.clearCache();
-
+  /// Called when auth state changes (login/logout)
+  void _onAuthStateChanged() {
+    final isLoggedIn = authStateNotifier.value;
+    
+    if (!isLoggedIn && mounted) {
+      // User logged out - clear data
+      PlacesService.clearCache();
       setState(() {
         _isLoggedIn = false;
-        _isLoading = false;
         _places = [];
         _hasLoadedOnce = false;
       });
-      return;
-    }
-
-    // User is logged in, proceed with loading places
-    setState(() => _isLoggedIn = true);
-
-    // If we haven't loaded yet, fetch from Pod
-    if (!_hasLoadedOnce) {
-      await _loadPlaces();
+    } else if (isLoggedIn && mounted && !_hasLoadedOnce) {
+      // User just logged in - load data
+      setState(() => _isLoggedIn = true);
+      _loadPlaces();
     }
   }
 

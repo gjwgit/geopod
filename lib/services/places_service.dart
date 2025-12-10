@@ -25,6 +25,7 @@
 
 library;
 
+import 'dart:async' show unawaited;
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -910,4 +911,29 @@ class ImportResult {
 
   /// Whether there were any errors during import.
   bool get hasErrors => errors.isNotEmpty;
+}
+
+/// Preloads places data in the background to warm up cache.
+/// Call this early (e.g., right after login) to reduce perceived lag.
+/// This is fire-and-forget - errors are silently ignored.
+Future<void> preloadPlacesData() async {
+  try {
+    debugPrint('PlacesService: Starting background preload...');
+    
+    // Check if user is logged in first
+    final isLoggedIn = await checkLoggedIn();
+    if (!isLoggedIn) {
+      debugPrint('PlacesService: Preload skipped - user not logged in');
+      return;
+    }
+    
+    // Fire parallel loads without blocking caller
+    unawaited(PlacesService.fetchPlaces(forceRefresh: false).then((places) {
+      debugPrint('PlacesService: Preload complete - ${places.length} places cached');
+    }).catchError((e) {
+      debugPrint('PlacesService: Preload failed (non-critical): $e');
+    }));
+  } catch (e) {
+    debugPrint('PlacesService: Preload error (non-critical): $e');
+  }
 }

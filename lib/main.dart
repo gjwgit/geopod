@@ -27,9 +27,11 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:solidui/solidui.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:geopod/app.dart';
+import 'package:geopod/app_scaffold.dart';
 import 'package:geopod/constants/app.dart';
 import 'package:geopod/utils/is_desktop.dart';
 
@@ -49,6 +51,20 @@ void main() async {
   // to set the Linux desktop window [title].
 
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Configure SolidAuthHandler with app-specific settings
+  // This ensures proper login page navigation when guest users want to authenticate
+  SolidAuthHandler.instance.configure(
+    SolidAuthConfig(
+      appTitle: appTitle,
+      appDirectory: 'geopod',
+      defaultServerUrl: 'https://solidcommunity.au',
+      appImage: const AssetImage('assets/images/app_image.png'),
+      appLogo: const AssetImage('assets/images/app_icon.png'),
+      loginSuccessWidget: appScaffold,
+    ),
+  );
+  
   if (isDesktop) {
     await windowManager.ensureInitialized();
     const windowOptions = WindowOptions(title: appTitle);

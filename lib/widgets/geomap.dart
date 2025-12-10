@@ -192,9 +192,15 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           _loadAllPlaces(forceRefresh: false);
         }
       } else if (!isNowLoggedIn && wasLoggedIn) {
-        // User logged out - reset animation state
+        // User logged out - clear cache and reset animation state
+        PlacesService.clearCache();
         _isPostLoginRefresh = false;
         _initialAnimationComplete = false;
+        
+        // Clear displayed places to prevent showing stale data
+        setState(() {
+          _allPlaces = [];
+        });
       }
     }
   }

@@ -98,7 +98,7 @@ class _LocationsPageState extends State<LocationsPage> {
     if (!loggedIn) {
       // Clear both in-memory and SharedPreferences caches
       await PlacesService.clearCache();
-      
+
       setState(() {
         _isLoggedIn = false;
         _isLoading = false;

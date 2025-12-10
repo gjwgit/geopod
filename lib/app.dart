@@ -113,7 +113,9 @@ class _SessionVerifierState extends State<_SessionVerifier> {
   @override
   void initState() {
     super.initState();
-    debugPrint('_SessionVerifier: initState() called - starting session verification');
+    debugPrint(
+      '_SessionVerifier: initState() called - starting session verification',
+    );
     _verifySessionInBackground();
     // Start periodic session verification to detect logout
     _startSessionVerification();

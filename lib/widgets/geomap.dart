@@ -1004,27 +1004,39 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             top: 16,
             left: 16,
             child: GestureDetector(
-              onTap: () {
-                // If not logged in, navigate to login page
-                if (!_isLoggedIn && !_isLoadingPlaces) {
-                  SolidAuthHandler.instance.handleLogin(context);
-                }
-              },
+              onTap: _isLoadingPlaces
+                  ? null
+                  : () {
+                      if (_isLoggedIn) {
+                        // Logged in: show add place dialog
+                        _showAddPlaceDialog();
+                      } else {
+                        // Not logged in: navigate to login page
+                        SolidAuthHandler.instance.handleLogin(context);
+                      }
+                    },
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
+                  color: _isLoggedIn
+                      ? Colors.green.withValues(alpha: 0.85)
+                      : Colors.black.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(20),
-                  // Add visual hint for clickable state
-                  border: !_isLoggedIn && !_isLoadingPlaces
+                  // Visual hint for clickable state
+                  border: _isLoggedIn
                       ? Border.all(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          width: 1,
+                          color: Colors.green.shade300,
+                          width: 1.5,
                         )
-                      : null,
+                      : !_isLoadingPlaces
+                          ? Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 1,
+                            )
+                          : null,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1033,7 +1045,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                       _isLoadingPlaces
                           ? Icons.hourglass_empty
                           : _isLoggedIn
-                          ? Icons.touch_app
+                          ? Icons.add_location
                           : Icons.login,
                       color: Colors.white,
                       size: 16,
@@ -1043,9 +1055,13 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                       _isLoadingPlaces
                           ? 'Loading places...'
                           : _isLoggedIn
-                          ? 'Tap to add place'
-                          : 'login to add places',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                          ? 'Tap to Add Place'
+                          : 'Login to add places',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: _isLoggedIn ? FontWeight.w600 : FontWeight.normal,
+                      ),
                     ),
                   ],
                 ),
@@ -1094,16 +1110,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                     ),
                   )
                 : const Icon(Icons.refresh),
-          ),
-          const SizedBox(height: 8),
-          // Add Place button
-          FloatingActionButton(
-            heroTag: 'add',
-            onPressed: () => _showAddPlaceDialog(),
-            tooltip: 'Add Place',
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            child: const Icon(Icons.add_location),
           ),
         ],
       ),

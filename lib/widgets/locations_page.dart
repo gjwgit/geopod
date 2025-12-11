@@ -67,24 +67,63 @@ class _LocationsPageState extends State<LocationsPage> {
   void initState() {
     super.initState();
 
-    // Check if we have cached places - if so, don't show loading animation
-    final cachedPlaces = PlacesCacheManager().podPlaces;
-    if (cachedPlaces != null) {
+    // Check current login state (use notifier for initial guess)
+    _isLoggedIn = authStateNotifier.value;
+
+    // Check if we have cached places - try both podPlaces and allPlaces
+    final cacheManager = PlacesCacheManager();
+    final cachedPlaces = cacheManager.podPlaces;
+    
+    if (cachedPlaces != null && cachedPlaces.isNotEmpty) {
+      // Found podPlaces cache
       _places = cachedPlaces;
       _isLoading = false;
       _hasLoadedOnce = true;
     } else {
-      _isLoading = true;
+      // Try allPlaces cache (from map page) and filter out local places
+      final allPlaces = cacheManager.allPlaces;
+      if (allPlaces != null && allPlaces.isNotEmpty) {
+        _places = allPlaces.where((p) => !p.isLocal).toList();
+        if (_places.isNotEmpty) {
+          _isLoading = false;
+          _hasLoadedOnce = true;
+        } else {
+          _isLoading = true;
+        }
+      } else {
+        _isLoading = true;
+      }
     }
-
-    // Use synchronous login check (instant, no await needed)
-    _isLoggedIn = AuthDataManager.isLoggedInSync();
 
     // Listen for auth state changes (logout events)
     authStateNotifier.addListener(_onAuthStateChanged);
 
-    // Load places if logged in and not cached
-    if (_isLoggedIn && !_hasLoadedOnce) {
+    // CRITICAL: Verify actual login state asynchronously
+    // authStateNotifier might be stale, need to check token validity
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _verifyLoginAndRefresh();
+    });
+  }
+
+  /// Verify actual login state and refresh if needed
+  Future<void> _verifyLoginAndRefresh() async {
+    // Check actual token validity (not just notifier state)
+    final actuallyLoggedIn = await checkLoggedIn();
+    
+    if (!mounted) return;
+    
+    // If state changed or if logged in, force refresh
+    if (actuallyLoggedIn != _isLoggedIn || actuallyLoggedIn) {
+      if (actuallyLoggedIn != _isLoggedIn) {
+        setState(() {
+          _isLoggedIn = actuallyLoggedIn;
+        });
+      }
+      
+      if (actuallyLoggedIn) {
+        _refresh();
+      }
+    } else if (!_hasLoadedOnce) {
       _loadPlaces();
     }
   }
@@ -107,22 +146,31 @@ class _LocationsPageState extends State<LocationsPage> {
         _places = [];
         _hasLoadedOnce = false;
       });
-    } else if (isLoggedIn && mounted && !_hasLoadedOnce) {
-      // User just logged in - load data
-      setState(() => _isLoggedIn = true);
-      _loadPlaces();
+    } else if (isLoggedIn && mounted) {
+      // User just logged in - clear guest cache and force refresh from server
+      // This ensures we load the authenticated user's data, not guest cache
+      PlacesService.clearCache();
+      
+      // Update login state and show loading indicator
+      setState(() {
+        _isLoggedIn = true;
+        _isLoading = true;
+      });
+      
+      // Force refresh from server (async - will update UI when done)
+      _refresh();
     }
   }
 
   /// Loads places from Pod.
-  Future<void> _loadPlaces() async {
+  Future<void> _loadPlaces({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final places = await PlacesService.fetchPlaces();
+      final places = await PlacesService.fetchPlaces(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _places = places;
@@ -140,9 +188,9 @@ class _LocationsPageState extends State<LocationsPage> {
     }
   }
 
-  /// Manual refresh.
+  /// Manual refresh - force reload from server.
   Future<void> _refresh() async {
-    await _loadPlaces();
+    await _loadPlaces(forceRefresh: true);
   }
 
   /// Exports user's places to a JSON file.

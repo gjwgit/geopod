@@ -116,7 +116,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       }
     });
 
-    // Check initial login state synchronously
+    // Check initial login state synchronously (fast but may be stale)
     _isLoggedIn = AuthDataManager.isLoggedInSync();
 
     // Listen for login/logout events
@@ -126,21 +126,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     // This ensures UI renders with correct settings immediately, not defaults
     _loadSettingsSync();
 
-    // Check if places are already cached (preloaded on app startup)
-    final cacheManager = PlacesCacheManager();
-    final cachedPlaces = cacheManager.allPlaces;
-
-    if (cachedPlaces != null) {
-      // Cache hit! Use it immediately for instant rendering
-      _allPlaces = List.from(cachedPlaces);
-    } else {
-      // No cache - load places in background
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _loadAllPlaces();
-        }
-      });
-    }
+    // CRITICAL: Verify login state asynchronously after app restart
+    // This handles the case where app was killed in background and token expired
+    _verifyLoginStateAndLoadData();
 
     // Start fade-in animation after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -171,7 +159,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       setState(() {
         _tileProvider = NetworkTileProvider();
       });
-      debugPrint('GeoMap: Recreated tile provider after app resume');
     }
   }
 
@@ -185,41 +172,37 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         _isLoggedIn = isNowLoggedIn;
       });
 
-      // After login, check if we need to load Pod places
-      // If cache exists (from preload or previous load), don't reload
+      // After login, clear guest cache and reload user's Pod data
       if (isNowLoggedIn && !wasLoggedIn) {
-        // User just logged in - prepare for smooth transition
+        // User just logged in - clear old guest cache
+        debugPrint('GeoMap: User logged in - clearing guest cache and reloading');
+        PlacesService.clearCache();
+        
+        // Prepare for smooth transition with animation
         _isPostLoginRefresh = true;
         _initialAnimationComplete = false; // Allow markers to animate again
 
-        final cacheManager = PlacesCacheManager();
-        final cachedPlaces = cacheManager.allPlaces;
+        // Clear displayed places temporarily
+        setState(() {
+          _allPlaces = [];
+        });
 
-        if (cachedPlaces != null) {
-          // Cache exists - use it immediately with animation
-          _allPlaces = List.from(cachedPlaces);
-
-          // Replay entrance animation for smooth transition
-          _animationController.reset();
-          Future.delayed(const Duration(milliseconds: 50), () {
-            if (mounted) {
-              _animationController.forward();
-            }
-          });
-        } else {
-          // No cache - need to load (should be rare since we preload)
-          _loadAllPlaces(forceRefresh: false);
-        }
+        // Force reload authenticated user's data
+        _loadAllPlaces(forceRefresh: true);
       } else if (!isNowLoggedIn && wasLoggedIn) {
-        // User logged out - clear cache and reset animation state
+        // User logged out - clear cache and reload local places
         PlacesService.clearCache();
         _isPostLoginRefresh = false;
         _initialAnimationComplete = false;
         
-        // Clear displayed places to prevent showing stale data
+        // Clear displayed places and reload local data immediately
         setState(() {
           _allPlaces = [];
         });
+        
+        // Force reload local places (guest mode should show example data)
+        debugPrint('GeoMap: User logged out - reloading local places');
+        _loadAllPlaces(forceRefresh: true);
       }
     }
   }
@@ -239,6 +222,47 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         });
   }
 
+  /// Verifies actual login state asynchronously and loads appropriate data.
+  /// This is critical for handling app restarts after being killed in background.
+  Future<void> _verifyLoginStateAndLoadData() async {
+    // Verify actual login state (checks token expiry)
+    final actuallyLoggedIn = await checkLoggedIn();
+    
+    if (!mounted) return;
+    
+    // Check if sync state was wrong (e.g., app killed in background, token expired)
+    if (_isLoggedIn != actuallyLoggedIn) {
+      setState(() {
+        _isLoggedIn = actuallyLoggedIn;
+      });
+      
+      // Update global auth state
+      authStateNotifier.value = actuallyLoggedIn;
+      
+      // Clear stale cache immediately
+      PlacesService.clearCache();
+    }
+    
+    // Now check cache with verified login state
+    final cacheManager = PlacesCacheManager();
+    final cachedPlaces = cacheManager.allPlaces;
+    final cacheLoginState = cacheManager.wasLoggedInWhenCached;
+
+    // Use cache only if login state matches
+    if (cachedPlaces != null && cacheLoginState == _isLoggedIn) {
+      setState(() {
+        _allPlaces = List.from(cachedPlaces);
+      });
+    } else {
+      // No cache OR auth state mismatch - clear and reload
+      if (cachedPlaces != null && cacheLoginState != _isLoggedIn) {
+        PlacesService.clearCache();
+      }
+      // Load fresh data
+      await _loadAllPlaces(forceRefresh: true);
+    }
+  }
+
   /// Shows the settings dialog.
   void _showSettingsDialog() {
     showDialog(
@@ -255,7 +279,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             // This prevents "Client is already closed" errors
             if (mapSourceChanged) {
               _tileProvider = NetworkTileProvider();
-              debugPrint('GeoMap: Recreated tile provider after map source change');
             }
           });
         },
@@ -890,14 +913,23 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                     subdomains: _mapSettings.mapSource.subdomains,
                     userAgentPackageName: 'com.togaware.geopod',
                     tileProvider: _tileProvider,
-                    // Increased buffer to reduce white edges when zooming out
-                    // keepBuffer: number of tile layers to keep outside visible area
-                    // Higher value = more tiles cached = smoother zoom but more memory
-                    keepBuffer: 6,
+                    
+                    // Optimized buffer settings to reduce white tiles
+                    // keepBuffer: tiles to keep cached outside visible area (0-10 recommended)
+                    // Higher = smoother scroll/zoom but more memory (~10MB per +2)
+                    keepBuffer: 12,
+                    
+                    // panBuffer: preload tiles around visible area (0-4 recommended)
+                    // Higher = smoother pan but more network requests
+                    panBuffer: 4,
+                    
+                    // Zoom settings
                     maxZoom: 19,
                     maxNativeZoom: 18,
-                    // Preemptively load tiles around visible area
-                    panBuffer: 2,
+                    
+                    // Additional optimization for mobile
+                    tileSize: 256,
+                    retinaMode: false, // Disable for performance on non-retina screens
                   ),
                 ),
 
@@ -967,26 +999,47 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           Positioned(
             top: 16,
             left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.touch_app, color: Colors.white, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    _isLoadingPlaces
-                        ? 'Loading places...'
-                        : _isLoggedIn
-                        ? 'Tap to add place'
-                        : 'Login to add place',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
+            child: GestureDetector(
+              onTap: () {
+                // If not logged in, navigate to login page
+                if (!_isLoggedIn && !_isLoadingPlaces) {
+                  SolidAuthHandler.instance.handleLogin(context);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  // Add visual hint for clickable state
+                  border: !_isLoggedIn && !_isLoadingPlaces
+                      ? Border.all(
+                          color: Colors.white.withValues(alpha: 0.3), width: 1)
+                      : null,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _isLoadingPlaces
+                          ? Icons.hourglass_empty
+                          : _isLoggedIn
+                              ? Icons.touch_app
+                              : Icons.login,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _isLoadingPlaces
+                          ? 'Loading places...'
+                          : _isLoggedIn
+                              ? 'Tap to add place'
+                              : 'login to add places',
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

@@ -59,7 +59,7 @@ void main() async {
     SolidAuthConfig(
       appTitle: appTitle,
       appDirectory: 'geopod',
-      defaultServerUrl: 'https://solidcommunity.au',
+      defaultServerUrl: 'https://pods.solidcommunity.au',
       appImage: const AssetImage('assets/images/app_image.png'),
       appLogo: const AssetImage('assets/images/app_icon.png'),
       loginSuccessWidget: appScaffold,

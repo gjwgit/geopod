@@ -42,7 +42,7 @@ import 'utils/web_utils_stub.dart'
     as web_utils;
 
 /// The Solid server issuer URL for authentication.
-const String solidIssuer = 'https://solidcommunity.au';
+const String solidIssuer = 'https://pods.solidcommunity.au';
 
 /// Timeout duration for authentication operations.
 const Duration _authTimeout = Duration(seconds: 30);
@@ -103,7 +103,6 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
       unawaited(preloadPlacesData());
       // Preload map settings (not login-dependent)
       unawaited(preloadMapSettings());
-      debugPrint('App: Triggered preload on Continue navigation');
     });
   }
 

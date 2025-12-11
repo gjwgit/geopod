@@ -52,7 +52,7 @@ void main() async {
   // to set the Linux desktop window [title].
 
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Configure SolidAuthHandler with app-specific settings
   // This ensures proper login page navigation when guest users want to authenticate
   SolidAuthHandler.instance.configure(
@@ -70,7 +70,7 @@ void main() async {
       },
     ),
   );
-  
+
   if (isDesktop) {
     await windowManager.ensureInitialized();
     const windowOptions = WindowOptions(title: appTitle);

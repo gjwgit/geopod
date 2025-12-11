@@ -73,7 +73,7 @@ class _LocationsPageState extends State<LocationsPage> {
     // Check if we have cached places - try both podPlaces and allPlaces
     final cacheManager = PlacesCacheManager();
     final cachedPlaces = cacheManager.podPlaces;
-    
+
     if (cachedPlaces != null && cachedPlaces.isNotEmpty) {
       // Found podPlaces cache
       _places = cachedPlaces;
@@ -109,9 +109,9 @@ class _LocationsPageState extends State<LocationsPage> {
   Future<void> _verifyLoginAndRefresh() async {
     // Check actual token validity (not just notifier state)
     final actuallyLoggedIn = await checkLoggedIn();
-    
+
     if (!mounted) return;
-    
+
     // If state changed or if logged in, force refresh
     if (actuallyLoggedIn != _isLoggedIn || actuallyLoggedIn) {
       if (actuallyLoggedIn != _isLoggedIn) {
@@ -119,7 +119,7 @@ class _LocationsPageState extends State<LocationsPage> {
           _isLoggedIn = actuallyLoggedIn;
         });
       }
-      
+
       if (actuallyLoggedIn) {
         _refresh();
       }
@@ -150,13 +150,13 @@ class _LocationsPageState extends State<LocationsPage> {
       // User just logged in - clear guest cache and force refresh from server
       // This ensures we load the authenticated user's data, not guest cache
       PlacesService.clearCache();
-      
+
       // Update login state and show loading indicator
       setState(() {
         _isLoggedIn = true;
         _isLoading = true;
       });
-      
+
       // Force refresh from server (async - will update UI when done)
       _refresh();
     }
@@ -170,7 +170,9 @@ class _LocationsPageState extends State<LocationsPage> {
     });
 
     try {
-      final places = await PlacesService.fetchPlaces(forceRefresh: forceRefresh);
+      final places = await PlacesService.fetchPlaces(
+        forceRefresh: forceRefresh,
+      );
       if (mounted) {
         setState(() {
           _places = places;

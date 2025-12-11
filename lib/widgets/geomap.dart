@@ -152,7 +152,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     // Recreate tile provider when app resumes from background
     // This fixes connection issues on Android after app pause/resume
     if (state == AppLifecycleState.resumed) {
@@ -175,9 +175,11 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       // After login, clear guest cache and reload user's Pod data
       if (isNowLoggedIn && !wasLoggedIn) {
         // User just logged in - clear old guest cache
-        debugPrint('GeoMap: User logged in - clearing guest cache and reloading');
+        debugPrint(
+          'GeoMap: User logged in - clearing guest cache and reloading',
+        );
         PlacesService.clearCache();
-        
+
         // Prepare for smooth transition with animation
         _isPostLoginRefresh = true;
         _initialAnimationComplete = false; // Allow markers to animate again
@@ -194,12 +196,12 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         PlacesService.clearCache();
         _isPostLoginRefresh = false;
         _initialAnimationComplete = false;
-        
+
         // Clear displayed places and reload local data immediately
         setState(() {
           _allPlaces = [];
         });
-        
+
         // Force reload local places (guest mode should show example data)
         debugPrint('GeoMap: User logged out - reloading local places');
         _loadAllPlaces(forceRefresh: true);
@@ -227,22 +229,22 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   Future<void> _verifyLoginStateAndLoadData() async {
     // Verify actual login state (checks token expiry)
     final actuallyLoggedIn = await checkLoggedIn();
-    
+
     if (!mounted) return;
-    
+
     // Check if sync state was wrong (e.g., app killed in background, token expired)
     if (_isLoggedIn != actuallyLoggedIn) {
       setState(() {
         _isLoggedIn = actuallyLoggedIn;
       });
-      
+
       // Update global auth state
       authStateNotifier.value = actuallyLoggedIn;
-      
+
       // Clear stale cache immediately
       PlacesService.clearCache();
     }
-    
+
     // Now check cache with verified login state
     final cacheManager = PlacesCacheManager();
     final cachedPlaces = cacheManager.allPlaces;
@@ -272,9 +274,10 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         onSettingsChanged: (newSettings) {
           setState(() {
             // Check if map source changed - need new tile provider
-            final mapSourceChanged = _mapSettings.mapSource != newSettings.mapSource;
+            final mapSourceChanged =
+                _mapSettings.mapSource != newSettings.mapSource;
             _mapSettings = newSettings;
-            
+
             // Recreate tile provider when map source changes
             // This prevents "Client is already closed" errors
             if (mapSourceChanged) {
@@ -913,23 +916,24 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                     subdomains: _mapSettings.mapSource.subdomains,
                     userAgentPackageName: 'com.togaware.geopod',
                     tileProvider: _tileProvider,
-                    
+
                     // Optimized buffer settings to reduce white tiles
                     // keepBuffer: tiles to keep cached outside visible area (0-10 recommended)
                     // Higher = smoother scroll/zoom but more memory (~10MB per +2)
                     keepBuffer: 12,
-                    
+
                     // panBuffer: preload tiles around visible area (0-4 recommended)
                     // Higher = smoother pan but more network requests
                     panBuffer: 4,
-                    
+
                     // Zoom settings
                     maxZoom: 19,
                     maxNativeZoom: 18,
-                    
+
                     // Additional optimization for mobile
                     tileSize: 256,
-                    retinaMode: false, // Disable for performance on non-retina screens
+                    retinaMode:
+                        false, // Disable for performance on non-retina screens
                   ),
                 ),
 
@@ -1007,14 +1011,19 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(20),
                   // Add visual hint for clickable state
                   border: !_isLoggedIn && !_isLoadingPlaces
                       ? Border.all(
-                          color: Colors.white.withValues(alpha: 0.3), width: 1)
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1,
+                        )
                       : null,
                 ),
                 child: Row(
@@ -1024,8 +1033,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                       _isLoadingPlaces
                           ? Icons.hourglass_empty
                           : _isLoggedIn
-                              ? Icons.touch_app
-                              : Icons.login,
+                          ? Icons.touch_app
+                          : Icons.login,
                       color: Colors.white,
                       size: 16,
                     ),
@@ -1034,8 +1043,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                       _isLoadingPlaces
                           ? 'Loading places...'
                           : _isLoggedIn
-                              ? 'Tap to add place'
-                              : 'login to add places',
+                          ? 'Tap to add place'
+                          : 'login to add places',
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],

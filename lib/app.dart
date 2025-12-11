@@ -58,7 +58,7 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     // Wrap appScaffold to ensure preload happens on navigation
     final appWithPreload = _AppScaffoldWrapper(child: appScaffold);
-    
+
     final loginWidget = SolidLogin(
       image: const AssetImage('assets/images/app_image.png'),
       logo: const AssetImage('assets/images/app_icon.png'),
@@ -93,7 +93,7 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
   @override
   void initState() {
     super.initState();
-    
+
     // Trigger preload when this widget is mounted
     // This covers the case when user clicks Continue button
     // On Web: _WebAuthHandler already preloads on startup, but NOT after Continue navigation

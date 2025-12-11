@@ -28,7 +28,6 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
 
@@ -317,16 +316,17 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 style: TextButton.styleFrom(foregroundColor: Colors.grey),
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Logout button - only show if user is logged in
             FutureBuilder<String?>(
               future: getWebId(),
               builder: (context, snapshot) {
-                final isLoggedIn = snapshot.data != null && snapshot.data!.isNotEmpty;
+                final isLoggedIn =
+                    snapshot.data != null && snapshot.data!.isNotEmpty;
                 if (!isLoggedIn) return const SizedBox.shrink();
-                
+
                 return Center(
                   child: TextButton.icon(
                     onPressed: () async {

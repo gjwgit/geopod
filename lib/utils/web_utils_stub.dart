@@ -29,9 +29,3 @@ library;
 void replaceUrlState(String url) {
   // No-op for non-web platforms.
 }
-
-/// Stub: Does nothing on non-web platforms.
-/// On desktop, SolidLogin handles the login flow differently.
-void reloadPage() {
-  // No-op for non-web platforms.
-}

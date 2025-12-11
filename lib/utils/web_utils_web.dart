@@ -34,10 +34,3 @@ import 'package:web/web.dart' as web;
 void replaceUrlState(String url) {
   web.window.history.replaceState(null, '', url);
 }
-
-/// Reloads the current page.
-///
-/// This is used to return to the login screen when session is invalid.
-void reloadPage() {
-  web.window.location.reload();
-}

@@ -920,20 +920,20 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                     // Optimized buffer settings to reduce white tiles
                     // keepBuffer: tiles to keep cached outside visible area (0-10 recommended)
                     // Higher = smoother scroll/zoom but more memory (~10MB per +2)
-                    keepBuffer: 8, // Reduced from 12 to prevent overload during fast zoom
-
+                    keepBuffer:
+                        8, // Reduced from 12 to prevent overload during fast zoom
                     // panBuffer: preload tiles around visible area (0-4 recommended)
                     // Higher = smoother pan but more network requests
-                    panBuffer: 2, // Reduced from 4 to prevent too many concurrent requests
-
+                    panBuffer:
+                        2, // Reduced from 4 to prevent too many concurrent requests
                     // Zoom settings
                     maxZoom: 19,
                     maxNativeZoom: 18,
 
                     // Additional optimization for mobile and fast zoom
                     tileSize: 256,
-                    retinaMode: false, // Disable for performance on non-retina screens
-                    
+                    retinaMode:
+                        false, // Disable for performance on non-retina screens
                     // Error handling for tile loading failures
                     errorImage: const AssetImage(
                       'assets/images/tile_error.png',
@@ -1032,16 +1032,13 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                   borderRadius: BorderRadius.circular(20),
                   // Visual hint for clickable state
                   border: _isLoggedIn
-                      ? Border.all(
-                          color: Colors.green.shade300,
-                          width: 1.5,
-                        )
+                      ? Border.all(color: Colors.green.shade300, width: 1.5)
                       : !_isLoadingPlaces
-                          ? Border.all(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              width: 1,
-                            )
-                          : null,
+                      ? Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1,
+                        )
+                      : null,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1065,7 +1062,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
-                        fontWeight: _isLoggedIn ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: _isLoggedIn
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ],

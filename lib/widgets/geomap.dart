@@ -920,20 +920,25 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                     // Optimized buffer settings to reduce white tiles
                     // keepBuffer: tiles to keep cached outside visible area (0-10 recommended)
                     // Higher = smoother scroll/zoom but more memory (~10MB per +2)
-                    keepBuffer: 12,
+                    keepBuffer: 8, // Reduced from 12 to prevent overload during fast zoom
 
                     // panBuffer: preload tiles around visible area (0-4 recommended)
                     // Higher = smoother pan but more network requests
-                    panBuffer: 4,
+                    panBuffer: 2, // Reduced from 4 to prevent too many concurrent requests
 
                     // Zoom settings
                     maxZoom: 19,
                     maxNativeZoom: 18,
 
-                    // Additional optimization for mobile
+                    // Additional optimization for mobile and fast zoom
                     tileSize: 256,
-                    retinaMode:
-                        false, // Disable for performance on non-retina screens
+                    retinaMode: false, // Disable for performance on non-retina screens
+                    
+                    // Error handling for tile loading failures
+                    errorImage: const AssetImage(
+                      'assets/images/tile_error.png',
+                      package: 'solidpod',
+                    ),
                   ),
                 ),
 

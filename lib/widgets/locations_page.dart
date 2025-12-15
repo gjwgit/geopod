@@ -112,20 +112,30 @@ class _LocationsPageState extends State<LocationsPage> {
 
     if (!mounted) return;
 
-    // If state changed or if logged in, force refresh
-    if (actuallyLoggedIn != _isLoggedIn || actuallyLoggedIn) {
-      if (actuallyLoggedIn != _isLoggedIn) {
-        setState(() {
-          _isLoggedIn = actuallyLoggedIn;
-        });
-      }
+    // Only refresh if state actually changed (e.g., token expired)
+    if (actuallyLoggedIn != _isLoggedIn) {
+      setState(() {
+        _isLoggedIn = actuallyLoggedIn;
+      });
 
+      // State changed - need to reload appropriate data
       if (actuallyLoggedIn) {
-        _refresh();
+        // Was guest, now logged in - load user's Pod data
+        _loadPlaces(forceRefresh: true);
+      } else {
+        // Was logged in, now guest - clear and reload
+        PlacesService.clearCache();
+        setState(() {
+          _places = [];
+          _hasLoadedOnce = false;
+        });
+        _loadPlaces();
       }
-    } else if (!_hasLoadedOnce) {
+    } else if (!_hasLoadedOnce && !_isLoading) {
+      // No state change, but haven't loaded yet - use cache if available
       _loadPlaces();
     }
+    // If logged in and already loaded, do nothing - preserve preloaded cache
   }
 
   @override
@@ -138,19 +148,42 @@ class _LocationsPageState extends State<LocationsPage> {
   void _onAuthStateChanged() {
     final isLoggedIn = authStateNotifier.value;
 
+    // Only react if state actually changed
+    if (isLoggedIn == _isLoggedIn) {
+      return; // No change, don't clear cache
+    }
+
     if (!isLoggedIn && mounted) {
       // User logged out - clear data
-      PlacesService.clearCache();
+      // Execute cache clear asynchronously but don't wait to avoid blocking UI
+      _handleLogout();
+    } else if (isLoggedIn && mounted) {
+      // User just logged in (was guest, now logged in)
+      // Clear guest cache and force refresh from server
+      _handleLogin();
+    }
+  }
+
+  /// Handles logout: clears cache and updates UI state
+  Future<void> _handleLogout() async {
+    // Clear cache first (wait for completion to ensure it's done)
+    await PlacesService.clearCache();
+
+    if (mounted) {
       setState(() {
         _isLoggedIn = false;
         _places = [];
         _hasLoadedOnce = false;
       });
-    } else if (isLoggedIn && mounted) {
-      // User just logged in - clear guest cache and force refresh from server
-      // This ensures we load the authenticated user's data, not guest cache
-      PlacesService.clearCache();
+    }
+  }
 
+  /// Handles login: clears guest cache and refreshes from server
+  Future<void> _handleLogin() async {
+    // Clear guest cache and force refresh from server
+    await PlacesService.clearCache();
+
+    if (mounted) {
       // Update login state and show loading indicator
       setState(() {
         _isLoggedIn = true;
@@ -158,7 +191,7 @@ class _LocationsPageState extends State<LocationsPage> {
       });
 
       // Force refresh from server (async - will update UI when done)
-      _refresh();
+      await _refresh();
     }
   }
 

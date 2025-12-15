@@ -225,9 +225,11 @@ class PlacesService {
   static List<Place>? _cachedLocalPlaces;
 
   /// Gets the full file path within the app's data directory.
+  /// Saves to: geopod/data/places/places.json
   static Future<String> _getFullFilePath() async {
     final dataDirPath = await getDataDirPath();
-    return '$dataDirPath/$_placesFileName';
+    final placesPath = '$dataDirPath/places';
+    return '$placesPath/$_placesFileName';
   }
 
   /// Loads canned example places from local assets.

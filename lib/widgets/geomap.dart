@@ -168,44 +168,64 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       final wasLoggedIn = _isLoggedIn;
       final isNowLoggedIn = authStateNotifier.value;
 
+      // Only react if state actually changed
+      if (isNowLoggedIn == wasLoggedIn) {
+        return; // No change, preserve cache
+      }
+
       setState(() {
         _isLoggedIn = isNowLoggedIn;
       });
 
       // After login, clear guest cache and reload user's Pod data
       if (isNowLoggedIn && !wasLoggedIn) {
-        // User just logged in - clear old guest cache
-        debugPrint(
-          'GeoMap: User logged in - clearing guest cache and reloading',
-        );
-        PlacesService.clearCache();
-
-        // Prepare for smooth transition with animation
-        _isPostLoginRefresh = true;
-        _initialAnimationComplete = false; // Allow markers to animate again
-
-        // Clear displayed places temporarily
-        setState(() {
-          _allPlaces = [];
-        });
-
-        // Force reload authenticated user's data
-        _loadAllPlaces(forceRefresh: true);
+        _handleLogin();
       } else if (!isNowLoggedIn && wasLoggedIn) {
-        // User logged out - clear cache and reload local places
-        PlacesService.clearCache();
-        _isPostLoginRefresh = false;
-        _initialAnimationComplete = false;
-
-        // Clear displayed places and reload local data immediately
-        setState(() {
-          _allPlaces = [];
-        });
-
-        // Force reload local places (guest mode should show example data)
-        debugPrint('GeoMap: User logged out - reloading local places');
-        _loadAllPlaces(forceRefresh: true);
+        _handleLogout();
       }
+    }
+  }
+
+  /// Handles login: clears guest cache and reloads user's Pod data
+  Future<void> _handleLogin() async {
+    // User just logged in - clear old guest cache
+    debugPrint('GeoMap: User logged in - clearing guest cache and reloading');
+    await PlacesService.clearCache();
+
+    if (mounted) {
+      // Prepare for smooth transition with animation
+      _isPostLoginRefresh = true;
+      _initialAnimationComplete = false; // Allow markers to animate again
+
+      // Clear displayed places and update login state
+      setState(() {
+        _isLoggedIn = true; // Ensure login state is updated
+        _allPlaces = [];
+      });
+
+      // Force reload authenticated user's data
+      await _loadAllPlaces(forceRefresh: true);
+    }
+  }
+
+  /// Handles logout: clears cache and reloads local places
+  Future<void> _handleLogout() async {
+    // User logged out - clear cache and reload local places
+    await PlacesService.clearCache();
+
+    if (mounted) {
+      _isPostLoginRefresh = false;
+      _initialAnimationComplete = false;
+
+      // Clear displayed places and update login state
+      setState(() {
+        _isLoggedIn = false; // CRITICAL: Mark as logged out
+        _allPlaces = [];
+      });
+
+      // Force reload local places (guest mode should show example data)
+      debugPrint('GeoMap: User logged out - reloading local places');
+      await _loadAllPlaces(forceRefresh: true);
     }
   }
 
@@ -917,15 +937,18 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                     userAgentPackageName: 'com.togaware.geopod',
                     tileProvider: _tileProvider,
 
+                    // CRITICAL: Remove failed tiles so they can be retried
+                    // Without this, white tiles persist after loading failures
+                    evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
+
                     // Optimized buffer settings to reduce white tiles
                     // keepBuffer: tiles to keep cached outside visible area (0-10 recommended)
                     // Higher = smoother scroll/zoom but more memory (~10MB per +2)
                     keepBuffer:
-                        8, // Reduced from 12 to prevent overload during fast zoom
+                        5, // Reduced further to prevent memory issues during fast zoom
                     // panBuffer: preload tiles around visible area (0-4 recommended)
                     // Higher = smoother pan but more network requests
-                    panBuffer:
-                        2, // Reduced from 4 to prevent too many concurrent requests
+                    panBuffer: 1, // Minimal preload to prevent request flooding
                     // Zoom settings
                     maxZoom: 19,
                     maxNativeZoom: 18,

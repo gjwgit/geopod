@@ -69,16 +69,10 @@ flutter_launcher_icons:
 
 dependency_overrides:
   solidpod:
-    git:
-      url: https://github.com/lambadajester50-byte/solidpod.git
-      ref: dev
+    path: ../solidpod
   solid_auth:
-    git:
-      url: https://github.com/lambadajester50-byte/solid_auth.git
-      ref: dev
+    path: ../solid_auth
   solidui:
-    git:
-      url: https://github.com/lambadajester50-byte/solidui.git
-      ref: dev
+    path: ../solidui
 
   

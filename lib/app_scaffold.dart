@@ -99,7 +99,7 @@ var appScaffold = SolidScaffold(
             **Files:** Tap here to browse the files for the app on your Pod.
 
             ''',
-      child: SolidFile(basePath: ''),
+      child: SolidFile(basePath: 'geopod'),
     ),
   ],
 

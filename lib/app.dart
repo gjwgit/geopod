@@ -27,35 +27,36 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
 
 import 'app_scaffold.dart';
 import 'constants/app.dart';
 import 'services/map_settings_service.dart';
 import 'services/places_service.dart';
-import 'utils/web_utils_stub.dart'
-    if (dart.library.html) 'utils/web_utils_web.dart'
-    as web_utils;
 
-/// The Solid server issuer URL for authentication.
-const String solidIssuer = 'https://pods.solidcommunity.au';
-
-/// Timeout duration for authentication operations.
-const Duration _authTimeout = Duration(seconds: 30);
+// Import to register logout cache callback
+import 'package:solidpod/solidpod.dart' show registerLogoutCacheCallback;
 
 /// The root application widget.
 ///
-/// Uses SolidLogin from solidui for authentication UI, with additional
-/// session verification to prevent false-positive login states.
+/// Uses SolidLogin from solidui for authentication UI.
 class App extends StatelessWidget {
   const App({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Register global callback for clearing caches during logout
+    // This is called once at app startup to ensure caches are cleared
+    // BEFORE any blocking network operations during logout
+    registerLogoutCacheCallback(() async {
+      debugPrint('App: Logout cache callback - clearing application caches');
+      await PlacesService.clearCache();
+      // Note: MapSettings are user preferences, not user data,
+      // so we don't clear them during logout
+    });
+
     // Wrap appScaffold to ensure preload happens on navigation
     final appWithPreload = _AppScaffoldWrapper(child: appScaffold);
 
@@ -65,21 +66,50 @@ class App extends StatelessWidget {
       child: appWithPreload,
     );
 
-    // Session status banner disabled - deemed redundant.
-    // final loginWithStatus = _SessionStatusBanner(child: loginWidget);
-
     return SolidThemeApp(
       debugShowCheckedModeBanner: false,
       title: appTitle,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
       ),
-      home: kIsWeb ? _WebAuthHandler(child: loginWidget) : loginWidget,
+      home: _StartupPreloader(child: loginWidget),
     );
   }
 }
 
-/// Wrapper that triggers preload when navigated to (for Continue button on non-Web)
+/// Preloads data on app startup for instant map page access.
+/// All platforms use this for initial data preloading.
+class _StartupPreloader extends StatefulWidget {
+  const _StartupPreloader({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_StartupPreloader> createState() => _StartupPreloaderState();
+}
+
+class _StartupPreloaderState extends State<_StartupPreloader> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Preload all data on app startup (both guests and logged-in users)
+    // This makes the map page feel instant when user navigates to it
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(preloadPlacesData());
+      unawaited(preloadMapSettings());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
+}
+
+/// Wrapper that triggers preload when navigated to (for Continue button).
+/// This ensures data is preloaded even when user navigates via Continue button
+/// after the initial app startup preload.
 class _AppScaffoldWrapper extends StatefulWidget {
   const _AppScaffoldWrapper({required this.child});
 
@@ -96,12 +126,8 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
 
     // Trigger preload when this widget is mounted
     // This covers the case when user clicks Continue button
-    // On Web: _WebAuthHandler already preloads on startup, but NOT after Continue navigation
-    // On Non-Web: No _WebAuthHandler, so this is the only preload trigger
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Preload places data (local + Pod if logged in)
       unawaited(preloadPlacesData());
-      // Preload map settings (not login-dependent)
       unawaited(preloadMapSettings());
     });
   }
@@ -109,153 +135,5 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
   @override
   Widget build(BuildContext context) {
     return widget.child;
-  }
-}
-
-// _SessionVerifier removed - no longer needed with guest mode and web reload on logout
-
-/// Handles OAuth redirect callbacks on web platform.
-class _WebAuthHandler extends StatefulWidget {
-  const _WebAuthHandler({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_WebAuthHandler> createState() => _WebAuthHandlerState();
-}
-
-/// Authentication status for clear state management.
-enum _AuthStatus { idle, processing, completed, failed }
-
-class _WebAuthHandlerState extends State<_WebAuthHandler> {
-  _AuthStatus _status = _AuthStatus.idle;
-  int _rebuildKey = 0;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Preload all data on app startup (both guests and logged-in users)
-    // This makes the map page feel instant when user navigates to it
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Preload places data (local + Pod if logged in)
-      unawaited(preloadPlacesData());
-      // Preload map settings (not login-dependent)
-      unawaited(preloadMapSettings());
-      _processOAuthCallback();
-    });
-  }
-
-  /// Processes OAuth callback from URL.
-  Future<void> _processOAuthCallback() async {
-    final uri = Uri.base;
-    final hasCode = uri.queryParameters.containsKey('code');
-    final hasError = uri.queryParameters.containsKey('error');
-
-    if (hasError) {
-      _clearUrl();
-      unawaited(_resetSessionSilent());
-      return;
-    }
-
-    if (!hasCode) {
-      return;
-    }
-
-    if (_status == _AuthStatus.processing || _status == _AuthStatus.completed) {
-      return;
-    }
-
-    setState(() => _status = _AuthStatus.processing);
-    _clearUrl();
-
-    try {
-      final existingWebId = await getWebId();
-      if (existingWebId != null && existingWebId.isNotEmpty) {
-        setState(() => _status = _AuthStatus.completed);
-        return;
-      }
-
-      // ignore: use_build_context_synchronously
-      final result = await solidAuthenticate(solidIssuer, context).timeout(
-        _authTimeout,
-        onTimeout: () => throw TimeoutException('Timeout'),
-      );
-
-      if (result == null) {
-        unawaited(_resetSessionSilent());
-        return;
-      }
-
-      final webId = await getWebId();
-      if (webId == null || webId.isEmpty) {
-        unawaited(_resetSessionSilent());
-        return;
-      }
-
-      debugPrint('_WebAuthHandler: Login successful, webId=$webId');
-
-      setState(() => _status = _AuthStatus.completed);
-    } on TimeoutException {
-      unawaited(_resetSessionSilent());
-    } catch (_) {
-      unawaited(_resetSessionSilent());
-    }
-  }
-
-  /// Clears session silently and forces UI rebuild.
-  Future<void> _resetSessionSilent() async {
-    try {
-      await deleteLogIn();
-      // Clear all cached places when session reset fails
-      await PlacesService.clearCache();
-    } catch (_) {
-      // Ignore errors.
-    }
-
-    if (mounted) {
-      setState(() {
-        _status = _AuthStatus.failed;
-        _rebuildKey++;
-      });
-    }
-  }
-
-  /// Clears query parameters from browser URL.
-  void _clearUrl() {
-    final uri = Uri.base;
-    final cleanUrl = Uri(
-      scheme: uri.scheme,
-      host: uri.host,
-      port: uri.port,
-      path: uri.path,
-    ).toString();
-    web_utils.replaceUrlState(cleanUrl);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_status == _AuthStatus.processing) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          body: Container(
-            color: Colors.white,
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Completing login...'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return KeyedSubtree(key: ValueKey<int>(_rebuildKey), child: widget.child);
   }
 }

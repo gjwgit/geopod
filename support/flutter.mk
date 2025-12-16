@@ -216,7 +216,11 @@ depend:
 	-dependency_validator
 	@echo $(SEPARATOR)
 
+<<<<<<< HEAD
 LINES ?= 3000
+=======
+LINES ?= 300
+>>>>>>> e789f8fb2a32a80b9c020029e6ceb63929df55ca
 
 .PHONY: locmax
 locmax:

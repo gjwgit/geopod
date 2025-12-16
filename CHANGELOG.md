@@ -24,8 +24,9 @@ Contributions are welcome. Visit
 even better, fork the repository yourself, update the code, and submit
 a Pull Request. Thanks.
 
-## 0.1 First beta release of a solidui template
+## 0.1 First beta release
 
++ Add zoom +/- buttons [0.0.5 20251210 miduo]
 + Read and write places of interest from Pods and files [0.0.4 20251208 miduo]
 + Automate macos+ios config and unsigned build [0.0.3 20251207 jesscmoore]
 + Add solid login and solid scaffold [0.0.2 20251121 gjw]

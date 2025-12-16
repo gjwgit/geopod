@@ -33,8 +33,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
+import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, Place, PlacesCacheManager, placesChangeNotifier;
@@ -90,6 +92,18 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
   /// Track if this is a post-login data refresh (to replay animations)
   bool _isPostLoginRefresh = false;
+
+  /// GDELT news service for fetching geospatial news
+  final GdeltNewsService _newsService = GdeltNewsService();
+
+  /// List of news markers fetched from GDELT API
+  List<NewsMarker> _newsMarkers = [];
+
+  /// Whether news markers should be displayed on the map
+  bool _showNewsMarkers = false;
+
+  /// Whether news data is currently being fetched
+  bool _isLoadingNews = false;
 
   @override
   void initState() {
@@ -148,6 +162,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   @override
   void dispose() {
     _animationController.dispose();
+    _newsService.dispose();
     authStateNotifier.removeListener(_onAuthStateChanged);
     placesChangeNotifier.removeListener(_onPlacesChanged);
     WidgetsBinding.instance.removeObserver(this);
@@ -621,6 +636,503 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     _mapController.move(_mapController.camera.center, newZoom);
   }
 
+  /// Toggles the display of news markers on the map.
+  void _toggleNewsMarkers() {
+    // Always show the news list dialog when clicked
+    _showNewsListDialog();
+  }
+
+  /// Shows a dialog with the list of all news in current view.
+  Future<void> _showNewsListDialog() async {
+    // Fetch news first
+    setState(() {
+      _isLoadingNews = true;
+      _showNewsMarkers = true;
+    });
+
+    try {
+      final bounds = _mapController.camera.visibleBounds;
+      final newsMarkers = await _newsService.fetchNews(
+        bounds: bounds,
+        query: 'news',
+        maxResults: 50,
+        timeSpan: '24h',
+      );
+
+      if (mounted) {
+        setState(() {
+          _newsMarkers = newsMarkers;
+          _isLoadingNews = false;
+        });
+
+        // Show the list dialog
+        showDialog(
+          context: context,
+          builder: (dialogContext) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              width: 500,
+              height: 600,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Icon(Icons.article, color: Colors.blue.shade700, size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'News in Current View',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          // Only close dialog, keep news markers visible
+                          Navigator.of(dialogContext).pop();
+                        },
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Text(
+                    '${_getVisibleNewsMarkers().length} news items in current view',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 12),
+                  // News list
+                  Expanded(
+                    child: _getVisibleNewsMarkers().isEmpty
+                        ? Center(
+                            child: Text(
+                              'No news found in this area',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _getVisibleNewsMarkers().length,
+                            itemBuilder: (context, index) {
+                              final news = _getVisibleNewsMarkers()[index];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(vertical: 8),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.blue.shade700,
+                                    child: const Icon(
+                                      Icons.article,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    news.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 4),
+                                      if (news.source != null)
+                                        Row(
+                                          children: [
+                                            Icon(Icons.public,
+                                                size: 14, color: Colors.grey.shade600),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                news.source!,
+                                                style: TextStyle(
+                                                    color: Colors.grey.shade600,
+                                                    fontSize: 12),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.location_on,
+                                              size: 14, color: Colors.grey.shade600),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${news.location.latitude.toStringAsFixed(2)}, ${news.location.longitude.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                                color: Colors.grey.shade600,
+                                                fontSize: 12),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: news.url != null
+                                      ? IconButton(
+                                          icon: const Icon(Icons.open_in_new),
+                                          onPressed: () => _launchUrl(news.url!),
+                                          tooltip: 'Read Article',
+                                        )
+                                      : null,
+                                  onTap: () {
+                                    Navigator.of(dialogContext).pop();
+                                    // Zoom to news location
+                                    _mapController.move(news.location, 12.0);
+                                    // Show details
+                                    Future.delayed(
+                                        const Duration(milliseconds: 300), () {
+                                      _showNewsMarkerDetails(news);
+                                    });
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Close button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        // Close news feature completely
+                        setState(() {
+                          _showNewsMarkers = false;
+                          _newsMarkers = [];
+                        });
+                      },
+                      icon: const Icon(Icons.close),
+                      label: const Text('Close News'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingNews = false;
+          _showNewsMarkers = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to fetch news: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Fetches news markers for the current map viewport bounds.
+  Future<void> _fetchNewsForCurrentBounds() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingNews = true;
+    });
+
+    try {
+      // Get current map bounds
+      final bounds = _mapController.camera.visibleBounds;
+      
+      debugPrint('=== Fetching news for map bounds ===');
+      debugPrint('Southwest: ${bounds.south}, ${bounds.west}');
+      debugPrint('Northeast: ${bounds.north}, ${bounds.east}');
+      debugPrint('Center: ${bounds.center.latitude}, ${bounds.center.longitude}');
+
+      // Fetch news from GDELT API with debouncing
+      // Note: GDELT requires actual keywords, not '*'
+      final newsMarkers = await _newsService.fetchNews(
+        bounds: bounds,
+        query: 'news', // Use 'news' as default query
+        maxResults: 50, // Reduced from 250 to avoid timeout
+        timeSpan: '24h',
+      );
+
+      debugPrint('Received ${newsMarkers.length} news markers');
+      if (newsMarkers.isNotEmpty) {
+        debugPrint('First marker: ${newsMarkers[0].title} at ${newsMarkers[0].location.latitude}, ${newsMarkers[0].location.longitude}');
+      }
+
+      if (mounted) {
+        setState(() {
+          _newsMarkers = newsMarkers;
+          _isLoadingNews = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingNews = false;
+        });
+        // Show error message to user
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to fetch news: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Called when map position changes (zoom or pan).
+  void _onMapPositionChanged(MapCamera position, bool hasGesture) {
+    // Only fetch news if news markers are enabled
+    if (_showNewsMarkers && hasGesture) {
+      // Try to use cached data first
+      _updateNewsFromCache();
+    }
+  }
+  
+  /// Update news markers from cache or fetch if needed.
+  void _updateNewsFromCache() {
+    if (!mounted) return;
+    
+    final bounds = _mapController.camera.visibleBounds;
+    
+    // First, try to get markers from cache
+    final cachedMarkers = _newsService.getMarkersInBounds(bounds);
+    
+    if (cachedMarkers.isNotEmpty) {
+      // Update UI with cached markers immediately
+      setState(() {
+        _newsMarkers = cachedMarkers;
+      });
+      debugPrint('Updated ${cachedMarkers.length} news markers from cache');
+    }
+    
+    // If bounds are not covered by cache, fetch new data
+    if (!_newsService.isBoundsCovered(bounds)) {
+      debugPrint('Bounds not fully covered, fetching new data...');
+      _fetchNewsForCurrentBounds();
+    }
+  }
+  
+  /// Get list of news markers that are currently visible on screen.
+  List<NewsMarker> _getVisibleNewsMarkers() {
+    if (!_showNewsMarkers || _newsMarkers.isEmpty) return [];
+    
+    final bounds = _mapController.camera.visibleBounds;
+    return _newsMarkers.where((marker) {
+      return marker.location.latitude >= bounds.south &&
+             marker.location.latitude <= bounds.north &&
+             marker.location.longitude >= bounds.west &&
+             marker.location.longitude <= bounds.east;
+    }).toList();
+  }
+
+  /// Shows detailed information about a news marker in a bottom sheet.
+  void _showNewsMarkerDetails(NewsMarker newsMarker) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.all(18.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+                // Header with news icon
+                Row(
+                  children: [
+                    Icon(
+                      Icons.article_outlined,
+                      color: Colors.blue.shade700,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'News Article',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+
+                // News title
+                Text(
+                  newsMarker.title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 12),
+
+                // Source and date
+                if (newsMarker.source != null || newsMarker.publishedAt != null)
+                  Row(
+                    children: [
+                      if (newsMarker.source != null) ...[
+                        Icon(Icons.public, size: 16, color: Colors.grey.shade600),
+                        const SizedBox(width: 4),
+                        Text(
+                          newsMarker.source!,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                      if (newsMarker.source != null &&
+                          newsMarker.publishedAt != null)
+                        Text(
+                          ' • ',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      if (newsMarker.publishedAt != null) ...[
+                        Icon(Icons.access_time,
+                            size: 16, color: Colors.grey.shade600),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatDateTime(newsMarker.publishedAt!),
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+
+                // Tone indicator
+                if (newsMarker.tone != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        newsMarker.tone! > 0
+                            ? Icons.sentiment_satisfied
+                            : newsMarker.tone! < 0
+                                ? Icons.sentiment_dissatisfied
+                                : Icons.sentiment_neutral,
+                        size: 16,
+                        color: newsMarker.tone! > 0
+                            ? Colors.green
+                            : newsMarker.tone! < 0
+                                ? Colors.red
+                                : Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Tone: ${newsMarker.tone!.toStringAsFixed(1)}',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                const SizedBox(height: 16),
+
+                // Location info
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: Colors.grey.shade600),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${newsMarker.location.latitude.toStringAsFixed(4)}, ${newsMarker.location.longitude.toStringAsFixed(4)}',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // Action buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      child: const Text('Close'),
+                    ),
+                    if (newsMarker.url != null) ...[
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          _launchUrl(newsMarker.url!);
+                        },
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        label: const Text('Read Article'),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+    );
+  }
+
+  /// Format DateTime for display.
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}';
+    }
+  }
+
+  /// Launch URL in browser.
+  Future<void> _launchUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw Exception('Could not launch URL');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open article: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
   /// Shows detailed information about a marker in a bottom sheet.
   void _showMarkerDetails(MarkerData marker) {
     // Use marker's custom color for UI elements.
@@ -940,6 +1452,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                     longitude: latLng.longitude,
                   );
                 },
+                onPositionChanged: _onMapPositionChanged,
               ),
               children: [
                 // Apply color filter ONLY to tile layer, not markers
@@ -1035,6 +1548,43 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                     );
                   }).toList(),
                 ),
+
+                // News marker layer - only display markers visible on current screen
+                if (_showNewsMarkers)
+                  MarkerLayer(
+                    markers: _getVisibleNewsMarkers().map((newsMarker) {
+                      return Marker(
+                        point: newsMarker.location,
+                        width: 36,
+                        height: 36,
+                        child: GestureDetector(
+                          onTap: () => _showNewsMarkerDetails(newsMarker),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade700,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.article,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
               ],
             ),
           ),
@@ -1106,6 +1656,68 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                         color: Colors.white,
                         fontSize: 12,
                         fontWeight: _isLoggedIn
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          // News markers toggle button
+          Positioned(
+            top: 68, // Below the add place button
+            left: 16,
+            child: GestureDetector(
+              onTap: _isLoadingNews ? null : _toggleNewsMarkers,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: _showNewsMarkers
+                      ? Colors.blue.withValues(alpha: 0.85)
+                      : Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: _showNewsMarkers
+                      ? Border.all(color: Colors.blue.shade300, width: 1.5)
+                      : Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isLoadingNews)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else
+                      Icon(
+                        _showNewsMarkers ? Icons.article : Icons.article_outlined,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _isLoadingNews
+                          ? 'Loading news...'
+                          : _showNewsMarkers
+                              ? 'News: ${_getVisibleNewsMarkers().length}'
+                              : 'Show News',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: _showNewsMarkers
                             ? FontWeight.w600
                             : FontWeight.normal,
                       ),

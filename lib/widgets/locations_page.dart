@@ -32,7 +32,7 @@ import 'package:solidui/solidui.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart'
-    show PlacesService, PlacesCacheManager, Place;
+    show PlacesService, PlacesCacheManager, Place, placesChangeNotifier;
 
 /// A page that displays all saved locations from the user's Solid Pod.
 ///
@@ -67,7 +67,7 @@ class _LocationsPageState extends State<LocationsPage> {
   void initState() {
     super.initState();
 
-    // Check current login state (use notifier for initial guess)
+    // Check current login state
     _isLoggedIn = authStateNotifier.value;
 
     // Check if we have cached places - try both podPlaces and allPlaces
@@ -98,8 +98,10 @@ class _LocationsPageState extends State<LocationsPage> {
     // Listen for auth state changes (logout events)
     authStateNotifier.addListener(_onAuthStateChanged);
 
-    // CRITICAL: Verify actual login state asynchronously
-    // authStateNotifier might be stale, need to check token validity
+    // Listen for places data changes (add/delete/update)
+    placesChangeNotifier.addListener(_onPlacesChanged);
+
+    // Verify actual login state asynchronously
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _verifyLoginAndRefresh();
     });
@@ -120,10 +122,26 @@ class _LocationsPageState extends State<LocationsPage> {
 
       // State changed - need to reload appropriate data
       if (actuallyLoggedIn) {
-        // Was guest, now logged in - load user's Pod data
-        _loadPlaces(forceRefresh: true);
+        // Was guest, now logged in - check if GeoMap has already loaded data
+        final cacheManager = PlacesCacheManager();
+        final cachedPlaces = cacheManager.allPlaces;
+
+        if (cachedPlaces != null && cachedPlaces.isNotEmpty) {
+          // GeoMap has already loaded data, use it directly
+          final userPlaces = cachedPlaces.where((p) => !p.isLocal).toList();
+          if (mounted) {
+            setState(() {
+              _places = userPlaces;
+              _isLoading = false;
+              _hasLoadedOnce = true;
+            });
+          }
+        } else {
+          // No cache yet, load from network
+          _loadPlaces(forceRefresh: false);
+        }
       } else {
-        // Was logged in, now guest - clear and reload
+        // Was logged in, now guest - clear Pod cache and reload
         PlacesService.clearCache();
         setState(() {
           _places = [];
@@ -131,17 +149,44 @@ class _LocationsPageState extends State<LocationsPage> {
         });
         _loadPlaces();
       }
-    } else if (!_hasLoadedOnce && !_isLoading) {
-      // No state change, but haven't loaded yet - use cache if available
-      _loadPlaces();
+    } else if (!_hasLoadedOnce) {
+      // Haven't loaded data yet - check if GeoMap has already loaded the data
+      final cacheManager = PlacesCacheManager();
+      final cachedPlaces = cacheManager.allPlaces;
+
+      if (cachedPlaces != null && cachedPlaces.isNotEmpty) {
+        // GeoMap has already loaded data, use it directly
+        final userPlaces = actuallyLoggedIn
+            ? cachedPlaces.where((p) => !p.isLocal).toList()
+            : cachedPlaces;
+        if (mounted) {
+          setState(() {
+            _places = userPlaces;
+            _isLoading = false;
+            _hasLoadedOnce = true;
+          });
+        }
+      } else {
+        // No cache available, load from network
+        _loadPlaces(forceRefresh: false);
+      }
     }
-    // If logged in and already loaded, do nothing - preserve preloaded cache
   }
 
   @override
   void dispose() {
     authStateNotifier.removeListener(_onAuthStateChanged);
+    placesChangeNotifier.removeListener(_onPlacesChanged);
     super.dispose();
+  }
+
+  /// Called when places data changes (add/delete/update)
+  void _onPlacesChanged() {
+    if (mounted && _isLoggedIn) {
+      // Places data changed - try to use cache first (faster)
+      // Cache was cleared by the operation, so next load will fetch fresh data
+      _loadPlaces(forceRefresh: false);
+    }
   }
 
   /// Called when auth state changes (login/logout)
@@ -153,14 +198,16 @@ class _LocationsPageState extends State<LocationsPage> {
       return; // No change, don't clear cache
     }
 
+    // Only handle logout - login is handled by _verifyLoginAndRefresh
+    // because the page is typically recreated after login
     if (!isLoggedIn && mounted) {
       // User logged out - clear data
-      // Execute cache clear asynchronously but don't wait to avoid blocking UI
       _handleLogout();
     } else if (isLoggedIn && mounted) {
-      // User just logged in (was guest, now logged in)
-      // Clear guest cache and force refresh from server
-      _handleLogin();
+      // User logged in - just update state, _verifyLoginAndRefresh will handle loading
+      setState(() {
+        _isLoggedIn = true;
+      });
     }
   }
 
@@ -178,23 +225,6 @@ class _LocationsPageState extends State<LocationsPage> {
     }
   }
 
-  /// Handles login: clears guest cache and refreshes from server
-  Future<void> _handleLogin() async {
-    // Clear guest cache and force refresh from server
-    await PlacesService.clearCache();
-
-    if (mounted) {
-      // Update login state and show loading indicator
-      setState(() {
-        _isLoggedIn = true;
-        _isLoading = true;
-      });
-
-      // Force refresh from server (async - will update UI when done)
-      await _refresh();
-    }
-  }
-
   /// Loads places from Pod.
   Future<void> _loadPlaces({bool forceRefresh = false}) async {
     setState(() {
@@ -206,6 +236,7 @@ class _LocationsPageState extends State<LocationsPage> {
       final places = await PlacesService.fetchPlaces(
         forceRefresh: forceRefresh,
       );
+
       if (mounted) {
         setState(() {
           _places = places;

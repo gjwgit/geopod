@@ -41,6 +41,11 @@ import 'package:uuid/uuid.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 
+/// Global notifier for places data changes.
+/// Increment this value whenever places are added, deleted, or updated.
+/// UI components can listen to this to refresh their data.
+final placesChangeNotifier = ValueNotifier<int>(0);
+
 /// The file name for storing all places.
 const String _placesFileName = 'places.json';
 
@@ -117,6 +122,16 @@ class PlacesCacheManager {
     _podPlacesCache = null;
     _lastCacheTime = null;
     _wasLoggedInWhenCached = null;
+  }
+
+  /// Clears only Pod-related cache, preserves local places structure
+  /// allPlaces cache is cleared because it contains merged data
+  void clearPodCacheOnly() {
+    _allPlacesCache = null; // Clear merged cache (will be rebuilt)
+    _podPlacesCache = null; // Clear Pod cache
+    _lastCacheTime = null;
+    _wasLoggedInWhenCached = null;
+    // Note: Local places are cached in PlacesService._cachedLocalPlaces, not here
   }
 
   /// Forces cache refresh on next fetch
@@ -369,7 +384,8 @@ class PlacesService {
     final cacheManager = PlacesCacheManager();
 
     try {
-      if (!await checkLoggedIn()) {
+      final isLoggedIn = await checkLoggedIn();
+      if (!isLoggedIn) {
         return places;
       }
 
@@ -431,7 +447,7 @@ class PlacesService {
       // Cache the result for next time (both SharedPreferences and memory)
       await _cachePodPlaces(content);
       cacheManager.cachePodPlaces(places);
-    } catch (_) {
+    } catch (e) {
       // Return empty list on error.
     }
 
@@ -513,6 +529,8 @@ class PlacesService {
   }
 
   /// Clears the Pod places cache (both SharedPreferences and memory).
+  /// NOTE: This clears ALL caches including local places cache.
+  /// For login scenarios, prefer clearPodCacheOnly() to keep local places.
   static Future<void> clearCache() async {
     try {
       // Clear in-memory cache
@@ -522,9 +540,51 @@ class PlacesService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyPodPlacesCache);
       await prefs.remove(_keyPodPlacesCacheTimestamp);
-    } catch (_) {
+    } catch (e) {
       // Ignore errors
     }
+  }
+
+  /// Clears only Pod places cache, preserving local places cache.
+  /// Use this for login scenarios - local examples don't need to be reloaded.
+  static Future<void> clearPodCacheOnly() async {
+    try {
+      // Clear only Pod-related caches, keep local places
+      PlacesCacheManager().clearPodCacheOnly();
+
+      // Clear SharedPreferences Pod cache
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyPodPlacesCache);
+      await prefs.remove(_keyPodPlacesCacheTimestamp);
+    } catch (e) {
+      // Ignore errors
+    }
+  }
+
+  /// Incrementally updates places by adding Pod data to existing local cache.
+  /// This is much faster than full refresh after login because:
+  /// - Local places are already cached (instant)
+  /// - Only Pod places need network request
+  /// Returns merged list immediately with cached local + fresh Pod data.
+  static Future<List<Place>> refreshPodDataOnly() async {
+    final cacheManager = PlacesCacheManager();
+
+    // Get local places from cache (instant) or load if not cached
+    final localPlaces = await loadLocalPlaces();
+
+    // Clear old Pod cache and fetch fresh Pod data
+    await clearPodCacheOnly();
+    final podPlaces = await fetchPodPlaces(forceRefresh: true);
+
+    // Merge - Pod places first, then local examples
+    final allPlaces = <Place>[];
+    allPlaces.addAll(podPlaces);
+    allPlaces.addAll(localPlaces);
+
+    // Cache the merged result
+    cacheManager.cacheAllPlaces(allPlaces);
+
+    return allPlaces;
   }
 
   /// Adds a new place to the Pod.
@@ -538,8 +598,12 @@ class PlacesService {
         return false;
       }
 
-      // Only fetch Pod places (not local) for updating.
-      final existingPlaces = await fetchPodPlaces();
+      // Use cached Pod places to avoid unnecessary network request
+      final cacheManager = PlacesCacheManager();
+      var existingPlaces = cacheManager.podPlaces;
+
+      // If no cache, fetch from network (fallback)
+      existingPlaces ??= await fetchPodPlaces();
 
       // Create a mutable copy and add the new place
       final updatedPlaces = List<Place>.from(existingPlaces)..insert(0, place);
@@ -552,6 +616,8 @@ class PlacesService {
       // Clear cache after successful write
       if (success) {
         await clearCache();
+        // Notify listeners that places data has changed
+        placesChangeNotifier.value++;
       }
 
       return success;
@@ -573,8 +639,12 @@ class PlacesService {
         return false;
       }
 
-      // Only fetch Pod places (not local) for updating.
-      final existingPlaces = await fetchPodPlaces();
+      // Use cached Pod places to avoid unnecessary network request
+      final cacheManager = PlacesCacheManager();
+      var existingPlaces = cacheManager.podPlaces;
+
+      // If no cache, fetch from network (fallback)
+      existingPlaces ??= await fetchPodPlaces();
 
       // Create a mutable copy and filter out the deleted place
       final updatedPlaces = List<Place>.from(existingPlaces)
@@ -588,6 +658,8 @@ class PlacesService {
       // Clear cache after successful write
       if (success) {
         await clearCache();
+        // Notify listeners that places data has changed
+        placesChangeNotifier.value++;
       }
 
       return success;
@@ -805,6 +877,8 @@ class PlacesService {
       // Clear cache after successful write
       if (success) {
         await clearCache();
+        // Notify listeners that places data has changed
+        placesChangeNotifier.value++;
       }
 
       return success;
@@ -831,6 +905,8 @@ class PlacesService {
       // Clear cache after successful write
       if (success) {
         await clearCache();
+        // Notify listeners that places data has changed
+        placesChangeNotifier.value++;
       }
 
       return success;
@@ -893,6 +969,8 @@ class PlacesService {
       // Clear cache after successful write
       if (success) {
         await clearCache();
+        // Notify listeners that places data has changed
+        placesChangeNotifier.value++;
       }
 
       return success;

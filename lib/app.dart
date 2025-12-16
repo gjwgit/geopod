@@ -51,7 +51,6 @@ class App extends StatelessWidget {
     // This is called once at app startup to ensure caches are cleared
     // BEFORE any blocking network operations during logout
     registerLogoutCacheCallback(() async {
-      debugPrint('App: Logout cache callback - clearing application caches');
       await PlacesService.clearCache();
       // Note: MapSettings are user preferences, not user data,
       // so we don't clear them during logout

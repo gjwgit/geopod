@@ -36,7 +36,8 @@ import 'package:solidui/solidui.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
-import 'package:geopod/services/places_service.dart';
+import 'package:geopod/services/places_service.dart'
+    show PlacesService, Place, PlacesCacheManager, placesChangeNotifier;
 import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/map_settings_dialog.dart';
 
@@ -122,6 +123,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     // Listen for login/logout events
     authStateNotifier.addListener(_onAuthStateChanged);
 
+    // Listen for places data changes (add/delete/update)
+    placesChangeNotifier.addListener(_onPlacesChanged);
+
     // Load settings SYNCHRONOUSLY from cache (should be preloaded on app startup)
     // This ensures UI renders with correct settings immediately, not defaults
     _loadSettingsSync();
@@ -145,8 +149,18 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   void dispose() {
     _animationController.dispose();
     authStateNotifier.removeListener(_onAuthStateChanged);
+    placesChangeNotifier.removeListener(_onPlacesChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Called when places data changes (add/delete/update)
+  void _onPlacesChanged() {
+    if (mounted && _isLoggedIn) {
+      // Places data changed - try to use cache first (faster)
+      // Cache was cleared by the operation, so next load will fetch fresh data
+      _loadAllPlaces(forceRefresh: false);
+    }
   }
 
   @override
@@ -186,46 +200,52 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     }
   }
 
-  /// Handles login: clears guest cache and reloads user's Pod data
+  /// Handles login: incrementally loads user's Pod data (keeps local places cached)
+  /// This is much faster than full refresh because local places are already cached.
   Future<void> _handleLogin() async {
-    // User just logged in - clear old guest cache
-    debugPrint('GeoMap: User logged in - clearing guest cache and reloading');
-    await PlacesService.clearCache();
-
     if (mounted) {
       // Prepare for smooth transition with animation
       _isPostLoginRefresh = true;
       _initialAnimationComplete = false; // Allow markers to animate again
 
-      // Clear displayed places and update login state
+      // Update login state immediately (UI shows logged-in state)
       setState(() {
-        _isLoggedIn = true; // Ensure login state is updated
-        _allPlaces = [];
+        _isLoggedIn = true;
       });
 
-      // Force reload authenticated user's data
-      await _loadAllPlaces(forceRefresh: true);
+      // Incrementally load Pod data while keeping local places cached
+      // This is much faster than clearCache + forceRefresh
+      final places = await PlacesService.refreshPodDataOnly();
+
+      if (mounted) {
+        setState(() {
+          _allPlaces = places;
+        });
+      }
     }
   }
 
-  /// Handles logout: clears cache and reloads local places
+  /// Handles logout: clears Pod cache and shows local places only
   Future<void> _handleLogout() async {
-    // User logged out - clear cache and reload local places
-    await PlacesService.clearCache();
+    // User logged out - clear Pod cache only, keep local places cached
+    await PlacesService.clearPodCacheOnly();
 
     if (mounted) {
       _isPostLoginRefresh = false;
       _initialAnimationComplete = false;
 
-      // Clear displayed places and update login state
+      // Update login state immediately
       setState(() {
         _isLoggedIn = false; // CRITICAL: Mark as logged out
-        _allPlaces = [];
       });
 
-      // Force reload local places (guest mode should show example data)
-      debugPrint('GeoMap: User logged out - reloading local places');
-      await _loadAllPlaces(forceRefresh: true);
+      // Load local places only (instant from cache)
+      final localPlaces = await PlacesService.loadLocalPlaces();
+      if (mounted) {
+        setState(() {
+          _allPlaces = localPlaces;
+        });
+      }
     }
   }
 
@@ -1177,7 +1197,7 @@ class _MarkerWithAnimationState extends State<_MarkerWithAnimation>
         vsync: this,
       );
 
-      // Scale animation: bounce effect (0.0 → 1.0 with overshoot)
+      // Scale animation: bounce effect (0.0 �?1.0 with overshoot)
       _scaleAnimation = CurvedAnimation(
         parent: _controller,
         curve: Curves.elasticOut,

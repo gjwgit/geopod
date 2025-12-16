@@ -28,16 +28,13 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
+import 'package:solidpod/solidpod.dart' show registerLogoutCacheCallback;
 import 'package:solidui/solidui.dart';
 
 import 'app_scaffold.dart';
 import 'constants/app.dart';
 import 'services/map_settings_service.dart';
 import 'services/places_service.dart';
-
-// Import to register logout cache callback
-import 'package:solidpod/solidpod.dart' show registerLogoutCacheCallback;
 
 /// The root application widget.
 ///

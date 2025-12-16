@@ -28,15 +28,14 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
+import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, Place, PlacesCacheManager, placesChangeNotifier;
@@ -681,14 +680,17 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                   // Header
                   Row(
                     children: [
-                      Icon(Icons.article, color: Colors.blue.shade700, size: 28),
+                      Icon(
+                        Icons.article,
+                        color: Colors.blue.shade700,
+                        size: 28,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'News in Current View',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
                       IconButton(
@@ -734,24 +736,31 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                                     news.title,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                   subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const SizedBox(height: 4),
                                       if (news.source != null)
                                         Row(
                                           children: [
-                                            Icon(Icons.public,
-                                                size: 14, color: Colors.grey.shade600),
+                                            Icon(
+                                              Icons.public,
+                                              size: 14,
+                                              color: Colors.grey.shade600,
+                                            ),
                                             const SizedBox(width: 4),
                                             Expanded(
                                               child: Text(
                                                 news.source!,
                                                 style: TextStyle(
-                                                    color: Colors.grey.shade600,
-                                                    fontSize: 12),
+                                                  color: Colors.grey.shade600,
+                                                  fontSize: 12,
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -759,14 +768,18 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                                       const SizedBox(height: 2),
                                       Row(
                                         children: [
-                                          Icon(Icons.location_on,
-                                              size: 14, color: Colors.grey.shade600),
+                                          Icon(
+                                            Icons.location_on,
+                                            size: 14,
+                                            color: Colors.grey.shade600,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
                                             '${news.location.latitude.toStringAsFixed(2)}, ${news.location.longitude.toStringAsFixed(2)}',
                                             style: TextStyle(
-                                                color: Colors.grey.shade600,
-                                                fontSize: 12),
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -775,7 +788,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                                   trailing: news.url != null
                                       ? IconButton(
                                           icon: const Icon(Icons.open_in_new),
-                                          onPressed: () => _launchUrl(news.url!),
+                                          onPressed: () =>
+                                              _launchUrl(news.url!),
                                           tooltip: 'Read Article',
                                         )
                                       : null,
@@ -785,9 +799,11 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                                     _mapController.move(news.location, 12.0);
                                     // Show details
                                     Future.delayed(
-                                        const Duration(milliseconds: 300), () {
-                                      _showNewsMarkerDetails(news);
-                                    });
+                                      const Duration(milliseconds: 300),
+                                      () {
+                                        _showNewsMarkerDetails(news);
+                                      },
+                                    );
                                   },
                                 ),
                               );
@@ -849,11 +865,13 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     try {
       // Get current map bounds
       final bounds = _mapController.camera.visibleBounds;
-      
+
       debugPrint('=== Fetching news for map bounds ===');
       debugPrint('Southwest: ${bounds.south}, ${bounds.west}');
       debugPrint('Northeast: ${bounds.north}, ${bounds.east}');
-      debugPrint('Center: ${bounds.center.latitude}, ${bounds.center.longitude}');
+      debugPrint(
+        'Center: ${bounds.center.latitude}, ${bounds.center.longitude}',
+      );
 
       // Fetch news from GDELT API with debouncing
       // Note: GDELT requires actual keywords, not '*'
@@ -866,7 +884,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
       debugPrint('Received ${newsMarkers.length} news markers');
       if (newsMarkers.isNotEmpty) {
-        debugPrint('First marker: ${newsMarkers[0].title} at ${newsMarkers[0].location.latitude}, ${newsMarkers[0].location.longitude}');
+        debugPrint(
+          'First marker: ${newsMarkers[0].title} at ${newsMarkers[0].location.latitude}, ${newsMarkers[0].location.longitude}',
+        );
       }
 
       if (mounted) {
@@ -899,16 +919,16 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       _updateNewsFromCache();
     }
   }
-  
+
   /// Update news markers from cache or fetch if needed.
   void _updateNewsFromCache() {
     if (!mounted) return;
-    
+
     final bounds = _mapController.camera.visibleBounds;
-    
+
     // First, try to get markers from cache
     final cachedMarkers = _newsService.getMarkersInBounds(bounds);
-    
+
     if (cachedMarkers.isNotEmpty) {
       // Update UI with cached markers immediately
       setState(() {
@@ -916,24 +936,24 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       });
       debugPrint('Updated ${cachedMarkers.length} news markers from cache');
     }
-    
+
     // If bounds are not covered by cache, fetch new data
     if (!_newsService.isBoundsCovered(bounds)) {
       debugPrint('Bounds not fully covered, fetching new data...');
       _fetchNewsForCurrentBounds();
     }
   }
-  
+
   /// Get list of news markers that are currently visible on screen.
   List<NewsMarker> _getVisibleNewsMarkers() {
     if (!_showNewsMarkers || _newsMarkers.isEmpty) return [];
-    
+
     final bounds = _mapController.camera.visibleBounds;
     return _newsMarkers.where((marker) {
       return marker.location.latitude >= bounds.south &&
-             marker.location.latitude <= bounds.north &&
-             marker.location.longitude >= bounds.west &&
-             marker.location.longitude <= bounds.east;
+          marker.location.latitude <= bounds.north &&
+          marker.location.longitude >= bounds.west &&
+          marker.location.longitude <= bounds.east;
     }).toList();
   }
 
@@ -951,148 +971,142 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-                // Header with news icon
-                Row(
-                  children: [
-                    Icon(
-                      Icons.article_outlined,
-                      color: Colors.blue.shade700,
-                      size: 28,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'News Article',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                    ),
-                  ],
+            // Header with news icon
+            Row(
+              children: [
+                Icon(
+                  Icons.article_outlined,
+                  color: Colors.blue.shade700,
+                  size: 28,
                 ),
-                const Divider(height: 24),
-
-                // News title
-                Text(
-                  newsMarker.title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 12),
-
-                // Source and date
-                if (newsMarker.source != null || newsMarker.publishedAt != null)
-                  Row(
-                    children: [
-                      if (newsMarker.source != null) ...[
-                        Icon(Icons.public, size: 16, color: Colors.grey.shade600),
-                        const SizedBox(width: 4),
-                        Text(
-                          newsMarker.source!,
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                      if (newsMarker.source != null &&
-                          newsMarker.publishedAt != null)
-                        Text(
-                          ' • ',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      if (newsMarker.publishedAt != null) ...[
-                        Icon(Icons.access_time,
-                            size: 16, color: Colors.grey.shade600),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatDateTime(newsMarker.publishedAt!),
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'News Article',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-
-                // Tone indicator
-                if (newsMarker.tone != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        newsMarker.tone! > 0
-                            ? Icons.sentiment_satisfied
-                            : newsMarker.tone! < 0
-                                ? Icons.sentiment_dissatisfied
-                                : Icons.sentiment_neutral,
-                        size: 16,
-                        color: newsMarker.tone! > 0
-                            ? Colors.green
-                            : newsMarker.tone! < 0
-                                ? Colors.red
-                                : Colors.grey,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Tone: ${newsMarker.tone!.toStringAsFixed(1)}',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-
-                const SizedBox(height: 16),
-
-                // Location info
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 16, color: Colors.grey.shade600),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '${newsMarker.location.latitude.toStringAsFixed(4)}, ${newsMarker.location.longitude.toStringAsFixed(4)}',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
-
-                const SizedBox(height: 20),
-
-                // Action buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(),
-                      child: const Text('Close'),
-                    ),
-                    if (newsMarker.url != null) ...[
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(sheetContext).pop();
-                          _launchUrl(newsMarker.url!);
-                        },
-                        icon: const Icon(Icons.open_in_new, size: 18),
-                        label: const Text('Read Article'),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 20),
               ],
             ),
-          ),
+            const Divider(height: 24),
+
+            // News title
+            Text(
+              newsMarker.title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+
+            // Source and date
+            if (newsMarker.source != null || newsMarker.publishedAt != null)
+              Row(
+                children: [
+                  if (newsMarker.source != null) ...[
+                    Icon(Icons.public, size: 16, color: Colors.grey.shade600),
+                    const SizedBox(width: 4),
+                    Text(
+                      newsMarker.source!,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                  if (newsMarker.source != null &&
+                      newsMarker.publishedAt != null)
+                    Text(' • ', style: TextStyle(color: Colors.grey.shade600)),
+                  if (newsMarker.publishedAt != null) ...[
+                    Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDateTime(newsMarker.publishedAt!),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+
+            // Tone indicator
+            if (newsMarker.tone != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    newsMarker.tone! > 0
+                        ? Icons.sentiment_satisfied
+                        : newsMarker.tone! < 0
+                        ? Icons.sentiment_dissatisfied
+                        : Icons.sentiment_neutral,
+                    size: 16,
+                    color: newsMarker.tone! > 0
+                        ? Colors.green
+                        : newsMarker.tone! < 0
+                        ? Colors.red
+                        : Colors.grey,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Tone: ${newsMarker.tone!.toStringAsFixed(1)}',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                  ),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Location info
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 16, color: Colors.grey.shade600),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '${newsMarker.location.latitude.toStringAsFixed(4)}, ${newsMarker.location.longitude.toStringAsFixed(4)}',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  child: const Text('Close'),
+                ),
+                if (newsMarker.url != null) ...[
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      _launchUrl(newsMarker.url!);
+                    },
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    label: const Text('Read Article'),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1563,10 +1577,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                             decoration: BoxDecoration(
                               color: Colors.blue.shade700,
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
-                              ),
+                              border: Border.all(color: Colors.white, width: 2),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.3),
@@ -1665,7 +1676,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
               ),
             ),
           ),
-          
+
           // News markers toggle button
           Positioned(
             top: 68, // Below the add place button
@@ -1703,7 +1714,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                       )
                     else
                       Icon(
-                        _showNewsMarkers ? Icons.article : Icons.article_outlined,
+                        _showNewsMarkers
+                            ? Icons.article
+                            : Icons.article_outlined,
                         color: Colors.white,
                         size: 16,
                       ),
@@ -1712,8 +1725,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                       _isLoadingNews
                           ? 'Loading news...'
                           : _showNewsMarkers
-                              ? 'News: ${_getVisibleNewsMarkers().length}'
-                              : 'Show News',
+                          ? 'News: ${_getVisibleNewsMarkers().length}'
+                          : 'Show News',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,

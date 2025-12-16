@@ -28,6 +28,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
 import 'package:solidpod/solidpod.dart' show registerLogoutCacheCallback;
 import 'package:solidui/solidui.dart';
 

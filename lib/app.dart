@@ -1,6 +1,6 @@
 /// The primary [MaterialApp] widget.
 ///
-// Time-stamp: <2025-12-04 Miduo>
+// Time-stamp: <Thursday 2025-12-18 13:51:11 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -113,9 +113,9 @@ class _SessionVerifierState extends State<_SessionVerifier> {
   @override
   void initState() {
     super.initState();
-    debugPrint(
-      '_SessionVerifier: initState() called - starting session verification',
-    );
+    // debugPrint(
+    //   '_SessionVerifier: initState() called - starting session verification',
+    // );
     _verifySessionInBackground();
     // Start periodic session verification to detect logout
     _startSessionVerification();
@@ -150,10 +150,10 @@ class _SessionVerifierState extends State<_SessionVerifier> {
         await _handleFakeLogin();
       } else {
         // Session is valid - log it for debugging
-        debugPrint('_SessionVerifier: Session verified - WebID present');
+        // debugPrint('_SessionVerifier: Session verified - WebID present');
       }
     } catch (e) {
-      debugPrint('_SessionVerifier: Error checking session: $e');
+      // debugPrint('_SessionVerifier: Error checking session: $e');
       await _handleFakeLogin();
     }
   }
@@ -169,7 +169,7 @@ class _SessionVerifierState extends State<_SessionVerifier> {
       // Clear all cached places when logging out
       await PlacesService.clearCache();
     } catch (e) {
-      debugPrint('_handleFakeLogin: Error clearing session: $e');
+      // debugPrint('_handleFakeLogin: Error clearing session: $e');
       // Continue anyway - we still need to update UI
     }
 

@@ -5,6 +5,10 @@
 
 http://localhost:44007/
 
+#
+
+http://localhost:8000/
+
 # POD OAuth endpoints that require authentication parameters
 
 https://pods.dev.solidcommunity.au/.oidc/auth

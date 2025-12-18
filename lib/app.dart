@@ -1,6 +1,6 @@
 /// The primary [MaterialApp] widget.
 ///
-// Time-stamp: <2025-12-04 Miduo>
+// Time-stamp: <Thursday 2025-12-18 13:51:11 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -29,7 +29,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:solidpod/solidpod.dart' show registerLogoutCacheCallback;
+import 'package:solidpod/solidpod.dart'
+    show registerLogoutCacheCallback, getWebId, deleteLogIn;
 import 'package:solidui/solidui.dart';
 
 import 'app_scaffold.dart';
@@ -86,9 +87,18 @@ class _StartupPreloader extends StatefulWidget {
 }
 
 class _StartupPreloaderState extends State<_StartupPreloader> {
+  Timer? _sessionVerifyTimer;
+  bool _isInvalid = false;
+
   @override
   void initState() {
     super.initState();
+    // debugPrint(
+    //   '_SessionVerifier: initState() called - starting session verification',
+    // );
+    _verifySessionInBackground();
+    // Start periodic session verification to detect logout
+    _startSessionVerification();
 
     // Preload all data on app startup (both guests and logged-in users)
     // This makes the map page feel instant when user navigates to it
@@ -96,6 +106,66 @@ class _StartupPreloaderState extends State<_StartupPreloader> {
       unawaited(preloadPlacesData());
       unawaited(preloadMapSettings());
     });
+  }
+
+  @override
+  void dispose() {
+    _sessionVerifyTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Starts periodic session verification.
+  void _startSessionVerification() {
+    _sessionVerifyTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => _verifySessionInBackground(),
+    );
+  }
+
+  /// Verifies session in background WITHOUT blocking UI.
+  Future<void> _verifySessionInBackground() async {
+    // Skip if already detected invalid session
+    if (_isInvalid) {
+      _sessionVerifyTimer?.cancel();
+      return;
+    }
+
+    try {
+      final webId = await getWebId();
+
+      if (webId == null || webId.isEmpty) {
+        await _handleFakeLogin();
+      } else {
+        // Session is valid - log it for debugging
+        // debugPrint('_SessionVerifier: Session verified - WebID present');
+      }
+    } catch (e) {
+      // debugPrint('_SessionVerifier: Error checking session: $e');
+      await _handleFakeLogin();
+    }
+  }
+
+  Future<void> _handleFakeLogin() async {
+    // Skip if already handling fake login
+    if (_isInvalid) {
+      return;
+    }
+
+    try {
+      await deleteLogIn();
+      // Clear all cached places when logging out
+      await PlacesService.clearCache();
+    } catch (e) {
+      // debugPrint('_handleFakeLogin: Error clearing session: $e');
+      // Continue anyway - we still need to update UI
+    }
+
+    if (mounted) {
+      setState(() {
+        _isInvalid = true;
+        _sessionVerifyTimer?.cancel();
+      });
+    }
   }
 
   @override

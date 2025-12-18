@@ -53,6 +53,8 @@ version=$(grep version ../pubspec.yaml | head -1 | cut -d ':' -f 2 | sed 's/ //g
 # gh api -H "Accept: application/vnd.github+json"   repos/${REP}/${APP}/actions/artifacts/3300608315/zip >| artifact.zip
 #
 # Need to get the correct artifact ID for each artefact.
+#
+# Temporarily ignore failed installer builds while macOS and iOS are integrated.
 
 if [[ "${status}" == "completed" ]]; then # && "${conclusion}" == "success" ]]; then
 

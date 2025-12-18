@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
+
 import 'package:flutter_map/flutter_map.dart';
 
 import 'package:geopod/services/gdelt_news_service.dart';

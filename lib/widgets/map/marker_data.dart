@@ -26,6 +26,7 @@
 library;
 
 import 'package:flutter/material.dart';
+
 import 'package:latlong2/latlong.dart';
 
 /// Data model for a map marker.

@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
+
 import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/models/place.dart';

@@ -26,6 +26,7 @@
 library;
 
 import 'package:flutter/material.dart';
+
 import 'package:solidui/solidui.dart';
 
 /// Widget shown when user is not logged in.

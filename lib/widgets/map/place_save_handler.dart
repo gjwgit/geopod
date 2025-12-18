@@ -12,9 +12,14 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:flutter_map/flutter_map.dart';
+import 'package:solidpod/solidpod.dart';
+
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart';
+import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/geomap.dart';
+import 'package:geopod/widgets/map/login_required_dialog.dart';
 
 /// Shows a saving snackbar for optimistic save.
 void showSavingSnackbar(BuildContext context, Place place) {
@@ -106,4 +111,41 @@ Future<Place?> performBackgroundSave(
   } else {
     throw Exception('WritePod failed');
   }
+}
+
+/// Shows the add place dialog and returns the result.
+/// Returns null if user is not logged in or cancels.
+Future<Place?> showAddPlaceDialogIfLoggedIn({
+  required BuildContext context,
+  double? latitude,
+  double? longitude,
+}) async {
+  final webId = await getWebId();
+  if (webId == null || webId.isEmpty) {
+    if (!context.mounted) return null;
+    await showLoginRequiredDialog(context);
+    return null;
+  }
+  if (!context.mounted) return null;
+  final result = await showDialog<AddPlaceResult>(
+    context: context,
+    builder: (_) => AddPlaceForm(
+      initialLatitude: latitude,
+      initialLongitude: longitude,
+      returnWidget: const GeoMapWidget(),
+    ),
+  );
+  return result?.place;
+}
+
+/// Zoom in the map by a fixed amount.
+void zoomIn(MapController mapController) {
+  final z = mapController.camera.zoom;
+  mapController.move(mapController.camera.center, (z + 0.6).clamp(3.0, 18.0));
+}
+
+/// Zoom out the map by a fixed amount.
+void zoomOut(MapController mapController) {
+  final z = mapController.camera.zoom;
+  mapController.move(mapController.camera.center, (z - 0.6).clamp(3.0, 18.0));
 }

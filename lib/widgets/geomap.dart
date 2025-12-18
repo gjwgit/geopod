@@ -26,11 +26,9 @@ import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesCacheManager, placesChangeNotifier;
-import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/map/delete_place_handler.dart';
 import 'package:geopod/widgets/map/geomap_core.dart';
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
-import 'package:geopod/widgets/map/login_required_dialog.dart';
 import 'package:geopod/widgets/map/map_floating_buttons.dart';
 import 'package:geopod/widgets/map/map_overlay_buttons.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
@@ -219,26 +217,13 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     savingPlaceIds: _savingPlaceIds,
   );
 
-  Future<void> _showAddPlaceDialog({
-    double? latitude,
-    double? longitude,
-  }) async {
-    final webId = await getWebId();
-    if (webId == null || webId.isEmpty) {
-      if (!mounted) return;
-      await showLoginRequiredDialog(context);
-      return;
-    }
-    if (!mounted) return;
-    final result = await showDialog<AddPlaceResult>(
+  Future<void> _showAddPlaceDialog({double? lat, double? lng}) async {
+    final place = await showAddPlaceDialogIfLoggedIn(
       context: context,
-      builder: (_) => AddPlaceForm(
-        initialLatitude: latitude,
-        initialLongitude: longitude,
-        returnWidget: const GeoMapWidget(),
-      ),
+      latitude: lat,
+      longitude: lng,
     );
-    if (result != null && mounted) _handleOptimisticSave(result.place);
+    if (place != null && mounted) _handleOptimisticSave(place);
   }
 
   void _handleOptimisticSave(Place p) {
@@ -273,31 +258,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     }
   }
 
-  void _onMapTap(TapPosition tp, LatLng ll) async {
-    final webId = await getWebId();
-    if (webId == null || webId.isEmpty) {
-      if (!mounted) return;
-      showLoginRequiredDialog(context);
-      return;
-    }
-    _showAddPlaceDialog(latitude: ll.latitude, longitude: ll.longitude);
-  }
-
-  void _zoomIn() {
-    final z = _mapController.camera.zoom;
-    _mapController.move(
-      _mapController.camera.center,
-      (z + 0.6).clamp(3.0, 18.0),
-    );
-  }
-
-  void _zoomOut() {
-    final z = _mapController.camera.zoom;
-    _mapController.move(
-      _mapController.camera.center,
-      (z - 0.6).clamp(3.0, 18.0),
-    );
-  }
+  void _onMapTap(TapPosition tp, LatLng ll) =>
+      _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude);
 
   void _toggleNewsMarkers() => _showNewsListDialogAsync();
 
@@ -407,10 +369,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             showNewsMarkers: _showNewsMarkers,
             visibleNewsMarkers: _getVisibleNewsMarkers(),
             onTap: _onMapTap,
-            onLongPress: (tp, ll) => _showAddPlaceDialog(
-              latitude: ll.latitude,
-              longitude: ll.longitude,
-            ),
+            onLongPress: (tp, ll) =>
+                _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude),
             onPositionChanged: _onMapPositionChanged,
             onDeletePlace: _confirmAndDeletePlace,
             context: context,
@@ -437,8 +397,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       ),
       floatingActionButton: MapFloatingButtons(
         isLoadingPlaces: _isLoadingPlaces,
-        onZoomIn: _zoomIn,
-        onZoomOut: _zoomOut,
+        onZoomIn: () => zoomIn(_mapController),
+        onZoomOut: () => zoomOut(_mapController),
         onRefresh: _loadAllPlaces,
       ),
     );

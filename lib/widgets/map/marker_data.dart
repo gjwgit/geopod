@@ -29,6 +29,9 @@ import 'package:flutter/material.dart';
 
 import 'package:latlong2/latlong.dart';
 
+import 'package:geopod/models/place.dart';
+import 'package:geopod/services/map_settings_service.dart';
+
 /// Data model for a map marker.
 class MarkerData {
   final LatLng position;
@@ -61,4 +64,31 @@ class MarkerData {
 
   String get coordinates =>
       '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+}
+
+/// Converts places to filtered marker data based on settings.
+List<MarkerData> buildFilteredMarkers({
+  required List<Place> allPlaces,
+  required MapSettings mapSettings,
+  required Set<String> savingPlaceIds,
+}) {
+  final visible = mapSettings.showLocalPlaces
+      ? allPlaces
+      : allPlaces.where((p) => !p.isLocal).toList();
+  return visible
+      .map(
+        (p) => MarkerData(
+          id: p.id,
+          position: LatLng(p.lat, p.lng),
+          title: p.displayTitle,
+          description: p.note,
+          address: p.address,
+          isLocal: p.isLocal,
+          isSaving: savingPlaceIds.contains(p.id),
+          color: p.isLocal
+              ? mapSettings.localPlacesColor
+              : mapSettings.userPlacesColor,
+        ),
+      )
+      .toList();
 }

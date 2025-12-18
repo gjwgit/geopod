@@ -12,7 +12,70 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:geopod/models/place.dart';
+import 'package:geopod/services/places_service.dart'
+    show PlacesService, PlacesCacheManager;
+import 'package:geopod/widgets/geomap.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
+
+/// Result of a delete operation.
+class DeletePlaceResult {
+  final bool success;
+  final int? removedIndex;
+  final Place? removedPlace;
+
+  const DeletePlaceResult({
+    required this.success,
+    this.removedIndex,
+    this.removedPlace,
+  });
+}
+
+/// Prepares a place for deletion by finding it in the list.
+DeletePlaceResult prepareDeletePlace({
+  required MarkerData marker,
+  required List<Place> allPlaces,
+}) {
+  final index = allPlaces.indexWhere((p) => p.id == marker.id);
+  if (index == -1) {
+    return const DeletePlaceResult(success: false);
+  }
+  return DeletePlaceResult(
+    success: true,
+    removedIndex: index,
+    removedPlace: allPlaces[index],
+  );
+}
+
+/// Restores a place after failed deletion.
+void restorePlace({
+  required List<Place> allPlaces,
+  required int originalIndex,
+  required Place removedPlace,
+}) {
+  if (originalIndex >= 0 && originalIndex <= allPlaces.length) {
+    allPlaces.insert(originalIndex, removedPlace);
+  } else {
+    allPlaces.add(removedPlace);
+  }
+}
+
+/// Updates cache after successful deletion.
+void updateCacheAfterDelete(List<Place> allPlaces) {
+  PlacesCacheManager().cacheAllPlaces(allPlaces);
+}
+
+/// Performs the delete operation on the server.
+Future<bool> performDeleteOnServer({
+  required String placeId,
+  required BuildContext context,
+}) async {
+  return await PlacesService.deletePlace(
+    placeId,
+    context,
+    const GeoMapWidget(),
+  );
+}
 
 /// Shows a confirmation dialog for deleting a place.
 Future<bool> showDeleteConfirmationDialog(

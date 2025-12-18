@@ -25,18 +25,17 @@ import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart'
-    show PlacesService, PlacesCacheManager, placesChangeNotifier;
+    show PlacesCacheManager, placesChangeNotifier;
 import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/map/delete_place_handler.dart';
+import 'package:geopod/widgets/map/geomap_core.dart';
+import 'package:geopod/widgets/map/geomap_state_logic.dart';
 import 'package:geopod/widgets/map/login_required_dialog.dart';
 import 'package:geopod/widgets/map/map_floating_buttons.dart';
 import 'package:geopod/widgets/map/map_overlay_buttons.dart';
-import 'package:geopod/widgets/map/map_tile_layer.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
-import 'package:geopod/widgets/map/news_marker_layer.dart';
 import 'package:geopod/widgets/map/news_operations.dart';
 import 'package:geopod/widgets/map/place_save_handler.dart';
-import 'package:geopod/widgets/map/places_marker_layer.dart';
 import 'package:geopod/widgets/map_settings_dialog.dart';
 
 class GeoMapWidget extends StatefulWidget {
@@ -135,18 +134,25 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     _isPostLoginRefresh = true;
     _initialAnimationComplete = false;
     setState(() => _isLoggedIn = true);
-    final places = await PlacesService.refreshPodDataOnly();
+    final places = await handleLoginStateChange(
+      wasLoggedIn: false,
+      isNowLoggedIn: true,
+    );
     if (mounted) setState(() => _allPlaces = places);
   }
 
   Future<void> _handleLogout() async {
-    await PlacesService.clearPodCacheOnly();
+    final places = await handleLoginStateChange(
+      wasLoggedIn: true,
+      isNowLoggedIn: false,
+    );
     if (!mounted) return;
     _isPostLoginRefresh = false;
     _initialAnimationComplete = false;
-    setState(() => _isLoggedIn = false);
-    final localPlaces = await PlacesService.loadLocalPlaces();
-    if (mounted) setState(() => _allPlaces = localPlaces);
+    setState(() {
+      _isLoggedIn = false;
+      _allPlaces = places;
+    });
   }
 
   void _loadSettingsSync() {
@@ -158,22 +164,17 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   Future<void> _verifyLoginStateAndLoadData() async {
-    final actuallyLoggedIn = await checkLoggedIn();
+    final result = await verifyLoginStateAndLoadData(
+      currentIsLoggedIn: _isLoggedIn,
+    );
     if (!mounted) return;
-    if (_isLoggedIn != actuallyLoggedIn) {
-      setState(() => _isLoggedIn = actuallyLoggedIn);
-      authStateNotifier.value = actuallyLoggedIn;
-      PlacesService.clearCache();
+    if (result.loginStateChanged) {
+      setState(() => _isLoggedIn = result.actuallyLoggedIn);
     }
-    final cm = PlacesCacheManager();
-    final cached = cm.allPlaces;
-    final cacheState = cm.wasLoggedInWhenCached;
-    if (cached != null && cacheState == _isLoggedIn) {
-      setState(() => _allPlaces = List.from(cached));
-    } else {
-      if (cached != null && cacheState != _isLoggedIn) {
-        PlacesService.clearCache();
-      }
+    if (result.places != null) {
+      setState(() => _allPlaces = result.places!);
+    }
+    if (result.needsRefresh) {
       await _loadAllPlaces(forceRefresh: true);
     }
   }
@@ -200,9 +201,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     final cm = PlacesCacheManager();
     if (cm.allPlaces == null) setState(() => _isLoadingPlaces = true);
     try {
-      final places = await PlacesService.fetchPlaces(
-        forceRefresh: forceRefresh,
-      );
+      final places = await loadAllPlaces(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _allPlaces = List.from(places);
@@ -214,27 +213,11 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     }
   }
 
-  List<MarkerData> get _filteredMarkers {
-    final visible = _mapSettings.showLocalPlaces
-        ? _allPlaces
-        : _allPlaces.where((p) => !p.isLocal).toList();
-    return visible
-        .map(
-          (p) => MarkerData(
-            id: p.id,
-            position: LatLng(p.lat, p.lng),
-            title: p.displayTitle,
-            description: p.note,
-            address: p.address,
-            isLocal: p.isLocal,
-            isSaving: _savingPlaceIds.contains(p.id),
-            color: p.isLocal
-                ? _mapSettings.localPlacesColor
-                : _mapSettings.userPlacesColor,
-          ),
-        )
-        .toList();
-  }
+  List<MarkerData> get _filteredMarkers => buildFilteredMarkers(
+    allPlaces: _allPlaces,
+    mapSettings: _mapSettings,
+    savingPlaceIds: _savingPlaceIds,
+  );
 
   Future<void> _showAddPlaceDialog({
     double? latitude,
@@ -377,32 +360,30 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   Future<void> _confirmAndDeletePlace(MarkerData m) async {
     final confirmed = await showDeleteConfirmationDialog(context, m);
     if (!confirmed || !mounted) return;
-    final ri = _allPlaces.indexWhere((p) => p.id == m.id);
-    if (ri == -1) {
+    final prep = prepareDeletePlace(marker: m, allPlaces: _allPlaces);
+    if (!prep.success) {
       if (mounted) showPlaceNotFoundSnackbar(context);
       return;
     }
-    final rp = _allPlaces[ri];
-    setState(() => _allPlaces.removeAt(ri));
+    setState(() => _allPlaces.removeAt(prep.removedIndex!));
     if (!mounted) return;
     showDeletingSnackbar(context);
-    final success = await PlacesService.deletePlace(
-      m.id,
-      context,
-      const GeoMapWidget(),
+    final success = await performDeleteOnServer(
+      placeId: m.id,
+      context: context,
     );
     if (!mounted) return;
     if (success) {
-      PlacesCacheManager().cacheAllPlaces(_allPlaces);
+      updateCacheAfterDelete(_allPlaces);
       showDeleteSuccessSnackbar(context);
     } else {
-      setState(() {
-        if (ri >= 0 && ri <= _allPlaces.length) {
-          _allPlaces.insert(ri, rp);
-        } else {
-          _allPlaces.add(rp);
-        }
-      });
+      setState(
+        () => restorePlace(
+          allPlaces: _allPlaces,
+          originalIndex: prep.removedIndex!,
+          removedPlace: prep.removedPlace!,
+        ),
+      );
       showDeleteErrorSnackbar(context);
     }
   }
@@ -415,53 +396,26 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     return Scaffold(
       body: Stack(
         children: [
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: const LatLng(-12.46, 130.84),
-                initialZoom: 13.0,
-                minZoom: 3.0,
-                maxZoom: 18.0,
-                onTap: _onMapTap,
-                onLongPress: (tp, ll) => _showAddPlaceDialog(
-                  latitude: ll.latitude,
-                  longitude: ll.longitude,
-                ),
-                onPositionChanged: _onMapPositionChanged,
-              ),
-              children: [
-                buildMapTileLayer(
-                  mapSettings: _mapSettings,
-                  tileProvider: _tileProvider,
-                  applyFilter: applyFilter,
-                ),
-                buildPlacesMarkerLayer(
-                  context: context,
-                  markers: _filteredMarkers,
-                  shouldAnimate:
-                      !_initialAnimationComplete || _isPostLoginRefresh,
-                  onDelete: _confirmAndDeletePlace,
-                ),
-                if (_showNewsMarkers)
-                  buildNewsMarkerLayer(
-                    context: context,
-                    newsMarkers: _getVisibleNewsMarkers(),
-                  ),
-              ],
+          buildFlutterMapWidget(
+            mapController: _mapController,
+            fadeAnimation: _fadeAnimation,
+            mapSettings: _mapSettings,
+            tileProvider: _tileProvider,
+            applyFilter: applyFilter,
+            filteredMarkers: _filteredMarkers,
+            shouldAnimate: !_initialAnimationComplete || _isPostLoginRefresh,
+            showNewsMarkers: _showNewsMarkers,
+            visibleNewsMarkers: _getVisibleNewsMarkers(),
+            onTap: _onMapTap,
+            onLongPress: (tp, ll) => _showAddPlaceDialog(
+              latitude: ll.latitude,
+              longitude: ll.longitude,
             ),
+            onPositionChanged: _onMapPositionChanged,
+            onDeletePlace: _confirmAndDeletePlace,
+            context: context,
           ),
-          if (_isLoadingPlaces)
-            const Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: LinearProgressIndicator(
-                backgroundColor: Colors.transparent,
-                color: Colors.green,
-              ),
-            ),
+          buildLoadingIndicator(isLoading: _isLoadingPlaces),
           AddPlaceOverlayButton(
             isLoading: _isLoadingPlaces,
             isLoggedIn: _isLoggedIn,

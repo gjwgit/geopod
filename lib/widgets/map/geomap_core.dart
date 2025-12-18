@@ -38,14 +38,16 @@ Widget buildFlutterMapWidget({
   required void Function(MapCamera, bool) onPositionChanged,
   required void Function(MarkerData) onDeletePlace,
   required BuildContext context,
+  required LatLng initialCenter,
+  required double initialZoom,
 }) {
   return FadeTransition(
     opacity: fadeAnimation,
     child: FlutterMap(
       mapController: mapController,
       options: MapOptions(
-        initialCenter: const LatLng(-12.46, 130.84),
-        initialZoom: 13.0,
+        initialCenter: initialCenter,
+        initialZoom: initialZoom,
         minZoom: 3.0,
         maxZoom: 18.0,
         onTap: onTap,

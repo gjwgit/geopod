@@ -34,6 +34,18 @@ const String _keyShowLocalPlaces = 'map_show_local_places';
 const String _keyUserPlacesColor = 'map_user_places_color';
 const String _keyLocalPlacesColor = 'map_local_places_color';
 const String _keyMapSource = 'map_source';
+const String _keyRememberViewport = 'map_remember_viewport';
+const String _keyInitialLat = 'map_initial_lat';
+const String _keyInitialLng = 'map_initial_lng';
+const String _keyInitialZoom = 'map_initial_zoom';
+const String _keyLastLat = 'map_last_lat';
+const String _keyLastLng = 'map_last_lng';
+const String _keyLastZoom = 'map_last_zoom';
+
+/// Default viewport settings (Darwin centered).
+const double defaultInitialLat = -12.4634;
+const double defaultInitialLng = 130.8456;
+const double defaultInitialZoom = 11.0;
 
 /// Default colors for map markers.
 const Color defaultUserColor = Colors.blue;
@@ -202,10 +214,26 @@ class MapSettings {
   /// Current map tile source.
   final MapSource mapSource;
 
+  /// Whether to remember the last viewed viewport on restart.
+  final bool rememberViewport;
+
+  /// Initial viewport latitude (used when rememberViewport is off).
+  final double initialLat;
+
+  /// Initial viewport longitude (used when rememberViewport is off).
+  final double initialLng;
+
+  /// Initial viewport zoom level (used when rememberViewport is off).
+  final double initialZoom;
+
   const MapSettings({
     this.showLocalPlaces = true,
     this.userPlacesColor = defaultUserColor,
     this.localPlacesColor = defaultLocalColor,
+    this.rememberViewport = true,
+    this.initialLat = defaultInitialLat,
+    this.initialLng = defaultInitialLng,
+    this.initialZoom = defaultInitialZoom,
     MapSource? mapSource,
   }) : mapSource = mapSource ?? MapSource.openStreetMap;
 
@@ -222,12 +250,20 @@ class MapSettings {
     Color? userPlacesColor,
     Color? localPlacesColor,
     MapSource? mapSource,
+    bool? rememberViewport,
+    double? initialLat,
+    double? initialLng,
+    double? initialZoom,
   }) {
     return MapSettings(
       showLocalPlaces: showLocalPlaces ?? this.showLocalPlaces,
       userPlacesColor: userPlacesColor ?? this.userPlacesColor,
       localPlacesColor: localPlacesColor ?? this.localPlacesColor,
       mapSource: mapSource ?? this.mapSource,
+      rememberViewport: rememberViewport ?? this.rememberViewport,
+      initialLat: initialLat ?? this.initialLat,
+      initialLng: initialLng ?? this.initialLng,
+      initialZoom: initialZoom ?? this.initialZoom,
     );
   }
 }
@@ -242,6 +278,11 @@ class MapSettingsService {
       final showLocal = prefs.getBool(_keyShowLocalPlaces) ?? true;
       final userColorValue = prefs.getInt(_keyUserPlacesColor);
       final localColorValue = prefs.getInt(_keyLocalPlacesColor);
+      final rememberViewport = prefs.getBool(_keyRememberViewport) ?? true;
+      final initialLat = prefs.getDouble(_keyInitialLat) ?? defaultInitialLat;
+      final initialLng = prefs.getDouble(_keyInitialLng) ?? defaultInitialLng;
+      final initialZoom =
+          prefs.getDouble(_keyInitialZoom) ?? defaultInitialZoom;
 
       // Load saved map source, or use time-based default
       final savedSourceIndex = prefs.getInt(_keyMapSource);
@@ -261,6 +302,10 @@ class MapSettingsService {
             ? Color(localColorValue)
             : defaultLocalColor,
         mapSource: mapSource,
+        rememberViewport: rememberViewport,
+        initialLat: initialLat,
+        initialLng: initialLng,
+        initialZoom: initialZoom,
       );
     } catch (_) {
       return MapSettings(mapSource: MapSettings.getDefaultMapSource());
@@ -282,11 +327,65 @@ class MapSettingsService {
         settings.localPlacesColor.toARGB32(),
       );
       await prefs.setInt(_keyMapSource, settings.mapSource.index);
+      await prefs.setBool(_keyRememberViewport, settings.rememberViewport);
+      await prefs.setDouble(_keyInitialLat, settings.initialLat);
+      await prefs.setDouble(_keyInitialLng, settings.initialLng);
+      await prefs.setDouble(_keyInitialZoom, settings.initialZoom);
 
       return true;
     } catch (_) {
       return false;
     }
+  }
+
+  /// Saves the last viewed viewport position.
+  static Future<bool> saveLastViewport({
+    required double lat,
+    required double lng,
+    required double zoom,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_keyLastLat, lat);
+      await prefs.setDouble(_keyLastLng, lng);
+      await prefs.setDouble(_keyLastZoom, zoom);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Loads the last viewed viewport position.
+  static Future<ViewportPosition?> loadLastViewport() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lat = prefs.getDouble(_keyLastLat);
+      final lng = prefs.getDouble(_keyLastLng);
+      final zoom = prefs.getDouble(_keyLastZoom);
+      if (lat != null && lng != null && zoom != null) {
+        return ViewportPosition(lat: lat, lng: lng, zoom: zoom);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Gets the initial viewport based on settings.
+  /// If rememberViewport is ON, returns last viewport if available.
+  /// Otherwise returns the configured initial viewport.
+  static Future<ViewportPosition> getStartupViewport(
+    MapSettings settings,
+  ) async {
+    if (settings.rememberViewport) {
+      final last = await loadLastViewport();
+      if (last != null) return last;
+    }
+    return ViewportPosition(
+      lat: settings.initialLat,
+      lng: settings.initialLng,
+      zoom: settings.initialZoom,
+    );
   }
 
   /// Resets all settings to defaults.
@@ -297,11 +396,31 @@ class MapSettingsService {
       await prefs.remove(_keyUserPlacesColor);
       await prefs.remove(_keyLocalPlacesColor);
       await prefs.remove(_keyMapSource);
+      await prefs.remove(_keyRememberViewport);
+      await prefs.remove(_keyInitialLat);
+      await prefs.remove(_keyInitialLng);
+      await prefs.remove(_keyInitialZoom);
+      await prefs.remove(_keyLastLat);
+      await prefs.remove(_keyLastLng);
+      await prefs.remove(_keyLastZoom);
       return true;
     } catch (_) {
       return false;
     }
   }
+}
+
+/// Represents a map viewport position (center + zoom).
+class ViewportPosition {
+  final double lat;
+  final double lng;
+  final double zoom;
+
+  const ViewportPosition({
+    required this.lat,
+    required this.lng,
+    required this.zoom,
+  });
 }
 
 /// Preloads map settings in the background to warm up cache.

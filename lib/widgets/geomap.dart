@@ -61,6 +61,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   List<NewsMarker> _newsMarkers = [];
   bool _showNewsMarkers = false;
   bool _isLoadingNews = false;
+  LatLng _initialCenter = const LatLng(defaultInitialLat, defaultInitialLng);
+  double _initialZoom = defaultInitialZoom;
+  bool _viewportInitialized = false;
 
   @override
   void initState() {
@@ -94,12 +97,26 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
   @override
   void dispose() {
+    _saveCurrentViewport();
     _animationController.dispose();
     _newsService.dispose();
     authStateNotifier.removeListener(_onAuthStateChanged);
     placesChangeNotifier.removeListener(_onPlacesChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Saves current viewport position if rememberViewport is enabled.
+  void _saveCurrentViewport() {
+    if (_mapSettings.rememberViewport) {
+      final center = _mapController.camera.center;
+      final zoom = _mapController.camera.zoom;
+      MapSettingsService.saveLastViewport(
+        lat: center.latitude,
+        lng: center.longitude,
+        zoom: zoom,
+      );
+    }
   }
 
   void _onPlacesChanged() {
@@ -111,6 +128,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
       setState(() => _tileProvider = NetworkTileProvider());
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _saveCurrentViewport();
     }
   }
 
@@ -155,8 +175,22 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
   void _loadSettingsSync() {
     MapSettingsService.loadSettings()
-        .then((s) {
-          if (mounted) setState(() => _mapSettings = s);
+        .then((s) async {
+          if (!mounted) return;
+          setState(() => _mapSettings = s);
+          // Load startup viewport after settings are loaded
+          if (!_viewportInitialized) {
+            final viewport = await MapSettingsService.getStartupViewport(s);
+            if (mounted) {
+              setState(() {
+                _initialCenter = LatLng(viewport.lat, viewport.lng);
+                _initialZoom = viewport.zoom;
+                _viewportInitialized = true;
+              });
+              // Move map to the loaded viewport
+              _mapController.move(_initialCenter, _initialZoom);
+            }
+          }
         })
         .catchError((_) {});
   }
@@ -374,6 +408,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             onPositionChanged: _onMapPositionChanged,
             onDeletePlace: _confirmAndDeletePlace,
             context: context,
+            initialCenter: _initialCenter,
+            initialZoom: _initialZoom,
           ),
           buildLoadingIndicator(isLoading: _isLoadingPlaces),
           AddPlaceOverlayButton(

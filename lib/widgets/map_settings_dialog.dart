@@ -60,6 +60,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late Color _userPlacesColor;
   late Color _localPlacesColor;
   late MapSource _mapSource;
+  late bool _rememberViewport;
+  late double _initialLat;
+  late double _initialLng;
+  late double _initialZoom;
 
   @override
   void initState() {
@@ -68,6 +72,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     _userPlacesColor = widget.currentSettings.userPlacesColor;
     _localPlacesColor = widget.currentSettings.localPlacesColor;
     _mapSource = widget.currentSettings.mapSource;
+    _rememberViewport = widget.currentSettings.rememberViewport;
+    _initialLat = widget.currentSettings.initialLat;
+    _initialLng = widget.currentSettings.initialLng;
+    _initialZoom = widget.currentSettings.initialZoom;
   }
 
   /// Saves current settings and notifies parent.
@@ -77,6 +85,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
       userPlacesColor: _userPlacesColor,
       localPlacesColor: _localPlacesColor,
       mapSource: _mapSource,
+      rememberViewport: _rememberViewport,
+      initialLat: _initialLat,
+      initialLng: _initialLng,
+      initialZoom: _initialZoom,
     );
 
     // Save to SharedPreferences.
@@ -151,6 +163,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
       _userPlacesColor = defaultUserColor;
       _localPlacesColor = defaultLocalColor;
       _mapSource = MapSettings.getDefaultMapSource();
+      _rememberViewport = true;
+      _initialLat = defaultInitialLat;
+      _initialLng = defaultInitialLng;
+      _initialZoom = defaultInitialZoom;
     });
     _saveAndNotify();
   }
@@ -193,6 +209,47 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 color: _showLocalPlaces ? Colors.green : Colors.grey,
               ),
             ),
+            const Divider(height: 32),
+
+            // Viewport Settings
+            const Text(
+              'Viewport',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Remember Viewport'),
+              subtitle: const Text('Resume from last viewed position'),
+              value: _rememberViewport,
+              onChanged: (value) {
+                setState(() => _rememberViewport = value);
+                _saveAndNotify();
+              },
+              secondary: Icon(
+                _rememberViewport ? Icons.restore : Icons.home,
+                color: _rememberViewport ? Colors.blue : Colors.grey,
+              ),
+            ),
+            if (!_rememberViewport) ...[
+              const SizedBox(height: 12),
+              _InitialViewportSelector(
+                lat: _initialLat,
+                lng: _initialLng,
+                zoom: _initialZoom,
+                onChanged: (lat, lng, zoom) {
+                  setState(() {
+                    _initialLat = lat;
+                    _initialLng = lng;
+                    _initialZoom = zoom;
+                  });
+                  _saveAndNotify();
+                },
+              ),
+            ],
             const Divider(height: 32),
 
             // Map Source Selection
@@ -429,6 +486,94 @@ class _ColorPickerTile extends StatelessWidget {
             Icon(Icons.edit, color: Colors.grey.shade400, size: 20),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Predefined viewport presets for quick selection.
+enum ViewportPreset {
+  australia('Australia', -25.2744, 133.7751, 4.0),
+  sydney('Sydney', -33.8688, 151.2093, 11.0),
+  melbourne('Melbourne', -37.8136, 144.9631, 11.0),
+  brisbane('Brisbane', -27.4698, 153.0251, 11.0),
+  perth('Perth', -31.9505, 115.8605, 11.0),
+  adelaide('Adelaide', -34.9285, 138.6007, 11.0),
+  darwin('Darwin', -12.4634, 130.8456, 11.0),
+  hobart('Hobart', -42.8821, 147.3272, 11.0),
+  canberra('Canberra', -35.2809, 149.1300, 11.0);
+
+  const ViewportPreset(this.displayName, this.lat, this.lng, this.zoom);
+
+  final String displayName;
+  final double lat;
+  final double lng;
+  final double zoom;
+}
+
+/// Widget for selecting initial viewport location.
+class _InitialViewportSelector extends StatelessWidget {
+  const _InitialViewportSelector({
+    required this.lat,
+    required this.lng,
+    required this.zoom,
+    required this.onChanged,
+  });
+
+  final double lat;
+  final double lng;
+  final double zoom;
+  final void Function(double lat, double lng, double zoom) onChanged;
+
+  String get _currentLocationName {
+    // Find matching preset
+    for (final preset in ViewportPreset.values) {
+      if ((preset.lat - lat).abs() < 0.01 &&
+          (preset.lng - lng).abs() < 0.01 &&
+          (preset.zoom - zoom).abs() < 0.5) {
+        return preset.displayName;
+      }
+    }
+    return 'Custom (${lat.toStringAsFixed(2)}, ${lng.toStringAsFixed(2)})';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: DropdownButton<ViewportPreset?>(
+        value: null,
+        hint: Row(
+          children: [
+            Icon(Icons.my_location, size: 20, color: Colors.grey.shade700),
+            const SizedBox(width: 12),
+            Text(_currentLocationName),
+          ],
+        ),
+        isExpanded: true,
+        underline: const SizedBox(),
+        icon: const Icon(Icons.arrow_drop_down),
+        items: ViewportPreset.values.map((preset) {
+          return DropdownMenuItem<ViewportPreset>(
+            value: preset,
+            child: Row(
+              children: [
+                Icon(Icons.place, size: 20, color: Colors.grey.shade700),
+                const SizedBox(width: 12),
+                Text(preset.displayName),
+              ],
+            ),
+          );
+        }).toList(),
+        onChanged: (ViewportPreset? preset) {
+          if (preset != null) {
+            onChanged(preset.lat, preset.lng, preset.zoom);
+          }
+        },
       ),
     );
   }

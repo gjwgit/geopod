@@ -64,6 +64,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   LatLng _initialCenter = const LatLng(defaultInitialLat, defaultInitialLng);
   double _initialZoom = defaultInitialZoom;
   bool _viewportInitialized = false;
+  // Track last position to avoid unnecessary cache updates
+  LatLng? _lastNewsUpdatePosition;
+  double? _lastNewsUpdateZoom;
 
   @override
   void initState() {
@@ -317,7 +320,43 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   void _onMapPositionChanged(MapCamera pos, bool gesture) {
-    if (_showNewsMarkers && gesture) _updateNewsFromCache();
+    if (_showNewsMarkers && gesture) {
+      // Only update if position/zoom changed significantly
+      if (_shouldUpdateNewsCache(pos.center, pos.zoom)) {
+        _updateNewsFromCache();
+      }
+    }
+  }
+
+  /// Check if news cache should be updated based on position change
+  bool _shouldUpdateNewsCache(LatLng newPosition, double newZoom) {
+    // First time or no previous position
+    if (_lastNewsUpdatePosition == null || _lastNewsUpdateZoom == null) {
+      _lastNewsUpdatePosition = newPosition;
+      _lastNewsUpdateZoom = newZoom;
+      return true;
+    }
+
+    // Calculate position change in degrees
+    final latDiff = (newPosition.latitude - _lastNewsUpdatePosition!.latitude).abs();
+    final lngDiff = (newPosition.longitude - _lastNewsUpdatePosition!.longitude).abs();
+    final zoomDiff = (newZoom - _lastNewsUpdateZoom!).abs();
+
+    // Thresholds: ~1km movement or 1 zoom level change
+    // At zoom 12, 0.01 degrees ≈ 1.1 km
+    const positionThreshold = 0.01;
+    const zoomThreshold = 1.0;
+
+    final shouldUpdate = latDiff > positionThreshold ||
+        lngDiff > positionThreshold ||
+        zoomDiff > zoomThreshold;
+
+    if (shouldUpdate) {
+      _lastNewsUpdatePosition = newPosition;
+      _lastNewsUpdateZoom = newZoom;
+    }
+
+    return shouldUpdate;
   }
 
   void _updateNewsFromCache() {

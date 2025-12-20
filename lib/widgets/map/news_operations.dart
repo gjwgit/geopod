@@ -72,12 +72,12 @@ void updateNewsFromCacheForBounds({
 }) {
   final bounds = mapController.camera.visibleBounds;
   final cached = newsService.getMarkersInBounds(bounds);
-  
+
   // Always update visible markers from cache
   if (cached.isNotEmpty) {
     setMarkers(cached);
   }
-  
+
   // Only fetch new data if significantly outside cached bounds
   // This prevents unnecessary fetches during small movements
   if (!newsService.isBoundsCovered(bounds)) {
@@ -98,7 +98,7 @@ Future<void> fetchNewsForBounds({
   final bounds = mapController.camera.visibleBounds;
   final currentMarkers = newsService.getMarkersInBounds(bounds);
   updateState(currentMarkers, true);
-  
+
   try {
     final nm = await newsService.fetchNews(
       bounds: bounds,

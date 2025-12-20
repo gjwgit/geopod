@@ -338,8 +338,10 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     }
 
     // Calculate position change in degrees
-    final latDiff = (newPosition.latitude - _lastNewsUpdatePosition!.latitude).abs();
-    final lngDiff = (newPosition.longitude - _lastNewsUpdatePosition!.longitude).abs();
+    final latDiff = (newPosition.latitude - _lastNewsUpdatePosition!.latitude)
+        .abs();
+    final lngDiff = (newPosition.longitude - _lastNewsUpdatePosition!.longitude)
+        .abs();
     final zoomDiff = (newZoom - _lastNewsUpdateZoom!).abs();
 
     // Thresholds: ~1km movement or 1 zoom level change
@@ -347,7 +349,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     const positionThreshold = 0.01;
     const zoomThreshold = 1.0;
 
-    final shouldUpdate = latDiff > positionThreshold ||
+    final shouldUpdate =
+        latDiff > positionThreshold ||
         lngDiff > positionThreshold ||
         zoomDiff > zoomThreshold;
 

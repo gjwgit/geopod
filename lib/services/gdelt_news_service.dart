@@ -266,10 +266,22 @@ class GdeltNewsService {
     final viewLngRange = bounds.east - bounds.west;
 
     // Calculate overlap
-    final overlapSouth = bounds.south.clamp(_cachedBounds!.south, _cachedBounds!.north);
-    final overlapNorth = bounds.north.clamp(_cachedBounds!.south, _cachedBounds!.north);
-    final overlapWest = bounds.west.clamp(_cachedBounds!.west, _cachedBounds!.east);
-    final overlapEast = bounds.east.clamp(_cachedBounds!.west, _cachedBounds!.east);
+    final overlapSouth = bounds.south.clamp(
+      _cachedBounds!.south,
+      _cachedBounds!.north,
+    );
+    final overlapNorth = bounds.north.clamp(
+      _cachedBounds!.south,
+      _cachedBounds!.north,
+    );
+    final overlapWest = bounds.west.clamp(
+      _cachedBounds!.west,
+      _cachedBounds!.east,
+    );
+    final overlapEast = bounds.east.clamp(
+      _cachedBounds!.west,
+      _cachedBounds!.east,
+    );
 
     final overlapLatRange = (overlapNorth - overlapSouth).abs();
     final overlapLngRange = (overlapEast - overlapWest).abs();

@@ -68,6 +68,19 @@ flutter_launcher_icons:
     generate: true
     icon_size: 48 # min:48, max:256, default: 48
 
+# dependency_overrides:
+#   solidpod:
+#     git:
+#       url: https://github.com/lambadajester50-byte/solidpod.git
+#       ref: dev
+#   solid_auth:
+#     git:
+#       url: https://github.com/lambadajester50-byte/solid_auth.git
+#       ref: dev
+#   solidui:
+#     git:
+#       url: https://github.com/lambadajester50-byte/solidui.git
+#       ref: dev
 dependency_overrides:
   solidpod:
     git:
@@ -81,5 +94,4 @@ dependency_overrides:
     git:
       url: https://github.com/lambadajester50-byte/solidui.git
       ref: dev
-
   

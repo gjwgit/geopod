@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "GeoPod"
-#define MyAppVersion "dev-windows-inno"
+#define MyAppVersion "windows-inno"
 #define MyAppPublisher "ANU Software Innovation Institute"
 #define MyAppURL "https://github.com/anusii/geopod
 #define MyAppExeName "geopod.exe"

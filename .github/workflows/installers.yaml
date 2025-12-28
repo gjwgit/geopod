@@ -327,6 +327,10 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      - name: Display OS Information
+        run: |
+          system_profiler SPSoftwareDataType
+
       - name: Clone Repository
         uses: actions/checkout@v4
 

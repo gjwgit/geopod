@@ -27,7 +27,7 @@ dependencies:
   latlong2: ^0.9.1
   shared_preferences: ^2.3.3
   solidpod: ^0.8.7
-  solidui: ^0.0.19
+  solidui: 0.0.18
   uuid: ^4.5.1
   web: ^1.1.0
   window_manager: ^0.5.0

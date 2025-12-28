@@ -342,7 +342,7 @@ jobs:
         run: flutter pub get
 
       - name: Enable macOS desktop
-        run: flutter config --enable-macos-desktop
+        run: flutter create --platforms=windows,macos,linux .
 
       - name: Build Flutter macOS app
         run: flutter build macos --release

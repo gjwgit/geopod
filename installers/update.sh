@@ -38,21 +38,27 @@ conclusion=$(gh run view ${bumpId} --json conclusion --jq '.conclusion')
 
 version=$(grep version ../pubspec.yaml | head -1 | cut -d ':' -f 2 | sed 's/ //g' | sed 's/+.*//')
 
-# Only proceed if the latest action hase been completed successfully
-
-# 20250611 gjw Currently failing:
+# Only proceed if the latest action hase been completed
+# successfully. Each artifact whic is downloaded as a zip file
+# conatins a single file/installer.
 #
-# gh run download ${bumpId} --name ${APP}-linux-zip
-# error downloading ${APP}-linux-zip: would result in path traversal
+# 20250611 gjw I used `gh` to download the artifact but that started
+# failing:
 #
-# I was then manually downloading through browser, unzip and move
-# here, then run this script.
+#     gh run download ${bumpId} --name ${APP}-linux-zip
+#     error downloading ${APP}-linux-zip: would result in path traversal
 #
-# But this should work as an alternative:
+# I could manually download through the browser, unzip, and then move
+# it here to then run this script. But this is now working as an
+# alternative:
 #
-# gh api -H "Accept: application/vnd.github+json"   repos/${REP}/${APP}/actions/artifacts/3300608315/zip >| artifact.zip
+#     gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/3300608315/zip >| artifact.zip
 #
-# Need to get the correct artifact ID for each artefact.
+# We need to get the correct artifact ID for each artefact.
+#
+# 20251230 gjw The timestamp from the artifact is UTC which I cahnge
+# to current date/time in my timezone for consistency as the release
+# time, using `touch`.
 
 if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
 
@@ -62,6 +68,8 @@ if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
 
     echo '***** UPLOAD LINUX DEB'
 
+    TARGET="${APP}_amd64.deb"
+
     ## gh run download ${bumpId} --name ${APP}-linux-deb
 
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
@@ -70,17 +78,20 @@ if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
     gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
     unzip artifact.zip
     fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-    touch ${fname} # Timestamp with current date/time as the release time.
+    touch ${fname} # ${APP}_${version}_amd64.deb
     rm -f artifact.zip
 
     echo ${DEST}
 
-    rsync -avzh ${fname} ${DEST}/${APP}_amd64.deb
+    rsync -avzh ${fname} ${DEST}/${TARGET}
+    ssh ${HOST} "cd ${FLDR}; chmod a+r ${TARGET}"
     mv -f ${fname} ARCHIVE/
 
     echo ""
 
     echo '***** UPLOAD LINUX SNAP'
+
+    TARGET="${APP}_amd64.snap"
 
     ## gh run download ${bumpId} --name ${APP}-linux-snap
 
@@ -91,12 +102,12 @@ if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
     gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
     unzip artifact.zip
     fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-    touch ${fname} # Timestamp with current date/time
+    touch ${fname} # ${APP}_${version}_amd64.snap
     rm -f artifact.zip
 
-    rsync -avzh ${APP}_${version}_amd64.snap ${DEST}/${APP}_amd64.snap
-    mv -f ${APP}_${version}_amd64.snap ARCHIVE/${APP}_${version}_amd64.snap
-    ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}_amd64.snap"
+    rsync -avzh ${fname} ${DEST}/${TARGET}
+    ssh ${HOST} "cd ${FLDR}; chmod a+r ${TARGET}"
+    mv -f ${fname} ARCHIVE/
 
     echo ""
 

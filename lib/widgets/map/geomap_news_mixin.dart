@@ -1,6 +1,6 @@
 /// News-related state and methods mixin for GeoMapWidget.
 ///
-// Time-stamp: <Wednesday 2025-12-31 +1100 Graham Williams>
+// Time-stamp: <2025-12-31 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///

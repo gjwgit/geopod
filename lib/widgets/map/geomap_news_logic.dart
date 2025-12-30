@@ -1,6 +1,6 @@
 /// News-related logic for GeoMapWidget.
 ///
-// Time-stamp: <Wednesday 2025-12-18 08:22:27 +1100 Graham Williams>
+// Time-stamp: <2025-12-31 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///

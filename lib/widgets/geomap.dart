@@ -27,9 +27,11 @@ import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesCacheManager, placesChangeNotifier;
-import 'package:geopod/widgets/map/delete_place_handler.dart';
 import 'package:geopod/widgets/map/geomap_core.dart';
+import 'package:geopod/widgets/map/geomap_news_logic.dart';
+import 'package:geopod/widgets/map/geomap_place_handlers.dart';
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
+import 'package:geopod/widgets/map/geomap_viewport_logic.dart';
 import 'package:geopod/widgets/map/map_floating_buttons.dart';
 import 'package:geopod/widgets/map/map_overlay_buttons.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
@@ -112,15 +114,10 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
   /// Saves current viewport position if rememberViewport is enabled.
   void _saveCurrentViewport() {
-    if (_mapSettings.rememberViewport) {
-      final center = _mapController.camera.center;
-      final zoom = _mapController.camera.zoom;
-      MapSettingsService.saveLastViewport(
-        lat: center.latitude,
-        lng: center.longitude,
-        zoom: zoom,
-      );
-    }
+    saveCurrentViewport(
+      mapController: _mapController,
+      mapSettings: _mapSettings,
+    );
   }
 
   void _onPlacesChanged() {
@@ -227,14 +224,10 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             if (changed) {
               _tileProvider = CancellableNetworkTileProvider();
               // Adjust zoom level if current zoom exceeds new map source's max
-              final currentZoom = _mapController.camera.zoom;
-              final maxNativeZoom = ns.mapSource.maxNativeZoom.toDouble();
-              if (currentZoom > maxNativeZoom) {
-                _mapController.move(
-                  _mapController.camera.center,
-                  maxNativeZoom,
-                );
-              }
+              adjustZoomForMapSource(
+                mapController: _mapController,
+                mapSettings: ns,
+              );
             }
           });
         },
@@ -276,35 +269,24 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   void _handleOptimisticSave(Place p) {
-    setState(() {
-      _allPlaces.insert(0, p);
-      _savingPlaceIds.add(p.id);
-    });
-    showSavingSnackbar(context, p);
-    unawaited(_performBackgroundSave(p));
+    handleOptimisticPlaceSave(
+      place: p,
+      allPlaces: _allPlaces,
+      savingPlaceIds: _savingPlaceIds,
+      context: context,
+      setState: setState,
+      performBackgroundSave: _performBackgroundSave,
+    );
   }
 
   Future<void> _performBackgroundSave(Place op) async {
-    try {
-      final up = await performBackgroundSave(op, context);
-      if (!mounted) return;
-      if (up != null) {
-        setState(() {
-          final i = _allPlaces.indexWhere((x) => x.id == op.id);
-          if (i != -1) _allPlaces[i] = up;
-          _savingPlaceIds.remove(op.id);
-        });
-        PlacesCacheManager().cacheAllPlaces(_allPlaces);
-        showSaveSuccessSnackbar(context);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _allPlaces.removeWhere((x) => x.id == op.id);
-        _savingPlaceIds.remove(op.id);
-      });
-      showSaveErrorSnackbar(context, e);
-    }
+    await performPlaceBackgroundSave(
+      originalPlace: op,
+      context: context,
+      allPlaces: _allPlaces,
+      savingPlaceIds: _savingPlaceIds,
+      setState: setState,
+    );
   }
 
   void _onMapTap(TapPosition tp, LatLng ll) =>
@@ -342,36 +324,19 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
   /// Check if news cache should be updated based on position change
   bool _shouldUpdateNewsCache(LatLng newPosition, double newZoom) {
-    // First time or no previous position
-    if (_lastNewsUpdatePosition == null || _lastNewsUpdateZoom == null) {
-      _lastNewsUpdatePosition = newPosition;
-      _lastNewsUpdateZoom = newZoom;
-      return true;
-    }
+    final result = shouldUpdateNewsCache(
+      newPosition: newPosition,
+      newZoom: newZoom,
+      lastPosition: _lastNewsUpdatePosition,
+      lastZoom: _lastNewsUpdateZoom,
+    );
 
-    // Calculate position change in degrees
-    final latDiff = (newPosition.latitude - _lastNewsUpdatePosition!.latitude)
-        .abs();
-    final lngDiff = (newPosition.longitude - _lastNewsUpdatePosition!.longitude)
-        .abs();
-    final zoomDiff = (newZoom - _lastNewsUpdateZoom!).abs();
-
-    // Thresholds: ~1km movement or 1 zoom level change
-    // At zoom 12, 0.01 degrees ≈ 1.1 km
-    const positionThreshold = 0.01;
-    const zoomThreshold = 1.0;
-
-    final shouldUpdate =
-        latDiff > positionThreshold ||
-        lngDiff > positionThreshold ||
-        zoomDiff > zoomThreshold;
-
-    if (shouldUpdate) {
+    if (result) {
       _lastNewsUpdatePosition = newPosition;
       _lastNewsUpdateZoom = newZoom;
     }
 
-    return shouldUpdate;
+    return result;
   }
 
   void _updateNewsFromCache() {
@@ -408,34 +373,12 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   );
 
   Future<void> _confirmAndDeletePlace(MarkerData m) async {
-    final confirmed = await showDeleteConfirmationDialog(context, m);
-    if (!confirmed || !mounted) return;
-    final prep = prepareDeletePlace(marker: m, allPlaces: _allPlaces);
-    if (!prep.success) {
-      if (mounted) showPlaceNotFoundSnackbar(context);
-      return;
-    }
-    setState(() => _allPlaces.removeAt(prep.removedIndex!));
-    if (!mounted) return;
-    showDeletingSnackbar(context);
-    final success = await performDeleteOnServer(
-      placeId: m.id,
+    await confirmAndDeletePlace(
+      marker: m,
       context: context,
+      allPlaces: _allPlaces,
+      setState: setState,
     );
-    if (!mounted) return;
-    if (success) {
-      updateCacheAfterDelete(_allPlaces);
-      showDeleteSuccessSnackbar(context);
-    } else {
-      setState(
-        () => restorePlace(
-          allPlaces: _allPlaces,
-          originalIndex: prep.removedIndex!,
-          removedPlace: prep.removedPlace!,
-        ),
-      );
-      showDeleteErrorSnackbar(context);
-    }
   }
 
   @override

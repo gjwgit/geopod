@@ -2,7 +2,7 @@
 #
 # Generic Makefile
 #
-# Time-stamp: <Sunday 2025-12-28 21:15:38 +1100 Graham Williams>
+# Time-stamp: <Tuesday 2025-12-30 11:23:46 +1100 Graham Williams>
 #
 # Copyright (c) Graham.Williams@togaware.com
 #
@@ -161,6 +161,7 @@ upload:
 
 .PHONY: debin
 debin:
+	@echo '***** LOCAL INSTALL DEB'
 	wajig install installers/ARCHIVE/$(APP)_$(VER)_amd64.deb
 
 .PHONY: ginstall

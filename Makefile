@@ -2,7 +2,7 @@
 #
 # Generic Makefile
 #
-# Time-stamp: <Friday 2025-10-17 10:13:43 +1100 Graham Williams>
+# Time-stamp: <Tuesday 2025-12-30 11:23:46 +1100 Graham Williams>
 #
 # Copyright (c) Graham.Williams@togaware.com
 #
@@ -119,6 +119,10 @@ appbundle::
 	mv -f installers/$(APP)-*.aab installers/ARCHIVE/
 	rm -f installers/$(APP).aab
 
+# 20251226 gjw This has been moved into the installers github workflow
+# but is retained here for convenience to build a deb locally and
+# install it, often for a quick testing cycle.
+
 deb:
 	@echo "Build $(APP) version $(VER)"
 	(cd installers; make $@)
@@ -151,5 +155,27 @@ sinstall:
 # /usr/bin/rattle. This is working so add deb into the install and now
 # utilise that for the default install on my machine.
 
-ginstall: deb apk appbundle prod
-	(cd installers; make $@)
+.PHONY: upload
+upload:
+	(cd installers; make ginstall)
+
+.PHONY: debin
+debin:
+	@echo '***** LOCAL INSTALL DEB'
+	wajig install installers/ARCHIVE/$(APP)_$(VER)_amd64.deb
+
+.PHONY: ginstall
+ginstall: upload debin prod apk appbundle
+
+.PHONY: ginfo
+ginfo:
+	@bumpId=$$(gh run list --limit 100 --json databaseId,displayTitle,workflowName \
+		| jq -r '.[] | select(.workflowName | startswith("Build Installers")) | select(.displayTitle | startswith("Bump version")) | .databaseId' \
+		| head -n 1); \
+	if [ -n "$$bumpId" ]; then \
+		echo "Bump ID: $$bumpId"; \
+		gh run view "$$bumpId"; \
+		gh run view "$$bumpId" --json status,conclusion; \
+	else \
+		echo "No bump ID found."; \
+	fi

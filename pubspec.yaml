@@ -1,7 +1,7 @@
 name: geopod
 description: "Map interface to Solid Server Data Vault Pods."
 publish_to: 'none'
-version: 0.0.6+9
+version: 0.0.6+12
 
 environment:
   sdk: ^3.10.0
@@ -68,19 +68,6 @@ flutter_launcher_icons:
     generate: true
     icon_size: 48 # min:48, max:256, default: 48
 
-# dependency_overrides:
-#   solidpod:
-#     git:
-#       url: https://github.com/lambadajester50-byte/solidpod.git
-#       ref: dev
-#   solid_auth:
-#     git:
-#       url: https://github.com/lambadajester50-byte/solid_auth.git
-#       ref: dev
-#   solidui:
-#     git:
-#       url: https://github.com/lambadajester50-byte/solidui.git
-#       ref: dev
 dependency_overrides:
   solidpod:
     git:

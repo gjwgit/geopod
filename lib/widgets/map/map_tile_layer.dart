@@ -58,7 +58,7 @@ Widget buildMapTileLayer({
       tileProvider: tileProvider,
       evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
       keepBuffer: 1,
-      panBuffer: 0,
+      panBuffer: 1,
       maxZoom: 19,
       maxNativeZoom: mapSettings.mapSource.maxNativeZoom,
       tileSize: 256,

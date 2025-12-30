@@ -28,14 +28,13 @@ import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesCacheManager, placesChangeNotifier;
 import 'package:geopod/widgets/map/geomap_core.dart';
-import 'package:geopod/widgets/map/geomap_news_logic.dart';
+import 'package:geopod/widgets/map/geomap_news_mixin.dart';
 import 'package:geopod/widgets/map/geomap_place_handlers.dart';
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
 import 'package:geopod/widgets/map/geomap_viewport_logic.dart';
 import 'package:geopod/widgets/map/map_floating_buttons.dart';
 import 'package:geopod/widgets/map/map_overlay_buttons.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
-import 'package:geopod/widgets/map/news_operations.dart';
 import 'package:geopod/widgets/map/place_save_handler.dart';
 import 'package:geopod/widgets/map_settings_dialog.dart';
 
@@ -46,8 +45,12 @@ class GeoMapWidget extends StatefulWidget {
 }
 
 class GeoMapWidgetState extends State<GeoMapWidget>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  final MapController _mapController = MapController();
+    with
+        SingleTickerProviderStateMixin,
+        WidgetsBindingObserver,
+        GeoMapNewsMixin {
+  @override
+  final MapController mapController = MapController();
   TileProvider _tileProvider = CancellableNetworkTileProvider();
   List<Place> _allPlaces = [];
   final Set<String> _savingPlaceIds = {};
@@ -60,16 +63,17 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   late Animation<double> _fadeAnimation;
   bool _initialAnimationComplete = false;
   bool _isPostLoginRefresh = false;
-  final GdeltNewsService _newsService = GdeltNewsService();
-  List<NewsMarker> _newsMarkers = [];
-  bool _showNewsMarkers = false;
-  bool _isLoadingNews = false;
+  @override
+  final GdeltNewsService newsService = GdeltNewsService();
+  @override
+  List<NewsMarker> newsMarkers = [];
+  @override
+  bool showNewsMarkers = false;
+  @override
+  bool isLoadingNews = false;
   LatLng _initialCenter = const LatLng(defaultInitialLat, defaultInitialLng);
   double _initialZoom = defaultInitialZoom;
   bool _viewportInitialized = false;
-  // Track last position to avoid unnecessary cache updates
-  LatLng? _lastNewsUpdatePosition;
-  double? _lastNewsUpdateZoom;
 
   @override
   void initState() {
@@ -105,7 +109,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   void dispose() {
     _saveCurrentViewport();
     _animationController.dispose();
-    _newsService.dispose();
+    newsService.dispose();
     authStateNotifier.removeListener(_onAuthStateChanged);
     placesChangeNotifier.removeListener(_onPlacesChanged);
     WidgetsBinding.instance.removeObserver(this);
@@ -115,7 +119,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   /// Saves current viewport position if rememberViewport is enabled.
   void _saveCurrentViewport() {
     saveCurrentViewport(
-      mapController: _mapController,
+      mapController: mapController,
       mapSettings: _mapSettings,
     );
   }
@@ -189,7 +193,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                 _viewportInitialized = true;
               });
               // Move map to the loaded viewport
-              _mapController.move(_initialCenter, _initialZoom);
+              mapController.move(_initialCenter, _initialZoom);
             }
           }
         })
@@ -225,7 +229,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
               _tileProvider = CancellableNetworkTileProvider();
               // Adjust zoom level if current zoom exceeds new map source's max
               adjustZoomForMapSource(
-                mapController: _mapController,
+                mapController: mapController,
                 mapSettings: ns,
               );
             }
@@ -292,85 +296,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   void _onMapTap(TapPosition tp, LatLng ll) =>
       _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude);
 
-  void _toggleNewsMarkers() => _showNewsListDialogAsync();
-
-  Future<void> _showNewsListDialogAsync() async {
-    if (!mounted) return;
-    await showNewsListDialogAsync(
-      context: context,
-      mapController: _mapController,
-      newsService: _newsService,
-      getVisibleMarkers: _getVisibleNewsMarkers,
-      updateState: (m, l, s) {
-        if (mounted) {
-          setState(() {
-            _newsMarkers = m;
-            _isLoadingNews = l;
-            _showNewsMarkers = s;
-          });
-        }
-      },
-    );
-  }
-
   void _onMapPositionChanged(MapCamera pos, bool gesture) {
-    if (_showNewsMarkers && gesture) {
-      // Only update if position/zoom changed significantly
-      if (_shouldUpdateNewsCache(pos.center, pos.zoom)) {
-        _updateNewsFromCache();
-      }
-    }
+    onMapPositionChangedForNews(pos, gesture);
   }
-
-  /// Check if news cache should be updated based on position change
-  bool _shouldUpdateNewsCache(LatLng newPosition, double newZoom) {
-    final result = shouldUpdateNewsCache(
-      newPosition: newPosition,
-      newZoom: newZoom,
-      lastPosition: _lastNewsUpdatePosition,
-      lastZoom: _lastNewsUpdateZoom,
-    );
-
-    if (result) {
-      _lastNewsUpdatePosition = newPosition;
-      _lastNewsUpdateZoom = newZoom;
-    }
-
-    return result;
-  }
-
-  void _updateNewsFromCache() {
-    if (!mounted) return;
-    updateNewsFromCacheForBounds(
-      mapController: _mapController,
-      newsService: _newsService,
-      setMarkers: (m) => setState(() => _newsMarkers = m),
-      fetchForCurrentBounds: _fetchNewsForCurrentBounds,
-    );
-  }
-
-  Future<void> _fetchNewsForCurrentBounds() async {
-    if (!mounted) return;
-    await fetchNewsForBounds(
-      context: context,
-      mapController: _mapController,
-      newsService: _newsService,
-      updateState: (m, l) {
-        if (mounted) {
-          setState(() {
-            _newsMarkers = m;
-            _isLoadingNews = l;
-          });
-        }
-      },
-    );
-  }
-
-  List<NewsMarker> _getVisibleNewsMarkers() => getVisibleNewsInBounds(
-    mapController: _mapController,
-    newsMarkers: _newsMarkers,
-    showNews: _showNewsMarkers,
-  );
 
   Future<void> _confirmAndDeletePlace(MarkerData m) async {
     await confirmAndDeletePlace(
@@ -390,15 +318,15 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       body: Stack(
         children: [
           buildFlutterMapWidget(
-            mapController: _mapController,
+            mapController: mapController,
             fadeAnimation: _fadeAnimation,
             mapSettings: _mapSettings,
             tileProvider: _tileProvider,
             applyFilter: applyFilter,
             filteredMarkers: _filteredMarkers,
             shouldAnimate: !_initialAnimationComplete || _isPostLoginRefresh,
-            showNewsMarkers: _showNewsMarkers,
-            visibleNewsMarkers: _getVisibleNewsMarkers(),
+            showNewsMarkers: showNewsMarkers,
+            visibleNewsMarkers: getVisibleNewsMarkersImpl(),
             onTap: _onMapTap,
             onLongPress: (tp, ll) =>
                 _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude),
@@ -421,17 +349,17 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             },
           ),
           NewsOverlayButton(
-            isLoadingNews: _isLoadingNews,
-            showNewsMarkers: _showNewsMarkers,
-            visibleNewsCount: _getVisibleNewsMarkers().length,
-            onTap: _toggleNewsMarkers,
+            isLoadingNews: isLoadingNews,
+            showNewsMarkers: showNewsMarkers,
+            visibleNewsCount: getVisibleNewsMarkersImpl().length,
+            onTap: toggleNewsMarkers,
           ),
         ],
       ),
       floatingActionButton: MapFloatingButtons(
         isLoadingPlaces: _isLoadingPlaces,
-        onZoomIn: () => zoomIn(_mapController),
-        onZoomOut: () => zoomOut(_mapController),
+        onZoomIn: () => zoomIn(mapController),
+        onZoomOut: () => zoomOut(mapController),
         onRefresh: _loadAllPlaces,
       ),
     );

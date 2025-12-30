@@ -62,9 +62,7 @@ class _FilesPageState extends State<FilesPage> {
   @override
   Widget build(BuildContext context) {
     if (_isChecking) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (!_isLoggedIn) {

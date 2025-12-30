@@ -40,16 +40,19 @@ Widget buildFlutterMapWidget({
   required BuildContext context,
   required LatLng initialCenter,
   required double initialZoom,
+  double? maxZoom,
 }) {
   return FadeTransition(
     opacity: fadeAnimation,
     child: FlutterMap(
+      // Use key to force rebuild when map source changes (different maxZoom)
+      key: ValueKey('map_${mapSettings.mapSource.name}'),
       mapController: mapController,
       options: MapOptions(
         initialCenter: initialCenter,
         initialZoom: initialZoom,
         minZoom: 3.0,
-        maxZoom: 18.0,
+        maxZoom: maxZoom ?? mapSettings.mapSource.maxNativeZoom.toDouble(),
         onTap: onTap,
         onLongPress: onLongPress,
         onPositionChanged: onPositionChanged,

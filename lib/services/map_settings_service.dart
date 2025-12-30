@@ -198,6 +198,29 @@ extension MapSourceExtension on MapSource {
     return this == MapSource.cartoDarkMatter ||
         this == MapSource.stadiaAlidadeSmoothDark;
   }
+
+  /// Returns the maximum native zoom level for this map source.
+  /// Beyond this level, tiles are upscaled from the max available.
+  int get maxNativeZoom {
+    switch (this) {
+      case MapSource.openStreetMap:
+        return 19;
+      case MapSource.cartoVoyager:
+      case MapSource.cartoDarkMatter:
+        return 20;
+      case MapSource.stadiaAlidadeSmoothDark:
+      case MapSource.stamenTerrain:
+        return 16; // Stadia maps max zoom
+      case MapSource.esriWorldStreetMap:
+        return 19;
+      case MapSource.esriWorldImagery:
+        return 17; // Esri satellite max native zoom is 17
+      case MapSource.esriWorldTopo:
+        return 18;
+      case MapSource.cyclOSM:
+        return 18;
+    }
+  }
 }
 
 /// Data class holding all map display settings.

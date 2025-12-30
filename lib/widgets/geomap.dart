@@ -17,6 +17,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
@@ -45,7 +46,7 @@ class GeoMapWidget extends StatefulWidget {
 class GeoMapWidgetState extends State<GeoMapWidget>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final MapController _mapController = MapController();
-  TileProvider _tileProvider = NetworkTileProvider();
+  TileProvider _tileProvider = CancellableNetworkTileProvider();
   List<Place> _allPlaces = [];
   final Set<String> _savingPlaceIds = {};
   bool _isLoadingPlaces = false;
@@ -130,7 +131,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      setState(() => _tileProvider = NetworkTileProvider());
+      setState(() => _tileProvider = CancellableNetworkTileProvider());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _saveCurrentViewport();
@@ -223,7 +224,18 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           setState(() {
             final changed = _mapSettings.mapSource != ns.mapSource;
             _mapSettings = ns;
-            if (changed) _tileProvider = NetworkTileProvider();
+            if (changed) {
+              _tileProvider = CancellableNetworkTileProvider();
+              // Adjust zoom level if current zoom exceeds new map source's max
+              final currentZoom = _mapController.camera.zoom;
+              final maxNativeZoom = ns.mapSource.maxNativeZoom.toDouble();
+              if (currentZoom > maxNativeZoom) {
+                _mapController.move(
+                  _mapController.camera.center,
+                  maxNativeZoom,
+                );
+              }
+            }
           });
         },
       ),

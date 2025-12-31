@@ -15,8 +15,8 @@ import 'package:flutter/material.dart';
 import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/models/place.dart';
-import 'package:geopod/services/places_service_v2.dart'
-    show PlacesServiceV2, PlacesCacheManager, placesChangeNotifierV2;
+import 'package:geopod/services/places_service.dart'
+    show PlacesService, PlacesCacheManager, placesChangeNotifier;
 import 'package:geopod/widgets/locations/edit_place_dialog.dart';
 import 'package:geopod/widgets/locations/import_operations.dart';
 import 'package:geopod/widgets/locations/locations_page_header.dart';
@@ -60,7 +60,7 @@ class _LocationsPageState extends State<LocationsPage> {
       }
     }
     authStateNotifier.addListener(_onAuthStateChanged);
-    placesChangeNotifierV2.addListener(_onPlacesChanged);
+    placesChangeNotifier.addListener(_onPlacesChanged);
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _verifyLoginAndRefresh(),
     );
@@ -86,7 +86,7 @@ class _LocationsPageState extends State<LocationsPage> {
           _loadPlaces(forceRefresh: false);
         }
       } else {
-        PlacesServiceV2.clearCache();
+        PlacesService.clearCache();
         setState(() {
           _places = [];
           _hasLoadedOnce = false;
@@ -114,7 +114,7 @@ class _LocationsPageState extends State<LocationsPage> {
   @override
   void dispose() {
     authStateNotifier.removeListener(_onAuthStateChanged);
-    placesChangeNotifierV2.removeListener(_onPlacesChanged);
+    placesChangeNotifier.removeListener(_onPlacesChanged);
     super.dispose();
   }
 
@@ -135,7 +135,7 @@ class _LocationsPageState extends State<LocationsPage> {
   }
 
   Future<void> _handleLogout() async {
-    await PlacesServiceV2.clearCache();
+    await PlacesService.clearCache();
     if (mounted) {
       setState(() {
         _isLoggedIn = false;
@@ -151,7 +151,7 @@ class _LocationsPageState extends State<LocationsPage> {
       _errorMessage = null;
     });
     try {
-      final places = await PlacesServiceV2.fetchPlaces(
+      final places = await PlacesService.fetchPlaces(
         forceRefresh: forceRefresh,
       );
       if (mounted) {
@@ -180,7 +180,7 @@ class _LocationsPageState extends State<LocationsPage> {
       }
       return;
     }
-    final success = await PlacesServiceV2.exportPlaces(_places);
+    final success = await PlacesService.exportPlaces(_places);
     if (!mounted) return;
     showExportResultSnackbar(context, success, _userPlaces.length);
   }
@@ -236,7 +236,7 @@ class _LocationsPageState extends State<LocationsPage> {
       }
     });
     showUpdatingPlaceSnackbar(context, coordsChanged);
-    final success = await PlacesServiceV2.updatePlace(
+    final success = await PlacesService.updatePlace(
       result,
       context,
       const LocationsPage(),

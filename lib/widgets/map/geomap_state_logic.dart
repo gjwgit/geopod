@@ -13,8 +13,8 @@ library;
 import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/models/place.dart';
-import 'package:geopod/services/places_service_v2.dart'
-    show PlacesServiceV2, PlacesCacheManager;
+import 'package:geopod/services/places_service.dart'
+    show PlacesService, PlacesCacheManager;
 
 /// Handles login state change.
 Future<List<Place>> handleLoginStateChange({
@@ -22,10 +22,10 @@ Future<List<Place>> handleLoginStateChange({
   required bool isNowLoggedIn,
 }) async {
   if (isNowLoggedIn && !wasLoggedIn) {
-    return await PlacesServiceV2.refreshPodDataOnly();
+    return await PlacesService.refreshPodDataOnly();
   } else if (!isNowLoggedIn && wasLoggedIn) {
-    await PlacesServiceV2.clearPodCacheOnly();
-    return await PlacesServiceV2.loadLocalPlaces();
+    await PlacesService.clearPodCacheOnly();
+    return await PlacesService.loadLocalPlaces();
   }
   return [];
 }
@@ -39,7 +39,7 @@ Future<VerifyLoginResult> verifyLoginStateAndLoadData({
 
   if (loginStateChanged) {
     authStateNotifier.value = actuallyLoggedIn;
-    PlacesServiceV2.clearCache();
+    PlacesService.clearCache();
   }
 
   final cm = PlacesCacheManager();
@@ -53,7 +53,7 @@ Future<VerifyLoginResult> verifyLoginStateAndLoadData({
     places = List.from(cached);
   } else {
     if (cached != null && cacheState != actuallyLoggedIn) {
-      PlacesServiceV2.clearCache();
+      PlacesService.clearCache();
     }
     needsRefresh = true;
   }
@@ -83,5 +83,5 @@ class VerifyLoginResult {
 
 /// Loads all places with optional force refresh.
 Future<List<Place>> loadAllPlaces({bool forceRefresh = false}) async {
-  return await PlacesServiceV2.fetchPlaces(forceRefresh: forceRefresh);
+  return await PlacesService.fetchPlaces(forceRefresh: forceRefresh);
 }

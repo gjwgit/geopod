@@ -12,7 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:geopod/services/places_service_v2.dart';
+import 'package:geopod/services/places_service.dart';
 import 'package:geopod/widgets/locations/import_format_dialog.dart';
 import 'package:geopod/widgets/locations/import_preview_dialog.dart';
 import 'package:geopod/widgets/locations_page.dart';
@@ -162,7 +162,7 @@ Future<bool> performImportFlow(
   );
   if (confirmed != true) return false;
 
-  final result = await PlacesServiceV2.importPlaces();
+  final result = await PlacesService.importPlaces();
   if (result.cancelled) return false;
 
   if (!context.mounted) return false;
@@ -196,7 +196,7 @@ Future<bool> performImportFlow(
   );
   showImportingProgressDialog(context, progress);
 
-  final success = await PlacesServiceV2.mergeImportedPlaces(
+  final success = await PlacesService.mergeImportedPlaces(
     edited,
     context,
     const LocationsPage(),

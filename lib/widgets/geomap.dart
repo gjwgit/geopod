@@ -25,8 +25,8 @@ import 'package:solidui/solidui.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
-import 'package:geopod/services/places_service_v2.dart'
-    show PlacesCacheManager, placesChangeNotifierV2;
+import 'package:geopod/services/places_service.dart'
+    show PlacesCacheManager, placesChangeNotifier;
 import 'package:geopod/widgets/map/geomap_core.dart';
 import 'package:geopod/widgets/map/geomap_news_mixin.dart';
 import 'package:geopod/widgets/map/geomap_place_handlers.dart';
@@ -96,7 +96,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     });
     _isLoggedIn = AuthDataManager.isLoggedInSync();
     authStateNotifier.addListener(_onAuthStateChanged);
-    placesChangeNotifierV2.addListener(_onPlacesChanged);
+    placesChangeNotifier.addListener(_onPlacesChanged);
     _loadSettingsSync();
     _verifyLoginStateAndLoadData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -111,7 +111,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     _animationController.dispose();
     newsService.dispose();
     authStateNotifier.removeListener(_onAuthStateChanged);
-    placesChangeNotifierV2.removeListener(_onPlacesChanged);
+    placesChangeNotifier.removeListener(_onPlacesChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

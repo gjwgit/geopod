@@ -31,7 +31,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
-import 'package:geopod/services/places_service.dart';
+import 'package:geopod/services/places_service_v2.dart';
 
 /// Result returned from AddPlaceForm containing the place data.
 /// Used for optimistic updates - the Place is returned immediately

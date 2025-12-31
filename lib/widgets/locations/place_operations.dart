@@ -12,7 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:geopod/services/places_service.dart';
+import 'package:geopod/services/places_service_v2.dart';
 import 'package:geopod/widgets/locations_page.dart';
 
 /// Shows delete confirmation dialog.
@@ -86,7 +86,7 @@ Future<bool> deletePlaceWithFeedback(BuildContext context, Place place) async {
       duration: Duration(seconds: 1),
     ),
   );
-  final success = await PlacesService.deletePlace(
+  final success = await PlacesServiceV2.deletePlaceById(
     place.id,
     context,
     const LocationsPage(),
@@ -118,7 +118,7 @@ Future<bool> clearAllPlacesWithFeedback(BuildContext context, int count) async {
       duration: Duration(seconds: 1),
     ),
   );
-  final success = await PlacesService.clearAllPlaces(
+  final success = await PlacesServiceV2.clearAllPlaces(
     context,
     const LocationsPage(),
   );

@@ -16,7 +16,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
-import 'package:geopod/services/places_service.dart';
+import 'package:geopod/services/places_service_v2.dart';
 import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/geomap.dart';
 import 'package:geopod/widgets/map/login_required_dialog.dart';
@@ -101,7 +101,7 @@ Future<Place?> performBackgroundSave(
     address: address,
   );
   if (!context.mounted) return null;
-  final success = await PlacesService.addPlace(
+  final success = await PlacesServiceV2.addPlace(
     updatedPlace,
     context,
     const GeoMapWidget(),

@@ -15,6 +15,8 @@ https://pods.dev.solidcommunity.au/.oidc/token
 # Example POD URLs that are protected resources
 
 https://pods.solidcommunity.au/my-moviestar/profile/card#me
+https://user.solidcommunity.net/
+https://pod.server/
 
 # POD server base URL - has temporary availability issues.
 

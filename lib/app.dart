@@ -34,7 +34,7 @@ import 'package:solidui/solidui.dart';
 import 'app_scaffold.dart';
 import 'constants/app.dart';
 import 'services/map_settings_service.dart';
-import 'services/places_service.dart';
+import 'services/places_service_v2.dart';
 
 /// The root application widget.
 ///
@@ -48,7 +48,7 @@ class App extends StatelessWidget {
     // This is called once at app startup to ensure caches are cleared
     // BEFORE any blocking network operations during logout
     registerLogoutCacheCallback(() async {
-      await PlacesService.clearCache();
+      await PlacesServiceV2.clearCache();
       // Note: MapSettings are user preferences, not user data,
       // so we don't clear them during logout
     });
@@ -92,7 +92,7 @@ class _StartupPreloaderState extends State<_StartupPreloader> {
     // Preload all data on app startup (both guests and logged-in users)
     // This makes the map page feel instant when user navigates to it
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(preloadPlacesData());
+      unawaited(preloadPlacesDataV2());
       unawaited(preloadMapSettings());
     });
   }
@@ -123,7 +123,7 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
     // Trigger preload when this widget is mounted
     // This covers the case when user clicks Continue button
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(preloadPlacesData());
+      unawaited(preloadPlacesDataV2());
       unawaited(preloadMapSettings());
     });
   }

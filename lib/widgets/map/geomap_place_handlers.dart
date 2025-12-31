@@ -17,7 +17,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:geopod/models/place.dart';
-import 'package:geopod/services/places_service.dart' show PlacesCacheManager;
+import 'package:geopod/services/places_service_v2.dart' show PlacesCacheManager;
 import 'package:geopod/widgets/map/delete_place_handler.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 import 'package:geopod/widgets/map/place_save_handler.dart';

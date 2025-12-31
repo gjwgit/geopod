@@ -29,15 +29,14 @@ class FilesPage extends StatefulWidget {
 
 class _FilesPageState extends State<FilesPage> {
   bool _isLoggedIn = true;
+  bool _isChecking = true;
 
   @override
   void initState() {
     super.initState();
-    // 优先使用同步检查，避免初始化时的异步阻塞
-    _isLoggedIn = PodAuth.isLoggedInSync();
-
-    // 监听登录状态变化
+    _isLoggedIn = authStateNotifier.value;
     authStateNotifier.addListener(_onAuthStateChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkLoginStatus());
   }
 
   @override
@@ -53,8 +52,22 @@ class _FilesPageState extends State<FilesPage> {
     }
   }
 
+  Future<void> _checkLoginStatus() async {
+    final loggedIn = await PodAuth.isLoggedIn();
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = loggedIn;
+        _isChecking = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isChecking) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (!_isLoggedIn) {
       return Center(
         child: Column(

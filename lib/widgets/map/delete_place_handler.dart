@@ -13,8 +13,8 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:geopod/models/place.dart';
-import 'package:geopod/services/places_service.dart'
-    show PlacesService, PlacesCacheManager;
+import 'package:geopod/services/places_service_v2.dart'
+    show PlacesServiceV2, PlacesCacheManager;
 import 'package:geopod/widgets/geomap.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 
@@ -70,7 +70,7 @@ Future<bool> performDeleteOnServer({
   required String placeId,
   required BuildContext context,
 }) async {
-  return await PlacesService.deletePlace(
+  return await PlacesServiceV2.deletePlaceById(
     placeId,
     context,
     const GeoMapWidget(),

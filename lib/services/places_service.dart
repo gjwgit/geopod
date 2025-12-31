@@ -39,6 +39,7 @@ import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places/places_cache_manager.dart';
 import 'package:geopod/services/places/places_import_export.dart';
+import 'package:geopod/services/pod/pod_directory_service.dart';
 
 export 'package:geopod/models/place.dart';
 export 'package:geopod/services/places/places_cache_manager.dart';
@@ -272,6 +273,8 @@ class PlacesService {
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
+        // Notify file browser to update
+        PodDirectoryService.notifyChange();
       }
       return success;
     } catch (_) {
@@ -296,6 +299,8 @@ class PlacesService {
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
+        // Notify file browser to update
+        PodDirectoryService.notifyChange();
       }
       return success;
     } catch (_) {
@@ -344,6 +349,8 @@ class PlacesService {
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
+        // Notify file browser to update
+        PodDirectoryService.notifyChange();
       }
       return success;
     } catch (_) {
@@ -361,6 +368,8 @@ class PlacesService {
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
+        // Notify file browser to update
+        PodDirectoryService.notifyChange();
       }
       return success;
     } catch (_) {
@@ -406,6 +415,8 @@ class PlacesService {
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
+        // Notify file browser to update
+        PodDirectoryService.notifyChange();
       }
       return success;
     } catch (_) {

@@ -61,6 +61,21 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
     super.initState();
     _currentPath = widget.basePath;
     _loadDirectory();
+
+    // Listen for file system changes from other parts of the app
+    podFilesChangeNotifier.addListener(_onFilesChanged);
+  }
+
+  @override
+  void dispose() {
+    podFilesChangeNotifier.removeListener(_onFilesChanged);
+    super.dispose();
+  }
+
+  /// Called when files change elsewhere in the app.
+  void _onFilesChanged() {
+    // Force refresh the current directory
+    _refreshDirectory();
   }
 
   Future<void> _loadDirectory() async {

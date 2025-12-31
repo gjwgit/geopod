@@ -13,7 +13,7 @@
 
 library;
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 import 'package:http/http.dart' as http;
 
 import 'package:geopod/models/pod_file_item.dart';
@@ -22,12 +22,23 @@ import 'package:geopod/services/pod/pod.dart';
 /// Cache expiry duration.
 const Duration _cacheExpiry = Duration(minutes: 2);
 
+/// Notifier for file system changes.
+/// Increments when files are added, deleted, or modified.
+/// UI components can listen to this to refresh their views.
+final podFilesChangeNotifier = ValueNotifier<int>(0);
+
 /// Service for listing and managing POD directories.
 class PodDirectoryService {
   PodDirectoryService._();
 
   /// Directory cache: path -> (items, timestamp)
   static final Map<String, (List<PodFileItem>, DateTime)> _cache = {};
+
+  /// Notify listeners that the file system has changed.
+  static void notifyChange() {
+    podFilesChangeNotifier.value++;
+    debugPrint('PodDirectoryService: Notified file system change');
+  }
 
   /// Clear all cached data.
   static void clearCache() {
@@ -218,6 +229,7 @@ class PodDirectoryService {
     final success = await PodFileSystem.createDirectory(relativePath);
     if (success) {
       invalidateCache(relativePath);
+      notifyChange(); // Notify listeners
     }
     return success;
   }
@@ -231,6 +243,7 @@ class PodDirectoryService {
     if (success) {
       // Remove from cache immediately
       removeFromCache(relativePath);
+      notifyChange(); // Notify listeners
 
       // Also try to delete the ACL file (ignore errors)
       try {

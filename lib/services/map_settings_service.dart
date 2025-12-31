@@ -62,8 +62,8 @@ enum MapSource {
   /// CartoDB Dark Matter - Night-optimized dark map
   cartoDarkMatter,
 
-  /// Stadia Alidade Smooth Dark - Elegant dark map
-  stadiaAlidadeSmoothDark,
+  /// CartoDB Positron - Light grayscale map
+  cartoPositron,
 
   /// Esri World Street Map - Professional street map
   esriWorldStreetMap,
@@ -74,8 +74,8 @@ enum MapSource {
   /// Esri World Topo - Topographic map
   esriWorldTopo,
 
-  /// Stamen Terrain - Terrain map with hills shading
-  stamenTerrain,
+  /// OpenTopoMap - Free topographic map
+  openTopoMap,
 
   /// CyclOSM - Optimized for cycling
   cyclOSM,
@@ -92,16 +92,16 @@ extension MapSourceExtension on MapSource {
         return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
       case MapSource.cartoDarkMatter:
         return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-      case MapSource.stadiaAlidadeSmoothDark:
-        return 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png';
+      case MapSource.cartoPositron:
+        return 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
       case MapSource.esriWorldStreetMap:
         return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
       case MapSource.esriWorldImagery:
         return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       case MapSource.esriWorldTopo:
         return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
-      case MapSource.stamenTerrain:
-        return 'https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png';
+      case MapSource.openTopoMap:
+        return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
       case MapSource.cyclOSM:
         return 'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png';
     }
@@ -112,7 +112,9 @@ extension MapSourceExtension on MapSource {
     switch (this) {
       case MapSource.cartoVoyager:
       case MapSource.cartoDarkMatter:
+      case MapSource.cartoPositron:
         return ['a', 'b', 'c', 'd'];
+      case MapSource.openTopoMap:
       case MapSource.cyclOSM:
         return ['a', 'b', 'c'];
       default:
@@ -129,16 +131,16 @@ extension MapSourceExtension on MapSource {
         return 'CartoDB Voyager';
       case MapSource.cartoDarkMatter:
         return 'CartoDB Dark Matter';
-      case MapSource.stadiaAlidadeSmoothDark:
-        return 'Stadia Dark';
+      case MapSource.cartoPositron:
+        return 'CartoDB Positron';
       case MapSource.esriWorldStreetMap:
         return 'Esri Street Map';
       case MapSource.esriWorldImagery:
         return 'Esri Satellite';
       case MapSource.esriWorldTopo:
         return 'Esri Topographic';
-      case MapSource.stamenTerrain:
-        return 'Stamen Terrain';
+      case MapSource.openTopoMap:
+        return 'OpenTopoMap';
       case MapSource.cyclOSM:
         return 'CyclOSM';
     }
@@ -153,16 +155,16 @@ extension MapSourceExtension on MapSource {
         return 'Colorful and detailed';
       case MapSource.cartoDarkMatter:
         return 'Night-optimized dark theme';
-      case MapSource.stadiaAlidadeSmoothDark:
-        return 'Elegant dark with smooth labels';
+      case MapSource.cartoPositron:
+        return 'Light grayscale design';
       case MapSource.esriWorldStreetMap:
         return 'Professional street map';
       case MapSource.esriWorldImagery:
         return 'High-resolution satellite';
       case MapSource.esriWorldTopo:
         return 'Topographic with contours';
-      case MapSource.stamenTerrain:
-        return 'Terrain with hill shading';
+      case MapSource.openTopoMap:
+        return 'Free topographic map';
       case MapSource.cyclOSM:
         return 'Optimized for cycling';
     }
@@ -175,14 +177,14 @@ extension MapSourceExtension on MapSource {
       case MapSource.cartoVoyager:
       case MapSource.esriWorldStreetMap:
       case MapSource.cyclOSM:
+      case MapSource.cartoPositron:
         return Icons.map;
       case MapSource.cartoDarkMatter:
-      case MapSource.stadiaAlidadeSmoothDark:
         return Icons.dark_mode;
       case MapSource.esriWorldImagery:
         return Icons.satellite_alt;
       case MapSource.esriWorldTopo:
-      case MapSource.stamenTerrain:
+      case MapSource.openTopoMap:
         return Icons.terrain;
     }
   }
@@ -195,8 +197,7 @@ extension MapSourceExtension on MapSource {
   /// Whether this is a dark/night-optimized map source.
   /// Dark sources don't need color matrix filter in dark mode.
   bool get isDarkSource {
-    return this == MapSource.cartoDarkMatter ||
-        this == MapSource.stadiaAlidadeSmoothDark;
+    return this == MapSource.cartoDarkMatter;
   }
 
   /// Returns the maximum native zoom level for this map source.
@@ -207,16 +208,16 @@ extension MapSourceExtension on MapSource {
         return 19;
       case MapSource.cartoVoyager:
       case MapSource.cartoDarkMatter:
+      case MapSource.cartoPositron:
         return 20;
-      case MapSource.stadiaAlidadeSmoothDark:
-      case MapSource.stamenTerrain:
-        return 16; // Stadia maps max zoom
       case MapSource.esriWorldStreetMap:
         return 19;
       case MapSource.esriWorldImagery:
         return 17; // Esri satellite max native zoom is 17
       case MapSource.esriWorldTopo:
         return 18;
+      case MapSource.openTopoMap:
+        return 17; // OpenTopoMap max zoom is 17
       case MapSource.cyclOSM:
         return 18;
     }

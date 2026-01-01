@@ -469,6 +469,13 @@ class MapSettingsService {
     );
   }
 
+  /// Check if we have cached settings in SharedPreferences.
+  static Future<bool> _hasLocalCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Check if any setting key exists (mapSource is always saved)
+    return prefs.containsKey(_keyMapSource);
+  }
+
   /// Loads settings from SharedPreferences (fast, non-blocking).
   /// POD sync is done separately via syncFromPod().
   static Future<MapSettings> loadSettings() async {
@@ -478,6 +485,36 @@ class MapSettingsService {
       return await _loadFromPrefs();
     } catch (e) {
       debugPrint('Error loading settings: $e');
+      return MapSettings(mapSource: MapSettings.getDefaultMapSource());
+    }
+  }
+
+  /// Smart load: if no local cache, try POD first (for first login).
+  /// Otherwise load from local cache (fast).
+  static Future<MapSettings> loadSettingsSmart() async {
+    try {
+      // Check if we have local cache
+      if (await _hasLocalCache()) {
+        debugPrint('loadSettingsSmart: using local cache');
+        return await _loadFromPrefs();
+      }
+
+      // No local cache - try to load from POD first (first login scenario)
+      debugPrint('loadSettingsSmart: no local cache, trying POD...');
+      final podData = await _readFromPod();
+      if (podData != null) {
+        debugPrint('loadSettingsSmart: loaded from POD');
+        final settings = _settingsFromJson(podData);
+        // Save to local cache
+        await _saveToPrefs(settings);
+        return settings;
+      }
+
+      // POD also empty - use defaults
+      debugPrint('loadSettingsSmart: POD empty, using defaults');
+      return MapSettings(mapSource: MapSettings.getDefaultMapSource());
+    } catch (e) {
+      debugPrint('Error in loadSettingsSmart: $e');
       return MapSettings(mapSource: MapSettings.getDefaultMapSource());
     }
   }
@@ -568,9 +605,12 @@ class MapSettingsService {
       await prefs.remove(_keyLastLng);
       await prefs.remove(_keyLastZoom);
 
-      // Also clear POD settings in background
+      // Write default settings to POD (not empty object)
+      final defaultSettings = MapSettings(
+        mapSource: MapSettings.getDefaultMapSource(),
+      );
       unawaited(
-        _writeToPod({}).then((success) {
+        _writeToPod(_settingsToJson(defaultSettings)).then((success) {
           debugPrint('resetToDefaults: POD sync ${success ? 'ok' : 'failed'}');
         }),
       );
@@ -637,15 +677,28 @@ class ViewportPosition {
 
 /// Preloads map settings in the background to warm up cache.
 /// Call this on app startup to make settings instantly available.
-/// This is fire-and-forget - errors are silently ignored.
+/// Uses smart loading: if no local cache, loads from POD first.
 Future<void> preloadMapSettings() async {
   try {
-    // Fire preload without blocking caller
-    await MapSettingsService.loadSettings().catchError((_) {
+    // Smart load: if no local cache, try POD first
+    await MapSettingsService.loadSettingsSmart().catchError((_) {
       // Silently ignore preload errors - will use defaults
       return MapSettings(mapSource: MapSettings.getDefaultMapSource());
     });
   } catch (_) {
     // Silently ignore preload errors
+  }
+}
+
+/// Syncs settings from POD in background.
+/// Call this after preloadMapSettings() to keep settings in sync.
+/// Only needed when local cache exists (preloadMapSettings handles first login).
+Future<void> syncSettingsFromPod() async {
+  try {
+    // Small delay to let UI settle first
+    await Future.delayed(const Duration(seconds: 3));
+    await MapSettingsService.syncFromPod();
+  } catch (_) {
+    // Silently ignore sync errors
   }
 }

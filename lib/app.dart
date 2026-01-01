@@ -32,10 +32,11 @@ import 'package:solidpod/solidpod.dart' show registerLogoutCacheCallback;
 import 'package:solidui/solidui.dart';
 
 import 'app_scaffold.dart';
+
 import 'constants/app.dart';
+
 import 'services/map_settings_service.dart';
 import 'services/places_service.dart';
-import 'services/pod/pod_directory_service.dart';
 
 /// The root application widget.
 ///
@@ -122,12 +123,11 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
     super.initState();
 
     // Trigger preload when this widget is mounted (after login)
-    // preloadPlacesData will skip if cache already exists
+    // Only preload local settings, network data will be loaded by pages themselves
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(preloadPlacesData());
       unawaited(preloadMapSettings());
-      // Preload file system directories for instant file browser
-      unawaited(PodDirectoryService.preload());
+      // Sync settings from POD with delay to avoid network congestion
+      unawaited(syncSettingsFromPod());
     });
   }
 

@@ -349,7 +349,8 @@ class PlacesService {
 
         await clearCache();
         placesChangeNotifier.value++;
-        // Notify file browser to update
+        // Invalidate directory cache and notify file browser
+        PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
       }
       return mainSuccess;
@@ -381,7 +382,8 @@ class PlacesService {
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
-        // Notify file browser to update
+        // Invalidate directory cache and notify file browser
+        PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
       }
       return success;
@@ -436,7 +438,8 @@ class PlacesService {
         await Future.wait(withAddr.map((p) => _writeIndividualPlaceFile(p)));
         await clearCache();
         placesChangeNotifier.value++;
-        // Notify file browser to update
+        // Invalidate directory cache and notify file browser
+        PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
       }
       return success;
@@ -462,7 +465,8 @@ class PlacesService {
         await _deleteAllIndividualPlaceFiles(placeIds);
         await clearCache();
         placesChangeNotifier.value++;
-        // Notify file browser to update
+        // Invalidate directory cache and notify file browser
+        PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
       }
       return success;
@@ -515,7 +519,8 @@ class PlacesService {
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
-        // Notify file browser to update
+        // Invalidate directory cache and notify file browser
+        PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
       }
       return success;

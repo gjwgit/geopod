@@ -24,14 +24,52 @@ const String dataDir = 'data';
 class PodPath {
   PodPath._();
 
+  /// Get the app root directory path.
+  /// Returns: `geopod`
+  static String getAppRootPath() => appDirName;
+
   /// Get the data directory path.
   /// Returns: `geopod/data`
   static String getDataDirPath() => '$appDirName/$dataDir';
 
-  /// Get full file path within the data directory.
+  /// Check if a path is within the data directory (user-editable).
   ///
-  /// [relativePath] - Path relative to the data directory.
-  /// Example: `places/places.json` → `geopod/data/places/places.json`
+  /// [path] - Relative path to check.
+  /// Returns true if path is in `geopod/data/` or is the data dir itself.
+  static bool isDataPath(String path) {
+    // Normalize: remove leading/trailing slashes
+    var normalized = path;
+    if (normalized.startsWith('/')) {
+      normalized = normalized.substring(1);
+    }
+    if (normalized.endsWith('/')) {
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
+
+    // Is it the data dir itself?
+    if (normalized == dataDir || normalized == '$appDirName/$dataDir') {
+      return true;
+    }
+
+    // Is it under data dir?
+    return normalized.startsWith('$dataDir/') ||
+        normalized.startsWith('$appDirName/$dataDir/');
+  }
+
+  /// Check if a path is read-only (outside data directory).
+  ///
+  /// [path] - Relative path to check.
+  /// Returns true if the path cannot be modified by the user.
+  static bool isReadOnly(String path) {
+    return !isDataPath(path);
+  }
+
+  /// Get full file path within the POD.
+  ///
+  /// [relativePath] - Path relative to the app directory.
+  /// Example: `data/places/places.json` → `geopod/data/places/places.json`
+  /// Example: `data` → `geopod/data`
+  /// Example: `` (empty) → `geopod`
   static String getFilePath(String relativePath) {
     // Remove leading slash if present
     final cleanPath = relativePath.startsWith('/')
@@ -39,16 +77,17 @@ class PodPath {
         : relativePath;
 
     // If path already includes app dir, return as-is
-    if (cleanPath.startsWith('$appDirName/')) {
+    if (cleanPath.startsWith('$appDirName/') || cleanPath == appDirName) {
       return cleanPath;
     }
 
-    // If path already includes data dir prefix, prepend app dir only
-    if (cleanPath.startsWith('$dataDir/')) {
-      return '$appDirName/$cleanPath';
+    // Empty path means app root
+    if (cleanPath.isEmpty) {
+      return appDirName;
     }
 
-    return '${getDataDirPath()}/$cleanPath';
+    // Otherwise prepend app dir
+    return '$appDirName/$cleanPath';
   }
 
   /// Get full URL for a file in the POD.

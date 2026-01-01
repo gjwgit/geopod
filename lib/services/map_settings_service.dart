@@ -25,9 +25,16 @@
 
 library;
 
+import 'dart:async' show unawaited;
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:solidpod/solidpod.dart';
+
+import 'package:geopod/services/pod/pod_directory_service.dart';
 
 /// Keys for SharedPreferences storage.
 const String _keyShowLocalPlaces = 'map_show_local_places';
@@ -294,70 +301,199 @@ class MapSettings {
 
 /// Service for loading and saving map display settings.
 class MapSettingsService {
-  /// Loads settings from SharedPreferences.
+  static const String _settingsFileName = 'settings.json';
+
+  /// Get the full file path for settings in POD.
+  static Future<String> _getSettingsFilePath() async {
+    final path = await getDataDirPath();
+    return '$path/$_settingsFileName';
+  }
+
+  /// Read settings from POD.
+  static Future<Map<String, dynamic>?> _readFromPod() async {
+    try {
+      if (!await checkLoggedIn()) return null;
+
+      final fp = await _getSettingsFilePath();
+      final url = await getFileUrl(fp);
+      final (:accessToken, :dPopToken) = await getTokensForResource(url, 'GET');
+      final r = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Accept': 'application/json, */*',
+          'Authorization': 'DPoP $accessToken',
+          'Connection': 'keep-alive',
+          'DPoP': dPopToken,
+        },
+      );
+
+      if (r.statusCode == 200 && r.body.trim().isNotEmpty) {
+        final decoded = jsonDecode(r.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error reading settings from POD: $e');
+      return null;
+    }
+  }
+
+  /// Write settings to POD (silently, in background).
+  static Future<bool> _writeToPod(Map<String, dynamic> data) async {
+    try {
+      if (!await checkLoggedIn()) return false;
+
+      final fp = await _getSettingsFilePath();
+      final url = await getFileUrl(fp);
+      final (:accessToken, :dPopToken) = await getTokensForResource(url, 'PUT');
+      final r = await http.put(
+        Uri.parse(url),
+        headers: {
+          'Accept': '*/*',
+          'Authorization': 'DPoP $accessToken',
+          'Connection': 'keep-alive',
+          'Content-Type': 'application/json',
+          'DPoP': dPopToken,
+        },
+        body: jsonEncode(data),
+      );
+      final success = r.statusCode >= 200 && r.statusCode < 300;
+      if (success) {
+        // Invalidate cache for data directory and notify file browser
+        PodDirectoryService.invalidateCache('data');
+        PodDirectoryService.notifyChange();
+        debugPrint('Settings written to POD, cache invalidated for data/');
+      }
+      return success;
+    } catch (e) {
+      debugPrint('Error writing settings to POD: $e');
+      return false;
+    }
+  }
+
+  /// Convert MapSettings to JSON map.
+  static Map<String, dynamic> _settingsToJson(MapSettings settings) {
+    return {
+      'showLocalPlaces': settings.showLocalPlaces,
+      'userPlacesColor': settings.userPlacesColor.toARGB32(),
+      'localPlacesColor': settings.localPlacesColor.toARGB32(),
+      'mapSource': settings.mapSource.index,
+      'rememberViewport': settings.rememberViewport,
+      'initialLat': settings.initialLat,
+      'initialLng': settings.initialLng,
+      'initialZoom': settings.initialZoom,
+    };
+  }
+
+  /// Create MapSettings from JSON map.
+  static MapSettings _settingsFromJson(Map<String, dynamic> json) {
+    final savedSourceIndex = json['mapSource'] as int?;
+    final mapSource = savedSourceIndex != null &&
+            savedSourceIndex >= 0 &&
+            savedSourceIndex < MapSource.values.length
+        ? MapSource.values[savedSourceIndex]
+        : MapSettings.getDefaultMapSource();
+
+    return MapSettings(
+      showLocalPlaces: json['showLocalPlaces'] as bool? ?? true,
+      userPlacesColor: json['userPlacesColor'] != null
+          ? Color(json['userPlacesColor'] as int)
+          : defaultUserColor,
+      localPlacesColor: json['localPlacesColor'] != null
+          ? Color(json['localPlacesColor'] as int)
+          : defaultLocalColor,
+      mapSource: mapSource,
+      rememberViewport: json['rememberViewport'] as bool? ?? true,
+      initialLat: (json['initialLat'] as num?)?.toDouble() ?? defaultInitialLat,
+      initialLng: (json['initialLng'] as num?)?.toDouble() ?? defaultInitialLng,
+      initialZoom:
+          (json['initialZoom'] as num?)?.toDouble() ?? defaultInitialZoom,
+    );
+  }
+
+  /// Save settings to SharedPreferences.
+  static Future<void> _saveToPrefs(MapSettings settings) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces);
+    await prefs.setInt(
+      _keyUserPlacesColor,
+      settings.userPlacesColor.toARGB32(),
+    );
+    await prefs.setInt(
+      _keyLocalPlacesColor,
+      settings.localPlacesColor.toARGB32(),
+    );
+    await prefs.setInt(_keyMapSource, settings.mapSource.index);
+    await prefs.setBool(_keyRememberViewport, settings.rememberViewport);
+    await prefs.setDouble(_keyInitialLat, settings.initialLat);
+    await prefs.setDouble(_keyInitialLng, settings.initialLng);
+    await prefs.setDouble(_keyInitialZoom, settings.initialZoom);
+  }
+
+  /// Load settings from SharedPreferences.
+  static Future<MapSettings> _loadFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final showLocal = prefs.getBool(_keyShowLocalPlaces) ?? true;
+    final userColorValue = prefs.getInt(_keyUserPlacesColor);
+    final localColorValue = prefs.getInt(_keyLocalPlacesColor);
+    final rememberViewport = prefs.getBool(_keyRememberViewport) ?? true;
+    final initialLat = prefs.getDouble(_keyInitialLat) ?? defaultInitialLat;
+    final initialLng = prefs.getDouble(_keyInitialLng) ?? defaultInitialLng;
+    final initialZoom = prefs.getDouble(_keyInitialZoom) ?? defaultInitialZoom;
+
+    final savedSourceIndex = prefs.getInt(_keyMapSource);
+    final mapSource = savedSourceIndex != null &&
+            savedSourceIndex >= 0 &&
+            savedSourceIndex < MapSource.values.length
+        ? MapSource.values[savedSourceIndex]
+        : MapSettings.getDefaultMapSource();
+
+    return MapSettings(
+      showLocalPlaces: showLocal,
+      userPlacesColor:
+          userColorValue != null ? Color(userColorValue) : defaultUserColor,
+      localPlacesColor:
+          localColorValue != null ? Color(localColorValue) : defaultLocalColor,
+      mapSource: mapSource,
+      rememberViewport: rememberViewport,
+      initialLat: initialLat,
+      initialLng: initialLng,
+      initialZoom: initialZoom,
+    );
+  }
+
+  /// Loads settings from SharedPreferences (fast, non-blocking).
+  /// POD sync is done separately via syncFromPod().
   static Future<MapSettings> loadSettings() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      final showLocal = prefs.getBool(_keyShowLocalPlaces) ?? true;
-      final userColorValue = prefs.getInt(_keyUserPlacesColor);
-      final localColorValue = prefs.getInt(_keyLocalPlacesColor);
-      final rememberViewport = prefs.getBool(_keyRememberViewport) ?? true;
-      final initialLat = prefs.getDouble(_keyInitialLat) ?? defaultInitialLat;
-      final initialLng = prefs.getDouble(_keyInitialLng) ?? defaultInitialLng;
-      final initialZoom =
-          prefs.getDouble(_keyInitialZoom) ?? defaultInitialZoom;
-
-      // Load saved map source, or use time-based default
-      final savedSourceIndex = prefs.getInt(_keyMapSource);
-      final mapSource =
-          savedSourceIndex != null &&
-              savedSourceIndex >= 0 &&
-              savedSourceIndex < MapSource.values.length
-          ? MapSource.values[savedSourceIndex]
-          : MapSettings.getDefaultMapSource();
-
-      return MapSettings(
-        showLocalPlaces: showLocal,
-        userPlacesColor: userColorValue != null
-            ? Color(userColorValue)
-            : defaultUserColor,
-        localPlacesColor: localColorValue != null
-            ? Color(localColorValue)
-            : defaultLocalColor,
-        mapSource: mapSource,
-        rememberViewport: rememberViewport,
-        initialLat: initialLat,
-        initialLng: initialLng,
-        initialZoom: initialZoom,
-      );
-    } catch (_) {
+      // Always load from SharedPreferences first (fast, no network)
+      debugPrint('loadSettings: loading from SharedPreferences');
+      return await _loadFromPrefs();
+    } catch (e) {
+      debugPrint('Error loading settings: $e');
       return MapSettings(mapSource: MapSettings.getDefaultMapSource());
     }
   }
 
-  /// Saves settings to SharedPreferences.
+  /// Saves settings to SharedPreferences and POD (background).
   static Future<bool> saveSettings(MapSettings settings) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      // Save to SharedPreferences first (fast, blocking)
+      await _saveToPrefs(settings);
 
-      await prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces);
-      await prefs.setInt(
-        _keyUserPlacesColor,
-        settings.userPlacesColor.toARGB32(),
+      // Save to POD in background (slow, non-blocking)
+      unawaited(
+        _writeToPod(_settingsToJson(settings)).then((success) {
+          debugPrint('saveSettings: POD sync ${success ? 'ok' : 'failed'}');
+        }),
       );
-      await prefs.setInt(
-        _keyLocalPlacesColor,
-        settings.localPlacesColor.toARGB32(),
-      );
-      await prefs.setInt(_keyMapSource, settings.mapSource.index);
-      await prefs.setBool(_keyRememberViewport, settings.rememberViewport);
-      await prefs.setDouble(_keyInitialLat, settings.initialLat);
-      await prefs.setDouble(_keyInitialLng, settings.initialLng);
-      await prefs.setDouble(_keyInitialZoom, settings.initialZoom);
 
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error saving settings: $e');
       return false;
     }
   }
@@ -427,10 +563,58 @@ class MapSettingsService {
       await prefs.remove(_keyLastLat);
       await prefs.remove(_keyLastLng);
       await prefs.remove(_keyLastZoom);
+
+      // Also clear POD settings in background
+      unawaited(
+        _writeToPod({}).then((success) {
+          debugPrint('resetToDefaults: POD sync ${success ? 'ok' : 'failed'}');
+        }),
+      );
+
       return true;
     } catch (_) {
       return false;
     }
+  }
+
+  /// Sync settings from POD to local (background, non-blocking).
+  /// Call this after login to ensure local settings match POD.
+  /// Returns the synced settings if POD has data, null otherwise.
+  static Future<MapSettings?> syncFromPod() async {
+    try {
+      final podData = await _readFromPod();
+      if (podData != null) {
+        debugPrint('syncFromPod: updating local with POD settings');
+        final settings = _settingsFromJson(podData);
+        await _saveToPrefs(settings);
+        return settings;
+      } else {
+        // POD has no settings, upload local settings to POD
+        debugPrint('syncFromPod: POD empty, uploading local settings');
+        final localSettings = await _loadFromPrefs();
+        unawaited(_writeToPod(_settingsToJson(localSettings)));
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error syncing from POD: $e');
+      return null;
+    }
+  }
+
+  /// Start background sync from POD.
+  /// This is non-blocking and updates settings silently.
+  /// [onSettingsUpdated] is called if POD has newer settings.
+  static void startBackgroundSync({
+    void Function(MapSettings)? onSettingsUpdated,
+  }) {
+    unawaited(
+      syncFromPod().then((settings) {
+        if (settings != null && onSettingsUpdated != null) {
+          debugPrint('startBackgroundSync: settings updated from POD');
+          onSettingsUpdated(settings);
+        }
+      }),
+    );
   }
 }
 

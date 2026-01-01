@@ -406,7 +406,7 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
                 children: [
                   Icon(Icons.folder, size: 16),
                   SizedBox(width: 4),
-                  Text('geopod/data'),
+                  Text('geopod'),
                 ],
               ),
             ),
@@ -573,6 +573,13 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
       onDirectoryTap: _navigateToDirectory,
       onFileTap: _selectFile,
       onDelete: _deleteFile,
+      canDelete: _canDeleteItem,
     );
+  }
+
+  /// Check if an item can be deleted.
+  /// Only items in the data directory can be deleted.
+  bool _canDeleteItem(PodFileItem item) {
+    return PodPath.isDataPath(item.path);
   }
 }

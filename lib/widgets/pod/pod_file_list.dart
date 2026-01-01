@@ -34,6 +34,10 @@ class PodFileList extends StatelessWidget {
   /// Whether to show delete buttons.
   final bool showDelete;
 
+  /// Function to check if an item can be deleted.
+  /// If null, all items can be deleted (when showDelete is true).
+  final bool Function(PodFileItem item)? canDelete;
+
   /// Currently selected file path.
   final String? selectedFilePath;
 
@@ -45,6 +49,7 @@ class PodFileList extends StatelessWidget {
     this.onDelete,
     this.onDownload,
     this.showDelete = true,
+    this.canDelete,
     this.selectedFilePath,
   });
 
@@ -104,7 +109,9 @@ class PodFileList extends StatelessWidget {
               item: item,
               isSelected: selectedFilePath == item.path,
               onTap: () => onDirectoryTap?.call(item),
-              onDelete: showDelete ? () => _confirmDelete(context, item) : null,
+              onDelete: showDelete && (canDelete?.call(item) ?? true)
+                  ? () => _confirmDelete(context, item)
+                  : null,
               onDownload: null,
             ),
           ),
@@ -123,7 +130,9 @@ class PodFileList extends StatelessWidget {
               item: item,
               isSelected: selectedFilePath == item.path,
               onTap: () => onFileTap?.call(item),
-              onDelete: showDelete ? () => _confirmDelete(context, item) : null,
+              onDelete: showDelete && (canDelete?.call(item) ?? true)
+                  ? () => _confirmDelete(context, item)
+                  : null,
               onDownload: onDownload != null
                   ? () => onDownload?.call(item)
                   : null,

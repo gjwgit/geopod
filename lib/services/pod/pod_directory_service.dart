@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
+
 import 'package:http/http.dart' as http;
 
 import 'package:geopod/models/pod_file_item.dart';
@@ -35,6 +36,8 @@ class PodDirectoryService {
   static final Map<String, (List<PodFileItem>, DateTime)> _cache = {};
 
   /// Notify listeners that the file system has changed.
+  /// This only notifies UI components to refresh their views.
+  /// Use invalidateCache() to clear specific cache entries before calling this.
   static void notifyChange() {
     podFilesChangeNotifier.value++;
     debugPrint('PodDirectoryService: Notified file system change');
@@ -83,7 +86,8 @@ class PodDirectoryService {
 
   /// List contents of a directory in the POD.
   ///
-  /// [relativePath] - Path relative to the app data directory (e.g., 'places').
+  /// [relativePath] - Path relative to the app directory (e.g., 'data/places').
+  ///   Empty string means app root directory (geopod/).
   /// [forceRefresh] - If true, bypass cache and fetch fresh data.
   /// Returns a list of [PodFileItem] representing files and directories.
   static Future<List<PodFileItem>> listDirectory(
@@ -268,5 +272,30 @@ class PodDirectoryService {
   /// [relativePath] - Path relative to the app data directory.
   static Future<String?> readFile(String relativePath) async {
     return await PodFileSystem.readFile(relativePath);
+  }
+
+  /// Preload common directories into cache.
+  /// Call this after login to make file browser feel instant.
+  static Future<void> preload() async {
+    try {
+      // Check if already cached
+      if (_cache.containsKey('') && _cache.containsKey('data')) {
+        debugPrint('PodDirectoryService.preload: skipped (cache exists)');
+        return;
+      }
+
+      debugPrint('PodDirectoryService.preload: starting...');
+
+      // Preload root directory and data directory in parallel
+      await Future.wait([
+        listDirectory(''), // geopod/
+        listDirectory('data'), // geopod/data/
+        listDirectory('data/places'), // geopod/data/places/
+      ]);
+
+      debugPrint('PodDirectoryService.preload: completed');
+    } catch (e) {
+      debugPrint('PodDirectoryService.preload: error $e');
+    }
   }
 }

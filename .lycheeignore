@@ -22,6 +22,10 @@ https://pod.server/
 
 https://pods.solidcommunity.au/
 
+# GitHub URLs - rate limited (429 Too Many Requests)
+
+https://github.com/gjwgit/geopod/commits/
+
 # ANU Software Innovation Institute website (frequent timeouts in CI)
 
 https://sii.anu.edu.au/

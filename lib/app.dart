@@ -32,9 +32,7 @@ import 'package:solidpod/solidpod.dart' show registerLogoutCacheCallback;
 import 'package:solidui/solidui.dart';
 
 import 'app_scaffold.dart';
-
 import 'constants/app.dart';
-
 import 'services/map_settings_service.dart';
 import 'services/places_service.dart';
 import 'services/pod/pod_directory_service.dart';

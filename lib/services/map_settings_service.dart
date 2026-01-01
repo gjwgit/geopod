@@ -390,7 +390,8 @@ class MapSettingsService {
   /// Create MapSettings from JSON map.
   static MapSettings _settingsFromJson(Map<String, dynamic> json) {
     final savedSourceIndex = json['mapSource'] as int?;
-    final mapSource = savedSourceIndex != null &&
+    final mapSource =
+        savedSourceIndex != null &&
             savedSourceIndex >= 0 &&
             savedSourceIndex < MapSource.values.length
         ? MapSource.values[savedSourceIndex]
@@ -445,7 +446,8 @@ class MapSettingsService {
     final initialZoom = prefs.getDouble(_keyInitialZoom) ?? defaultInitialZoom;
 
     final savedSourceIndex = prefs.getInt(_keyMapSource);
-    final mapSource = savedSourceIndex != null &&
+    final mapSource =
+        savedSourceIndex != null &&
             savedSourceIndex >= 0 &&
             savedSourceIndex < MapSource.values.length
         ? MapSource.values[savedSourceIndex]
@@ -453,10 +455,12 @@ class MapSettingsService {
 
     return MapSettings(
       showLocalPlaces: showLocal,
-      userPlacesColor:
-          userColorValue != null ? Color(userColorValue) : defaultUserColor,
-      localPlacesColor:
-          localColorValue != null ? Color(localColorValue) : defaultLocalColor,
+      userPlacesColor: userColorValue != null
+          ? Color(userColorValue)
+          : defaultUserColor,
+      localPlacesColor: localColorValue != null
+          ? Color(localColorValue)
+          : defaultLocalColor,
       mapSource: mapSource,
       rememberViewport: rememberViewport,
       initialLat: initialLat,

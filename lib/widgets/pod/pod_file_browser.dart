@@ -16,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:geopod/models/pod_file_item.dart';
+import 'package:geopod/services/places_service.dart';
 import 'package:geopod/services/pod/pod.dart';
 import 'package:geopod/widgets/pod/pod_file_list.dart';
 import 'package:geopod/widgets/pod/pod_file_preview.dart';
@@ -148,6 +149,75 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
   }
 
   Future<void> _deleteFile(PodFileItem item) async {
+    // Check if this is a special places file
+    if (PlacesService.isMainPlacesFile(item.path)) {
+      // Show confirmation dialog for deleting main places file
+      final confirmed = await _showDeletePlacesConfirmation();
+      if (!confirmed) return;
+
+      // Clear all places (this will delete places.json and all individual files)
+      if (mounted) {
+        setState(() {
+          _items.removeWhere((i) => i.path == item.path);
+          // Also remove all individual place files from the list
+          _items.removeWhere(
+            (i) => PlacesService.isIndividualPlaceFile(i.path),
+          );
+          if (_selectedFile?.path == item.path ||
+              PlacesService.isIndividualPlaceFile(_selectedFile?.path ?? '')) {
+            _selectedFile = null;
+          }
+        });
+      }
+
+      if (!mounted) return;
+      final success = await PlacesService.clearAllPlaces(context, widget);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success ? 'All places cleared' : 'Failed to clear places',
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+        if (!success) _loadDirectory();
+      }
+      return;
+    }
+
+    if (PlacesService.isIndividualPlaceFile(item.path)) {
+      // Delete individual place file - this also removes from places.json
+      setState(() {
+        _items.removeWhere((i) => i.path == item.path);
+        if (_selectedFile?.path == item.path) {
+          _selectedFile = null;
+        }
+      });
+
+      final success = await PlacesService.deletePlaceByFilePath(
+        item.path,
+        context,
+        widget,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Deleted ${item.name}'
+                  : 'Failed to delete ${item.name}',
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+        if (!success) _loadDirectory();
+      }
+      return;
+    }
+
+    // Regular file deletion
     // Immediately remove from local list for better UX
     setState(() {
       _items.removeWhere((i) => i.path == item.path);
@@ -188,6 +258,33 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
         _loadDirectory(); // Reload to restore original state
       }
     }
+  }
+
+  /// Show confirmation dialog for deleting the main places.json file.
+  Future<bool> _showDeletePlacesConfirmation() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete All Places?'),
+            content: const Text(
+              'This will delete all your saved places data, including the main '
+              'places.json file and all individual place files.\n\n'
+              'This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Delete All'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   Future<void> _refreshDirectory() async {

@@ -102,7 +102,8 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
       lat: lat,
       lng: lng,
       note: _noteController.text.trim(),
-      timestamp: widget.place.timestamp,
+      timestamp: DateTime.now()
+          .toIso8601String(), // Update timestamp when editing
       address: widget
           .place
           .address, // Address will be updated by service if coords changed.

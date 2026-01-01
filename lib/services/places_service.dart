@@ -25,7 +25,6 @@
 
 library;
 
-import 'dart:async' show unawaited;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -58,6 +57,74 @@ class PlacesService {
   static Future<String> _getFullFilePath() async {
     final path = await getDataDirPath();
     return '$path/places/$_placesFileName';
+  }
+
+  /// Get the directory path for places.
+  static Future<String> _getPlacesDirPath() async {
+    final path = await getDataDirPath();
+    return '$path/places';
+  }
+
+  /// Get file path for individual place file.
+  static Future<String> _getIndividualPlaceFilePath(String placeId) async {
+    final dirPath = await _getPlacesDirPath();
+    return '$dirPath/place_$placeId.json';
+  }
+
+  /// Write an individual place file.
+  static Future<bool> _writeIndividualPlaceFile(Place place) async {
+    try {
+      final fp = await _getIndividualPlaceFilePath(place.id);
+      final url = await getFileUrl(fp);
+      final (:accessToken, :dPopToken) = await getTokensForResource(url, 'PUT');
+      final r = await http.put(
+        Uri.parse(url),
+        headers: {
+          'Accept': '*/*',
+          'Authorization': 'DPoP $accessToken',
+          'Connection': 'keep-alive',
+          'Content-Type': 'application/json',
+          'DPoP': dPopToken,
+        },
+        body: jsonEncode(place.toJson()),
+      );
+      debugPrint('Write individual place file: $fp, status: ${r.statusCode}');
+      return r.statusCode >= 200 && r.statusCode < 300;
+    } catch (e) {
+      debugPrint('Error writing individual place file: $e');
+      return false;
+    }
+  }
+
+  /// Delete an individual place file.
+  static Future<bool> _deleteIndividualPlaceFile(String placeId) async {
+    try {
+      final fp = await _getIndividualPlaceFilePath(placeId);
+      final url = await getFileUrl(fp);
+      final (:accessToken, :dPopToken) = await getTokensForResource(
+        url,
+        'DELETE',
+      );
+      final r = await http.delete(
+        Uri.parse(url),
+        headers: {
+          'Accept': '*/*',
+          'Authorization': 'DPoP $accessToken',
+          'Connection': 'keep-alive',
+          'DPoP': dPopToken,
+        },
+      );
+      // 404 means file doesn't exist, which is fine
+      return r.statusCode >= 200 && r.statusCode < 300 || r.statusCode == 404;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Delete all individual place files for given place IDs.
+  static Future<void> _deleteAllIndividualPlaceFiles(List<String> ids) async {
+    // Delete in parallel for efficiency
+    await Future.wait(ids.map((id) => _deleteIndividualPlaceFile(id)));
   }
 
   static Future<List<Place>> loadLocalPlaces() async {
@@ -267,17 +334,27 @@ class PlacesService {
       final cm = PlacesCacheManager();
       var existing = cm.podPlaces ?? await fetchPodPlaces();
       final updated = List<Place>.from(existing)..insert(0, place);
-      final success = await _writeJsonFile(
+
+      // Write main file first to ensure it succeeds
+      final mainSuccess = await _writeJsonFile(
         jsonEncode(updated.map((p) => p.toJson()).toList()),
       );
-      if (success) {
+
+      if (mainSuccess) {
+        // Write individual file (don't block on failure)
+        final individualSuccess = await _writeIndividualPlaceFile(place);
+        debugPrint(
+          'addPlace: main=$mainSuccess, individual=$individualSuccess',
+        );
+
         await clearCache();
         placesChangeNotifier.value++;
         // Notify file browser to update
         PodDirectoryService.notifyChange();
       }
-      return success;
-    } catch (_) {
+      return mainSuccess;
+    } catch (e) {
+      debugPrint('Error in addPlace: $e');
       return false;
     }
   }
@@ -293,9 +370,14 @@ class PlacesService {
       var existing = cm.podPlaces ?? await fetchPodPlaces();
       final updated = List<Place>.from(existing)
         ..removeWhere((p) => p.id == placeId);
-      final success = await _writeJsonFile(
-        jsonEncode(updated.map((p) => p.toJson()).toList()),
-      );
+
+      // Delete individual file and update main file in parallel
+      final results = await Future.wait([
+        _writeJsonFile(jsonEncode(updated.map((p) => p.toJson()).toList())),
+        _deleteIndividualPlaceFile(placeId),
+      ]);
+      final success = results[0];
+
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
@@ -343,10 +425,15 @@ class PlacesService {
         );
       }
       final merged = [...withAddr, ...existing];
+
+      // Write main file first
       final success = await _writeJsonFile(
         jsonEncode(merged.map((p) => p.toJson()).toList()),
       );
+
       if (success) {
+        // Write individual files for new places in parallel
+        await Future.wait(withAddr.map((p) => _writeIndividualPlaceFile(p)));
         await clearCache();
         placesChangeNotifier.value++;
         // Notify file browser to update
@@ -364,8 +451,15 @@ class PlacesService {
   ) async {
     try {
       if (!await checkLoggedIn()) return false;
+
+      // Get all existing place IDs before clearing
+      final existing = await fetchPodPlaces();
+      final placeIds = existing.map((p) => p.id).toList();
+
       final success = await _writeJsonFile('[]');
       if (success) {
+        // Delete all individual place files
+        await _deleteAllIndividualPlaceFiles(placeIds);
         await clearCache();
         placesChangeNotifier.value++;
         // Notify file browser to update
@@ -388,10 +482,11 @@ class PlacesService {
       final existing = await fetchPodPlaces();
       final list = List<Place>.from(existing);
       final i = list.indexWhere((p) => p.id == updated.id);
+      var toSave = updated;
+
       if (i == -1) {
         list.insert(0, updated);
       } else {
-        var toSave = updated;
         if (coordinatesChanged) {
           final addr = await GeocodingService.getAddress(
             updated.lat,
@@ -409,9 +504,14 @@ class PlacesService {
         }
         list[i] = toSave;
       }
-      final success = await _writeJsonFile(
-        jsonEncode(list.map((p) => p.toJson()).toList()),
-      );
+
+      // Update both main file and individual file in parallel
+      final results = await Future.wait([
+        _writeJsonFile(jsonEncode(list.map((p) => p.toJson()).toList())),
+        _writeIndividualPlaceFile(toSave),
+      ]);
+      final success = results[0];
+
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
@@ -423,14 +523,59 @@ class PlacesService {
       return false;
     }
   }
+
+  /// Delete a place by its individual file path.
+  /// This is called when a user deletes place_xxx.json from the file browser.
+  /// It will also remove the place from the main places.json file.
+  static Future<bool> deletePlaceByFilePath(
+    String filePath,
+    BuildContext context,
+    Widget returnWidget,
+  ) async {
+    // Extract place ID from file path like "place_abc123.json"
+    final fileName = filePath.split('/').last;
+    final match = RegExp(r'^place_(.+)\.json$').firstMatch(fileName);
+    if (match == null) return false;
+
+    final placeId = match.group(1)!;
+    return deletePlace(placeId, context, returnWidget);
+  }
+
+  /// Check if a file path is a places.json file.
+  static bool isMainPlacesFile(String filePath) {
+    return filePath.endsWith('/places.json') ||
+        filePath.endsWith('\\places.json');
+  }
+
+  /// Check if a file path is an individual place file.
+  static bool isIndividualPlaceFile(String filePath) {
+    final fileName = filePath.split('/').last.split('\\').last;
+    return RegExp(r'^place_.+\.json$').hasMatch(fileName);
+  }
 }
 
+/// Preload places data in the background.
+///
+/// This is called at app startup and when entering the main app.
+/// It only fetches if the cache is empty or expired, avoiding
+/// duplicate fetches when the page itself will load data.
+///
+/// Note: For logged-in users, this is mainly useful when they
+/// navigate to non-places pages first (like Settings or Map).
+/// If they go directly to Locations page, the page will load data itself.
 Future<void> preloadPlacesData() async {
   try {
-    unawaited(
-      PlacesService.fetchPlaces(
-        forceRefresh: false,
-      ).catchError((_) => <Place>[]),
-    );
-  } catch (_) {}
+    final cm = PlacesCacheManager();
+    // Skip preload if we already have cached data
+    if (cm.allPlaces != null) {
+      debugPrint('preloadPlacesData: skipped (cache exists)');
+      return;
+    }
+
+    debugPrint('preloadPlacesData: starting...');
+    await PlacesService.fetchPlaces(forceRefresh: false);
+    debugPrint('preloadPlacesData: completed');
+  } catch (e) {
+    debugPrint('preloadPlacesData: error $e');
+  }
 }

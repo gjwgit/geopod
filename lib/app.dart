@@ -121,7 +121,7 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
     super.initState();
 
     // Trigger preload when this widget is mounted
-    // This covers the case when user clicks Continue button
+    // preloadPlacesData will skip if cache already exists
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(preloadPlacesData());
       unawaited(preloadMapSettings());

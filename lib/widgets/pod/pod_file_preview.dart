@@ -48,6 +48,21 @@ class _PodFilePreviewState extends State<PodFilePreview> {
   void initState() {
     super.initState();
     _loadContent();
+    // Listen for file changes to auto-refresh
+    podFilesChangeNotifier.addListener(_onFilesChanged);
+  }
+
+  @override
+  void dispose() {
+    podFilesChangeNotifier.removeListener(_onFilesChanged);
+    super.dispose();
+  }
+
+  void _onFilesChanged() {
+    // Reload content when files change
+    if (mounted) {
+      _loadContent();
+    }
   }
 
   @override

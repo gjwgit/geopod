@@ -39,7 +39,7 @@ conclusion=$(gh run view ${bumpId} --json conclusion --jq '.conclusion')
 version=$(grep version ../pubspec.yaml | head -1 | cut -d ':' -f 2 | sed 's/ //g' | sed 's/+.*//')
 
 # Only proceed if the latest action hase been completed
-# successfully. Each artifact whic is downloaded as a zip file
+# successfully. Each artifact which is downloaded as a zip file
 # conatins a single file/installer.
 #
 # 20250611 gjw I used `gh` to download the artifact but that started
@@ -74,96 +74,121 @@ if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
 
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
 		    --jq '.artifacts[] | select(.name | endswith("-linux-deb")) | .id' | head -n 1)
-    echo "artifact id: $artifactId"
-    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    unzip artifact.zip
-    fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-    touch ${fname} # ${APP}_${version}_amd64.deb
-    rm -f artifact.zip
 
-    echo ${DEST}
-
-    rsync -avzh ${fname} ${DEST}/${TARGET}
-    ssh ${HOST} "cd ${FLDR}; chmod a+r ${TARGET}"
-    mv -f ${fname} ARCHIVE/
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time as the release time.
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${APP}_amd64.deb"
+	rsync -avzh ${fname} ${DEST}${APP}_amd64.deb
+	echo  "Archive as installers/ARCHIVE/${fname}"
+	mv -f ${fname} ARCHIVE/
+    fi
 
     echo ""
 
-    echo '***** UPLOAD LINUX SNAP'
-
-    TARGET="${APP}_amd64.snap"
+    echo '******************** UPLOAD LINUX SNAP'
 
     ## gh run download ${bumpId} --name ${APP}-linux-snap
 
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
 		    --jq '.artifacts[] | select(.name | endswith("-linux-snap")) | .id' | head -n 1)
-    # TODO 20251003 gjw Only continue if a snap artefact was found
-    echo "artifact id: $artifactId"
-    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    unzip artifact.zip
-    fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-    touch ${fname} # ${APP}_${version}_amd64.snap
-    rm -f artifact.zip
-
-    rsync -avzh ${fname} ${DEST}/${TARGET}
-    ssh ${HOST} "cd ${FLDR}; chmod a+r ${TARGET}"
-    mv -f ${fname} ARCHIVE/
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${APP}_amd64.snap"
+	rsync -avzh ${fname} ${DEST}${APP}_amd64.snap
+	ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}_amd64.snap"
+	echo  "Archive as installers/ARCHIVE/${fname}"
+	mv -f ${fname} ARCHIVE/
+    fi
 
     echo ""
 
-    echo '***** UPLOAD LINUX ZIP'
+    echo '******************** UPLOAD LINUX ZIP'
 
     ## gh run download ${bumpId} --name ${APP}-linux-zip
 
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
 		    --jq '.artifacts[] | select(.name | endswith("-linux-zip")) | .id' | head -n 1)
-    echo "artifact id: $artifactId"
-    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    unzip artifact.zip
-    fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-    touch ${fname} # Timestamp with current date/time
-    rm -f artifact.zip
 
-    rsync -avzh ${APP}-linux.zip ${DEST}
-    mv -f ${APP}-linux.zip ARCHIVE/${APP}_${version}_linux.zip
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${APP}-linux.zip"
+	rsync -avzh ${fname} ${DEST}${APP}-linux.zip
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_linux.zip"
+	mv -f ${fname} ARCHIVE/${APP}_${version}_linux.zip
+    fi
 
     echo ""
 
-    echo '***** UPLOAD MACOS DMG'
+    echo '******************** UPLOAD MACOS DMG ORIGINAL'
 
     ## gh run download ${bumpId} --name ${APP}-macos-zip
 
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
 		    --jq '.artifacts[] | select(.name | endswith("-macos-dmg")) | .id' | head -n 1)
-    echo "artifact id: $artifactId"
-    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    unzip artifact.zip
-    fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-    touch ${fname} # Timestamp with current date/time
-    rm -f artifact.zip
 
-    rsync -avzh ${fname} ${DEST}/
-    mv ${fname} ARCHIVE/${APP}_${version}_macos.dmg
-    ssh ${HOST} "cd ${FLDR}; chmod a+r ${fname}"
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+        echo "artifact id: $artifactId"
+        gh api -H "Accept: application/vnd.github+json" \
+	   repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip \
+	   > artifact.zip
+        unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${fname}"
+	rsync -avzh ${fname} ${DEST}
+	ssh ${HOST} "cd ${FLDR}; chmod a+r ${fname}"
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_macos.dmg"
+	mv ${fname} ARCHIVE/${APP}_${version}_macos.dmg
+    fi
 
     echo ""
 
-    echo '***** UPLOAD MACOS ZIP'
+    echo '******************** UPLOAD MACOS ZIP ORIGINAL'
 
     ## gh run download ${bumpId} --name ${APP}-macos-zip
 
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
 		    --jq '.artifacts[] | select(.name | endswith("-macos-zip")) | .id' | head -n 1)
-    echo "artifact id: $artifactId"
-    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    unzip artifact.zip
-    fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-    touch ${fname} # Timestamp with current date/time
-    rm -f artifact.zip
 
-    rsync -avzh ${APP}-macos.zip ${DEST}
-    mv ${APP}-macos.zip ARCHIVE/${APP}_${version}_macos.zip
-    ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-*.zip ${APP}-*.exe"
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${APP}-macos.zip"
+	rsync -avzh ${APP}-macos.zip ${DEST}
+	ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-*.zip ${APP}-*.exe"
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_macos.zip"
+	mv ${APP}-macos.zip ARCHIVE/${APP}_${version}_macos.zip
+    fi
 
     echo ""
 
@@ -173,114 +198,155 @@ if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
     #    development with the notepod app. Once it is working there we
     #    can migrate all other apps.
 
-    # echo '***** UPLOAD MACOS DMG UNSIGNED'
+    echo '******************** UPLOAD MACOS DMG UNSIGNED'
 
-    # ## gh run download ${bumpId} --name ${APP}-macos-zip
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-macos-unsigned-dmg")) | .id' | head -n 1)
 
-    # artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
-    # 		    --jq '.artifacts[] | select(.name | endswith("-macos-unsigned-dmg")) | .id' | head -n 1)
-    # echo "artifact id: $artifactId"
-    # gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    # unzip artifact.zip
-    # rm -f artifact.zip
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${fname}"
+	rsync -avzh ${fname} ${DEST}
+	ssh ${HOST} "cd ${FLDR}; chmod a+r ${fname}"
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_macos_unsigned.dmg"
+	mv ${fname} ARCHIVE/${APP}_${version}_macos_unsigned.dmg
+    fi
 
-    # rsync -avzh ${APP}-dev-macos-unsigned.dmg ${DEST}
-    # mv ${APP}-dev-macos-unsigned.dmg ARCHIVE/${APP}_${version}_macos_unsigned.dmg
-    # ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-unsigned.dmg"
+    echo ""
 
-    # echo ""
+    echo '******************** UPLOAD MACOS ZIP UNSIGNED'
 
-    # echo '***** UPLOAD MACOS DMG STAGING'
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-macos-unsigned-zip")) | .id' | head -n 1)
 
-    # ## gh run download ${bumpId} --name ${APP}-macos-zip
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${fname}"
+	rsync -avzh ${fname} ${DEST}
+	ssh ${HOST} "cd ${FLDR}; chmod a+r ${fname}"
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_macos_unsigned.dmg"
+	mv ${fname} ARCHIVE/${APP}_${version}_macos_unsigned.zip
+    fi
 
-    # artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
-    # 		    --jq '.artifacts[] | select(.name | endswith("-macos-staging-dmg")) | .id' | head -n 1)
-    # echo "artifact id: $artifactId"
-    # gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    # unzip artifact.zip
-    # rm -f artifact.zip
+    echo ""
 
-    # rsync -avzh ${APP}-dev-macos-staging.dmg ${DEST}
-    # mv ${APP}-dev-macos-staging.dmg ARCHIVE/${APP}_${version}_macos_staging.dmg
-    # ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-staging.dmg"
+    echo '******************** UPLOAD MACOS DMG STAGING'
 
-    # echo ""
+    ## gh run download ${bumpId} --name ${APP}-macos-zip
 
-    # echo '***** UPLOAD MACOS DMG DEV'
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-macos-staging-dmg")) | .id' | head -n 1)
 
-    # ## gh run download ${bumpId} --name ${APP}-macos-zip
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${fname}"
+	rsync -avzh ${fname} ${DEST}
+	ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-staging.dmg"
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_macos_staging.dmg"
+	mv ${fname} ARCHIVE/${APP}_${version}_macos_staging.dmg
+    fi
 
-    # artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
-    # 		    --jq '.artifacts[] | select(.name | endswith("-macos-dev-dmg")) | .id' | head -n 1)
-    # echo "artifact id: $artifactId"
-    # gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    # unzip artifact.zip
-    # rm -f artifact.zip
+    echo ""
 
-    # rsync -avzh ${APP}-dev-macos-dev.dmg ${DEST}
-    # mv ${APP}-dev-macos-dev.dmg ARCHIVE/${APP}_${version}_macos_dev.dmg
-    # ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-dev.dmg"
+    echo '******************** UPLOAD MACOS DMG DEV'
 
-    # echo ""
+    ## gh run download ${bumpId} --name ${APP}-macos-zip
 
-    # echo '***** UPLOAD MACOS ZIP UNSIGNED'
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-macos-dev-dmg")) | .id' | head -n 1)
 
-    # ## gh run download ${bumpId} --name ${APP}-macos-zip
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${fname}"
+	rsync -avzh ${fname} ${DEST}
+	ssh ${HOST} "cd ${FLDR}; chmod a+r ${fname}"
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_macos_dev.dmg"
+	mv ${fname} ARCHIVE/${APP}_${version}_macos_dev.dmg
+    fi
 
-    # artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
-    # 		    --jq '.artifacts[] | select(.name | endswith("-macos-unsigned-zip")) | .id' | head -n 1)
-    # echo "artifact id: $artifactId"
-    # gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    # unzip artifact.zip
-    # rm -f artifact.zip
+    echo ""
 
-    # rsync -avzh ${APP}-dev-macos-unsigned.zip ${DEST}
-    # mv ${APP}-dev-macos-unsigned.zip ARCHIVE/${APP}_${version}_macos_unsigned.zip
-    # ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-dev-macos-unsigned.zip"
-
-    # echo ""
-
-    echo '***** UPLOAD WINDOWS INNO'
+    echo '******************** UPLOAD WINDOWS INNO'
 
     ## gh run download ${bumpId} --name ${APP}-windows-inno
 
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
 		    --jq '.artifacts[] | select(.name | endswith("-windows-inno")) | .id' | head -n 1)
-    echo "artifact id: $artifactId"
-    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    unzip artifact.zip
-    fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-    touch ${fname} # Timestamp with current date/time
-    rm -f artifact.zip
 
-    rsync -avzh ${fname} ${DEST}
-    mv ${fname} ARCHIVE/${APP}_${version}_windows-inno.exe
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${fname}"
+	rsync -avzh ${fname} ${DEST}
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_windows_inno.exe"
+	mv ${fname} ARCHIVE/${APP}_${version}_windows_inno.exe
+    fi
 
     echo ""
 
-    echo '***** UPLOAD WINDOWS ZIP'
+    echo '******************** UPLOAD WINDOWS ZIP'
 
     ## gh run download ${bumpId} --name ${APP}-windows-zip
 
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
 		    --jq '.artifacts[] | select(.name | endswith("-windows-zip")) | .id' | head -n 1)
-    echo "artifact id: $artifactId"
-    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-    unzip artifact.zip
-    fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-    touch ${fname} # Timestamp with current date/time
-    rm -f artifact.zip
 
-    rsync -avzh ${APP}-windows.zip ${DEST}
-    mv -f ${APP}-windows.zip ARCHIVE/${APP}_${version}_windows.zip
-    ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-*.zip ${APP}-*.exe"
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${fname}"
+	rsync -avzh ${fname} ${DEST}
+	ssh ${HOST} "cd ${FLDR}; chmod a+r ${APP}-*.zip ${APP}-*.exe"
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_windows.zip"
+	mv -f ${APP}-windows.zip ARCHIVE/${APP}_${version}_windows.zip
+    fi
 
 else
-    gh run view ${bumpId}
+
+    gh run view ${bumpId} | cat
     gh run view ${bumpId} --json status,conclusion
     echo ''
-    echo "***** Latest github actions has not successfully completed. Exiting."
+    echo "******************** Latest github actions has not successfully completed. Exiting."
     echo ''
     exit 1
 fi

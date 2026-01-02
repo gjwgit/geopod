@@ -309,7 +309,7 @@ jobs:
   #         release: stable
 
   ########################################################################
-  # MACOS - ORIGINAL
+  # MACOS - ORIGINAL - DEPRECATED
 
   # 20251223 gjw This is the original script for building the macOS
   # dmg and zip files for Rattle. While the macOS and iOS installer
@@ -321,9 +321,10 @@ jobs:
   # 20260101 gjw This original one no longer works for the updated
   # version by @jesscmoore which utilises flavours. But that then
   # needs extra setup that I've not yet done for my template in geopod
-  # and bookoflife, which needs to be done.
+  # and bookoflife, which needs to be done. Once that is done and the
+  # steps have a template, this ORIGINAL build can be removed.
 
-  package-macos-dmg-zip-basic:
+  package-macos-dmg-zip-original:
     if: |
       contains(github.event.head_commit.message, 'bump version x') ||
       contains(github.event.head_commit.message, 'build installers x') ||
@@ -354,6 +355,12 @@ jobs:
       - name: Enable macOS desktop
         run: flutter create --platforms=macos .
 
+      - name: Remove Podfile and project.yaml
+        # 20260102 gjw These cause the default basic build to fail as
+        # for some reason an older macOS version is targeted.
+        run: |
+          rm -f macos/Podfile macos/project.yml
+
       - name: Build Flutter macOS app
         run: flutter build macos --release
 
@@ -365,15 +372,15 @@ jobs:
 
       # Package as DMG
 
-      - name: Create DMG (Unsigned)
+      - name: Create DMG Unsigned
         run: |
           mkdir -p dmg_temp
           cp -R "build/macos/Build/Products/Release/${{env.APP}}.app" dmg_temp/
           ln -s /Applications dmg_temp/Applications
-          hdiutil create -volname "${{ env.APP }}" \
+          hdiutil create -volname "${{env.APP}}" \
             -srcfolder dmg_temp \
             -ov -format UDZO \
-            "${{ env.APP }}-macos.dmg"
+            "${{env.APP}}-macos.dmg"
 
       - name: Note the DMG created
         run: |
@@ -382,8 +389,8 @@ jobs:
       - name: Upload Artefact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.APP }}-macos-dmg
-          path: ${{ env.APP }}-macos.dmg
+          name: ${{env.APP}}-macos-dmg
+          path: ${{env.APP}}-macos.dmg
 
       # Package as ZIP
 
@@ -392,8 +399,8 @@ jobs:
         with:
           type: 'zip'
           directory: build/macos/Build/Products/Release
-          path: ${{ env.APP }}.app
-          filename: ${{ env.APP }}-macos.zip
+          path: ${{env.APP}}.app
+          filename: ${{env.APP}}-macos.zip
 
       - name: Review ZIP exists
         run: ls -lh build/macos/Build/Products/Release
@@ -401,18 +408,22 @@ jobs:
       - name: Upload Artefact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.APP }}-macos-zip
-          path: build/macos/Build/Products/Release/${{ env.APP }}-macos.zip
+          name: ${{env.APP}}-macos-zip
+          path: build/macos/Build/Products/Release/${{env.APP}}-macos.zip
 
   ########################################################################
   # MACOS - UNSIGNED
 
-  # Build without signing certificate
-  # for testing by developers
-  # Note: build without signing prevents build with keychain access capability
-  # This means the app fails to use secure local storage and the use needs to
-  # press login and security key submit buttons x2.
-  # Set unsigned config flavor in macos/project.yml
+  # This is a build without signing using a certificate, and is meant
+  # for testing by developers.
+  #
+  # This build prevents keychain access capability and so the app
+  # fails to use secure local storage and the user needs to press
+  # login and the security key submit buttons twice to override the
+  # app install warnings
+  #
+  # Set the unsigned config flavor in macos/project.yml
+  #
   # CODE_SIGN_IDENTITY: ""
   # PROVISIONING_PROFILE_SPECIFIER: ""
 
@@ -463,11 +474,11 @@ jobs:
       - name: Note the build location
         run: |
           pwd
-          ls -lh ${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}
+          ls -lh ${{env.MACOS_APP_RELEASE_UNSIGNED_PATH}}
 
       - name: Check macOS app code signature
         run: |
-          codesign --display --verbose=2 "${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}/${{ env.APP }}.app"
+          codesign --display --verbose=2 "${{env.MACOS_APP_RELEASE_UNSIGNED_PATH}}/${{env.APP}}.app"
 
       # Package as DMG
 
@@ -476,20 +487,20 @@ jobs:
           mkdir -p dmg_temp
           cp -R "${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}/${{ env.APP }}.app" dmg_temp/
           ln -s /Applications dmg_temp/Applications
-          hdiutil create -volname "${{ env.APP }}" \
+          hdiutil create -volname "${{env.APP}}" \
             -srcfolder dmg_temp \
             -ov -format UDZO \
-            "${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.dmg"
+            "${{env.APP}}-macos-unsigned.dmg"
 
       - name: Note the DMG created
         run: |
-          ls -lh ${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.dmg
+          ls -lh ${{env.APP}}-macos-unsigned.dmg
 
       - name: Upload Artefact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP }}-macos-unsigned-dmg
-          path: ${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.dmg
+          path: ${{ env.APP }}-macos-unsigned.dmg
 
       # Package as ZIP
 
@@ -497,18 +508,18 @@ jobs:
         uses: thedoctor0/zip-release@master
         with:
           type: "zip"
-          directory: ${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}
-          path: ${{ env.APP }}.app
-          filename: ${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.zip
+          directory: ${{env.MACOS_APP_RELEASE_UNSIGNED_PATH}}
+          path: ${{env.APP}}.app
+          filename: ${{env.APP}}-macos-unsigned.zip
 
       - name: Review ZIP exists
-        run: ls -lh ${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.zip
+        run: ls -lh ${{env.MACOS_APP_RELEASE_UNSIGNED_PATH}}/${{env.APP}}-macos-unsigned.zip
 
       - name: Upload Artefact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP }}-macos-unsigned-zip
-          path: ${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-unsigned.zip
+          path: ${{ env.MACOS_APP_RELEASE_UNSIGNED_PATH }}/${{env.APP}}-macos-unsigned.zip
 
   ########################################################################
   # MACOS - DISTRIBUTION CERTIFICATE SIGNED FOR UPLOAD AND ACCESS FROM APP STORE/APP STORE TESTFLIGHT
@@ -649,17 +660,17 @@ jobs:
       #     hdiutil create -volname "${{ env.APP }}" \
       #       -srcfolder dmg_temp \
       #       -ov -format UDZO \
-      #       "${{ env.APP }}-${{env.RELEASE}}-macos-staging.dmg"
+      #       "${{ env.APP }}-macos-staging.dmg"
 
       # - name: Note the DMG created
       #   run: |
-      #     ls -lh ${{ env.APP }}-${{env.RELEASE}}-macos-staging.dmg
+      #     ls -lh ${{ env.APP }}-macos-staging.dmg
 
       # - name: Upload Artefact
       #   uses: actions/upload-artifact@v4
       #   with:
       #     name: ${{ env.APP }}-macos-staging-dmg
-      #     path: ${{ env.APP }}-${{env.RELEASE}}-macos-staging.dmg
+      #     path: ${{ env.APP }}-macos-staging.dmg
 
       # # Package as ZIP
 
@@ -669,16 +680,16 @@ jobs:
       #     type: "zip"
       #     directory: ${{ env.MACOS_APP_RELEASE_STAGING_PATH }}
       #     path: ${{ env.APP }}.app
-      #     filename: ${{ env.APP }}-${{env.RELEASE}}-macos-staging.zip
+      #     filename: ${{ env.APP }}-macos-staging.zip
 
       # - name: Review ZIP exists
-      #   run: ls -lh ${{ env.MACOS_APP_RELEASE_STAGING_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-staging.zip
+      #   run: ls -lh ${{ env.MACOS_APP_RELEASE_STAGING_PATH }}/${{ env.APP }}-macos-staging.zip
 
       # - name: Upload Artefact
       #   uses: actions/upload-artifact@v4
       #   with:
       #     name: ${{ env.APP }}-macos-staging-zip
-      #     path: ${{ env.MACOS_APP_RELEASE_STAGING_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-staging.zip
+      #     path: ${{ env.MACOS_APP_RELEASE_STAGING_PATH }}/${{ env.APP }}-macos-staging.zip
 
       # Create PKG for App Store
       - name: Create PKG for App Store upload
@@ -828,17 +839,17 @@ jobs:
           hdiutil create -volname "${{ env.APP }}" \
             -srcfolder dmg_temp \
             -ov -format UDZO \
-            "${{ env.APP }}-${{env.RELEASE}}-macos-dev.dmg"
+            "${{ env.APP }}-macos-dev.dmg"
 
       - name: Note the DMG created
         run: |
-          ls -lh ${{ env.APP }}-${{env.RELEASE}}-macos-dev.dmg
+          ls -lh ${{ env.APP }}-macos-dev.dmg
 
       - name: Upload DMG Artefact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP }}-macos-dev-dmg
-          path: ${{ env.APP }}-${{env.RELEASE}}-macos-dev.dmg
+          path: ${{ env.APP }}-macos-dev.dmg
 
       # Package as ZIP
 
@@ -848,16 +859,16 @@ jobs:
           type: "zip"
           directory: ${{ env.MACOS_APP_RELEASE_DEV_PATH }}
           path: ${{ env.APP }}.app
-          filename: ${{ env.APP }}-${{env.RELEASE}}-macos-dev.zip
+          filename: ${{ env.APP }}-macos-dev.zip
 
       - name: Review ZIP exists
-        run: ls -lh ${{ env.MACOS_APP_RELEASE_DEV_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-dev.zip
+        run: ls -lh ${{ env.MACOS_APP_RELEASE_DEV_PATH }}/${{ env.APP }}-macos-dev.zip
 
       - name: Upload ZIP Artefact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP }}-macos-dev-zip
-          path: ${{ env.MACOS_APP_RELEASE_DEV_PATH }}/${{ env.APP }}-${{env.RELEASE}}-macos-dev.zip
+          path: ${{ env.MACOS_APP_RELEASE_DEV_PATH }}/${{ env.APP }}-macos-dev.zip
 
       # Ref: https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications
 

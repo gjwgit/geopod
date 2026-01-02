@@ -56,3 +56,9 @@ https://opensource.org/license/gpl-3-0
 http://xmlns.com/foaf/0.1/
 http://purl.org/dc/terms/
 https://solidcommunity.au/predicates/*
+
+# Installer links (not yet deployed, placeholder for future releases)
+
+https://solidcommunity.au/installers/geopod-dev-linux.zip
+https://solidcommunity.au/installers/geopod-dev-windows.zip
+https://solidcommunity.au/installers/geopod-dev-windows-inno.exe

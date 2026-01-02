@@ -65,7 +65,7 @@ settings:
   base:
     # TODO: Optionally set to NONE and use APP_NAME to set flavor specific product name
     # Eg. https://github.com/lllttt06/xcodegen_flutter_sample/blob/main/ios/project.yml
-    PRODUCT_NAME: "notepod" # 'NONE'
+    PRODUCT_NAME: "geopod" # 'NONE'
     # TODO: Optionally use a different app icon for each
     # flavor in a different app icon subfolder in Runner/assets.xcassets/
     # Eg. https://github.com/lllttt06/xcodegen_flutter_sample/blob/main/ios/project.yml
@@ -141,7 +141,7 @@ targets:
     settings:
       base:
         # TODO: set app bundle ID
-        PRODUCT_BUNDLE_IDENTIFIER: com.togaware.notepod # App Bundle ID from Apple Developer account
+        PRODUCT_BUNDLE_IDENTIFIER: com.togaware.geopod # App Bundle ID from Apple Developer account
 
         ALWAYS_SEARCH_USER_PATHS: "NO"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "YES"
@@ -306,7 +306,7 @@ targets:
           # set with DEV Team and Bundle id to match
           # those values in signing certificates
           CODE_SIGN_ENTITLEMENTS: "Runner/Release.entitlements"
-          PROVISIONING_PROFILE_SPECIFIER: "NotePod_Mac_Distribution_Mac_Appstore_Connect"
+          PROVISIONING_PROFILE_SPECIFIER: "GeoPod_Mac_Distribution_Mac_Appstore_Connect"
 
           DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
           ENABLE_NS_ASSERTIONS: "NO"

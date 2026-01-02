@@ -115,7 +115,10 @@ Future<bool> deleteIndividualPlaceFile(String placeId) async {
   try {
     final fp = await getIndividualPlaceFilePath(placeId);
     final url = await getFileUrl(fp);
-    final (:accessToken, :dPopToken) = await getTokensForResource(url, 'DELETE');
+    final (:accessToken, :dPopToken) = await getTokensForResource(
+      url,
+      'DELETE',
+    );
     final r = await http.delete(
       Uri.parse(url),
       headers: {

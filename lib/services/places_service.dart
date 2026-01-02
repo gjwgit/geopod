@@ -251,7 +251,9 @@ class PlacesService {
 
       // Delete individual file and update main file in parallel
       final results = await Future.wait([
-        writePlacesJsonFile(jsonEncode(updated.map((p) => p.toJson()).toList())),
+        writePlacesJsonFile(
+          jsonEncode(updated.map((p) => p.toJson()).toList()),
+        ),
         deleteIndividualPlaceFile(placeId),
       ]);
       final success = results[0];

@@ -80,26 +80,43 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
   }
 
   Future<void> _loadDirectory() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
     try {
       final items = await PodDirectoryService.listDirectory(_currentPath);
-      if (mounted) setState(() { _items = items; _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _items = items;
+          _isLoading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
     }
   }
 
   void _navigateToDirectory(PodFileItem item) {
     if (!item.isDirectory) return;
     _pathHistory.add(_currentPath);
-    setState(() { _currentPath = item.path; _selectedFile = null; });
+    setState(() {
+      _currentPath = item.path;
+      _selectedFile = null;
+    });
     _loadDirectory();
   }
 
   void _navigateBack() {
     if (_pathHistory.isNotEmpty) {
-      setState(() { _currentPath = _pathHistory.removeLast(); _selectedFile = null; });
+      setState(() {
+        _currentPath = _pathHistory.removeLast();
+        _selectedFile = null;
+      });
       _loadDirectory();
     }
   }
@@ -107,7 +124,10 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
   void _navigateToRoot() {
     _pathHistory.clear();
     _pathHistory.add('');
-    setState(() { _currentPath = widget.basePath; _selectedFile = null; });
+    setState(() {
+      _currentPath = widget.basePath;
+      _selectedFile = null;
+    });
     _loadDirectory();
   }
 
@@ -116,9 +136,9 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
     if (item.isTextFile) {
       setState(() => _selectedFile = item);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cannot preview ${item.name}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Cannot preview ${item.name}')));
     }
   }
 
@@ -128,7 +148,9 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
       if (mounted) {
         setState(() {
           _items.removeWhere((i) => i.path == item.path);
-          _items.removeWhere((i) => PlacesService.isIndividualPlaceFile(i.path));
+          _items.removeWhere(
+            (i) => PlacesService.isIndividualPlaceFile(i.path),
+          );
           if (_selectedFile?.path == item.path ||
               PlacesService.isIndividualPlaceFile(_selectedFile?.path ?? '')) {
             _selectedFile = null;
@@ -138,9 +160,11 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
       if (!mounted) return;
       final success = await PlacesService.clearAllPlaces(context, widget);
       if (mounted) {
-        showFileOperationSnackBar(context,
-            message: success ? 'All places cleared' : 'Failed to clear places',
-            success: success);
+        showFileOperationSnackBar(
+          context,
+          message: success ? 'All places cleared' : 'Failed to clear places',
+          success: success,
+        );
         if (!success) _loadDirectory();
       }
       return;
@@ -151,11 +175,19 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
         _items.removeWhere((i) => i.path == item.path);
         if (_selectedFile?.path == item.path) _selectedFile = null;
       });
-      final success = await PlacesService.deletePlaceByFilePath(item.path, context, widget);
+      final success = await PlacesService.deletePlaceByFilePath(
+        item.path,
+        context,
+        widget,
+      );
       if (mounted) {
-        showFileOperationSnackBar(context,
-            message: success ? 'Deleted ${item.name}' : 'Failed to delete ${item.name}',
-            success: success);
+        showFileOperationSnackBar(
+          context,
+          message: success
+              ? 'Deleted ${item.name}'
+              : 'Failed to delete ${item.name}',
+          success: success,
+        );
         if (!success) _loadDirectory();
       }
       return;
@@ -170,20 +202,38 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
 
     final success = await PodDirectoryService.delete(item.path);
     if (mounted) {
-      showFileOperationSnackBar(context,
-          message: success ? 'Deleted ${item.name}' : 'Failed to delete ${item.name}',
-          success: success);
+      showFileOperationSnackBar(
+        context,
+        message: success
+            ? 'Deleted ${item.name}'
+            : 'Failed to delete ${item.name}',
+        success: success,
+      );
       if (!success) _loadDirectory();
     }
   }
 
   Future<void> _refreshDirectory() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
-      final items = await PodDirectoryService.listDirectory(_currentPath, forceRefresh: true);
-      if (mounted) setState(() { _items = items; _isLoading = false; });
+      final items = await PodDirectoryService.listDirectory(
+        _currentPath,
+        forceRefresh: true,
+      );
+      if (mounted)
+        setState(() {
+          _items = items;
+          _isLoading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
     }
   }
 
@@ -223,34 +273,33 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
                   onRetry: _loadDirectory,
                 )
               : isMediumScreen
-                  ? MediumLayoutView(
-                      items: _items,
-                      selectedFile: _selectedFile,
-                      isLoading: _isLoading,
-                      error: _error,
-                      onDirectoryTap: _navigateToDirectory,
-                      onFileTap: _selectFile,
-                      onDelete: _deleteFile,
-                      canDelete: _canDeleteItem,
-                      onClearSelection: () =>
-                          setState(() => _selectedFile = null),
-                      onRetry: _loadDirectory,
-                    )
-                  : _selectedFile != null
-                      ? MobilePreviewView(
-                          selectedFile: _selectedFile!,
-                          onBack: () => setState(() => _selectedFile = null),
-                        )
-                      : ListContentView(
-                          items: _items,
-                          isLoading: _isLoading,
-                          error: _error,
-                          onDirectoryTap: _navigateToDirectory,
-                          onFileTap: _selectFile,
-                          onDelete: _deleteFile,
-                          canDelete: _canDeleteItem,
-                          onRetry: _loadDirectory,
-                        ),
+              ? MediumLayoutView(
+                  items: _items,
+                  selectedFile: _selectedFile,
+                  isLoading: _isLoading,
+                  error: _error,
+                  onDirectoryTap: _navigateToDirectory,
+                  onFileTap: _selectFile,
+                  onDelete: _deleteFile,
+                  canDelete: _canDeleteItem,
+                  onClearSelection: () => setState(() => _selectedFile = null),
+                  onRetry: _loadDirectory,
+                )
+              : _selectedFile != null
+              ? MobilePreviewView(
+                  selectedFile: _selectedFile!,
+                  onBack: () => setState(() => _selectedFile = null),
+                )
+              : ListContentView(
+                  items: _items,
+                  isLoading: _isLoading,
+                  error: _error,
+                  onDirectoryTap: _navigateToDirectory,
+                  onFileTap: _selectFile,
+                  onDelete: _deleteFile,
+                  canDelete: _canDeleteItem,
+                  onRetry: _loadDirectory,
+                ),
         ),
       ],
     );

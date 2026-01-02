@@ -14,6 +14,7 @@ library;
 
 import 'package:flutter_map/flutter_map.dart';
 
+import 'package:geopod/services/map_settings_pod.dart';
 import 'package:geopod/services/map_settings_service.dart';
 
 /// Saves the current viewport position to persistent storage.
@@ -24,11 +25,7 @@ void saveCurrentViewport({
   if (mapSettings.rememberViewport) {
     final center = mapController.camera.center;
     final zoom = mapController.camera.zoom;
-    MapSettingsService.saveLastViewport(
-      lat: center.latitude,
-      lng: center.longitude,
-      zoom: zoom,
-    );
+    saveLastViewport(lat: center.latitude, lng: center.longitude, zoom: zoom);
   }
 }
 

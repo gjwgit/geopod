@@ -26,19 +26,16 @@
 library;
 
 import 'dart:async' show unawaited;
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:solidpod/solidpod.dart';
 
+import 'package:geopod/services/map_settings_pod.dart';
 import 'package:geopod/services/map_source.dart';
-import 'package:geopod/services/pod/pod_directory_service.dart';
 
+export 'package:geopod/services/map_settings_pod.dart' show ViewportPosition;
 export 'package:geopod/services/map_source.dart';
-
 
 /// Keys for SharedPreferences storage.
 const String _keyShowLocalPlaces = 'map_show_local_places';
@@ -49,9 +46,6 @@ const String _keyRememberViewport = 'map_remember_viewport';
 const String _keyInitialLat = 'map_initial_lat';
 const String _keyInitialLng = 'map_initial_lng';
 const String _keyInitialZoom = 'map_initial_zoom';
-const String _keyLastLat = 'map_last_lat';
-const String _keyLastLng = 'map_last_lng';
-const String _keyLastZoom = 'map_last_zoom';
 
 /// Default viewport settings (Darwin centered).
 const double defaultInitialLat = -12.4634;
@@ -132,78 +126,6 @@ class MapSettings {
 
 /// Service for loading and saving map display settings.
 class MapSettingsService {
-  static const String _settingsFileName = 'settings.json';
-
-  /// Get the full file path for settings in POD.
-  static Future<String> _getSettingsFilePath() async {
-    final path = await getDataDirPath();
-    return '$path/$_settingsFileName';
-  }
-
-  /// Read settings from POD.
-  static Future<Map<String, dynamic>?> _readFromPod() async {
-    try {
-      if (!await checkLoggedIn()) return null;
-
-      final fp = await _getSettingsFilePath();
-      final url = await getFileUrl(fp);
-      final (:accessToken, :dPopToken) = await getTokensForResource(url, 'GET');
-      final r = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Accept': 'application/json, */*',
-          'Authorization': 'DPoP $accessToken',
-          'Connection': 'keep-alive',
-          'DPoP': dPopToken,
-        },
-      );
-
-      if (r.statusCode == 200 && r.body.trim().isNotEmpty) {
-        final decoded = jsonDecode(r.body);
-        if (decoded is Map<String, dynamic>) {
-          return decoded;
-        }
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error reading settings from POD: $e');
-      return null;
-    }
-  }
-
-  /// Write settings to POD (silently, in background).
-  static Future<bool> _writeToPod(Map<String, dynamic> data) async {
-    try {
-      if (!await checkLoggedIn()) return false;
-
-      final fp = await _getSettingsFilePath();
-      final url = await getFileUrl(fp);
-      final (:accessToken, :dPopToken) = await getTokensForResource(url, 'PUT');
-      final r = await http.put(
-        Uri.parse(url),
-        headers: {
-          'Accept': '*/*',
-          'Authorization': 'DPoP $accessToken',
-          'Connection': 'keep-alive',
-          'Content-Type': 'application/json',
-          'DPoP': dPopToken,
-        },
-        body: jsonEncode(data),
-      );
-      final success = r.statusCode >= 200 && r.statusCode < 300;
-      if (success) {
-        // Invalidate cache for data directory and notify file browser
-        PodDirectoryService.invalidateCache('data');
-        PodDirectoryService.notifyChange();
-        debugPrint('Settings written to POD, cache invalidated for data/');
-      }
-      return success;
-    } catch (e) {
-      debugPrint('Error writing settings to POD: $e');
-      return false;
-    }
-  }
-
   /// Convert MapSettings to JSON map.
   static Map<String, dynamic> _settingsToJson(MapSettings settings) {
     return {
@@ -332,7 +254,7 @@ class MapSettingsService {
 
       // No local cache - try to load from POD first (first login scenario)
       debugPrint('loadSettingsSmart: no local cache, trying POD...');
-      final podData = await _readFromPod();
+      final podData = await readSettingsFromPod();
       if (podData != null) {
         debugPrint('loadSettingsSmart: loaded from POD');
         final settings = _settingsFromJson(podData);
@@ -358,7 +280,7 @@ class MapSettingsService {
 
       // Save to POD in background (slow, non-blocking)
       unawaited(
-        _writeToPod(_settingsToJson(settings)).then((success) {
+        writeSettingsToPod(_settingsToJson(settings)).then((success) {
           debugPrint('saveSettings: POD sync ${success ? 'ok' : 'failed'}');
         }),
       );
@@ -367,39 +289,6 @@ class MapSettingsService {
     } catch (e) {
       debugPrint('Error saving settings: $e');
       return false;
-    }
-  }
-
-  /// Saves the last viewed viewport position.
-  static Future<bool> saveLastViewport({
-    required double lat,
-    required double lng,
-    required double zoom,
-  }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble(_keyLastLat, lat);
-      await prefs.setDouble(_keyLastLng, lng);
-      await prefs.setDouble(_keyLastZoom, zoom);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Loads the last viewed viewport position.
-  static Future<ViewportPosition?> loadLastViewport() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final lat = prefs.getDouble(_keyLastLat);
-      final lng = prefs.getDouble(_keyLastLng);
-      final zoom = prefs.getDouble(_keyLastZoom);
-      if (lat != null && lng != null && zoom != null) {
-        return ViewportPosition(lat: lat, lng: lng, zoom: zoom);
-      }
-      return null;
-    } catch (_) {
-      return null;
     }
   }
 
@@ -432,16 +321,16 @@ class MapSettingsService {
       await prefs.remove(_keyInitialLat);
       await prefs.remove(_keyInitialLng);
       await prefs.remove(_keyInitialZoom);
-      await prefs.remove(_keyLastLat);
-      await prefs.remove(_keyLastLng);
-      await prefs.remove(_keyLastZoom);
+      await prefs.remove(keyLastLat);
+      await prefs.remove(keyLastLng);
+      await prefs.remove(keyLastZoom);
 
       // Write default settings to POD (not empty object)
       final defaultSettings = MapSettings(
         mapSource: MapSettings.getDefaultMapSource(),
       );
       unawaited(
-        _writeToPod(_settingsToJson(defaultSettings)).then((success) {
+        writeSettingsToPod(_settingsToJson(defaultSettings)).then((success) {
           debugPrint('resetToDefaults: POD sync ${success ? 'ok' : 'failed'}');
         }),
       );
@@ -457,7 +346,7 @@ class MapSettingsService {
   /// Returns the synced settings if POD has data, null otherwise.
   static Future<MapSettings?> syncFromPod() async {
     try {
-      final podData = await _readFromPod();
+      final podData = await readSettingsFromPod();
       if (podData != null) {
         debugPrint('syncFromPod: updating local with POD settings');
         final settings = _settingsFromJson(podData);
@@ -467,7 +356,7 @@ class MapSettingsService {
         // POD has no settings, upload local settings to POD
         debugPrint('syncFromPod: POD empty, uploading local settings');
         final localSettings = await _loadFromPrefs();
-        unawaited(_writeToPod(_settingsToJson(localSettings)));
+        unawaited(writeSettingsToPod(_settingsToJson(localSettings)));
         return null;
       }
     } catch (e) {
@@ -491,19 +380,6 @@ class MapSettingsService {
       }),
     );
   }
-}
-
-/// Represents a map viewport position (center + zoom).
-class ViewportPosition {
-  final double lat;
-  final double lng;
-  final double zoom;
-
-  const ViewportPosition({
-    required this.lat,
-    required this.lng,
-    required this.zoom,
-  });
 }
 
 /// Preloads map settings in the background to warm up cache.

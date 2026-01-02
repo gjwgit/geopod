@@ -116,8 +116,9 @@ class BrowserBreadcrumb extends StatelessWidget {
                 child: Text(
                   parts[i],
                   style: TextStyle(
-                    fontWeight:
-                        i == parts.length - 1 ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: i == parts.length - 1
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
               ),

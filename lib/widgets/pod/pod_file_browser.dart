@@ -87,17 +87,19 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
 
     try {
       final items = await PodDirectoryService.listDirectory(_currentPath);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _items = items;
           _isLoading = false;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = e.toString();
           _isLoading = false;
         });
+      }
     }
   }
 
@@ -223,17 +225,19 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
         _currentPath,
         forceRefresh: true,
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _items = items;
           _isLoading = false;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = e.toString();
           _isLoading = false;
         });
+      }
     }
   }
 

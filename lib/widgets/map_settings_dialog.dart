@@ -175,6 +175,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // Use responsive width: larger on desktop/tablet, adapt on mobile
+    final screenWidth = MediaQuery.of(context).size.width;
+    final dialogWidth = screenWidth < 400 ? screenWidth * 0.9 : 380.0;
+
     return AlertDialog(
       title: const Row(
         children: [
@@ -183,8 +187,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
           Text('Map Settings'),
         ],
       ),
-      content: SingleChildScrollView(
-        child: Column(
+      content: SizedBox(
+        width: dialogWidth,
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -211,7 +217,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 color: _showLocalPlaces ? Colors.green : Colors.grey,
               ),
             ),
-            const Divider(height: 32),
+            const Divider(height: 24),
 
             // Viewport Settings
             const Text(
@@ -252,7 +258,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 },
               ),
             ],
-            const Divider(height: 32),
+            const Divider(height: 24),
 
             // Map Source Selection
             const Text(
@@ -320,8 +326,8 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
-            const Divider(height: 32),
+            const SizedBox(height: 12),
+            const Divider(height: 24),
 
             // Color customization.
             const Text(
@@ -332,7 +338,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 color: Colors.grey,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             // User places color.
             ColorPickerTile(
@@ -364,7 +370,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 },
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Reset button.
             Center(
@@ -404,6 +410,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               },
             ),
           ],
+        ),
         ),
       ),
       actions: [

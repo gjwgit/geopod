@@ -17,10 +17,10 @@ import 'dart:async' show unawaited;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:geopod/constants/example_places_data.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places/places_cache_manager.dart';
 import 'package:geopod/services/pod/pod.dart';
@@ -55,25 +55,21 @@ String _placeFilePath(String placeId) =>
 class PlacesServiceV2 {
   static List<Place>? _cachedLocalPlaces;
 
-  /// Load local (bundled) places from assets.
+  /// Get local example places synchronously.
+  /// Data is compiled into the binary, so no async loading needed.
+  static List<Place> getLocalPlacesSync() {
+    _cachedLocalPlaces ??= kExamplePlacesData
+        .map((json) => Place.fromJson(json, isLocalSource: true))
+        .toList();
+    return _cachedLocalPlaces!;
+  }
+
+  /// Load local (bundled) places.
+  ///
+  /// Note: This is now synchronous internally (data is compiled in),
+  /// but keeps the async signature for API compatibility.
   static Future<List<Place>> loadLocalPlaces() async {
-    if (_cachedLocalPlaces != null) return _cachedLocalPlaces!;
-    final places = <Place>[];
-    try {
-      final json = await rootBundle.loadString('assets/data/places.json');
-      final decoded = jsonDecode(json);
-      if (decoded is List) {
-        for (final item in decoded) {
-          if (item is Map<String, dynamic>) {
-            try {
-              places.add(Place.fromJson(item, isLocalSource: true));
-            } catch (_) {}
-          }
-        }
-      }
-    } catch (_) {}
-    _cachedLocalPlaces = places;
-    return places;
+    return getLocalPlacesSync();
   }
 
   /// Read a single place from its file.
@@ -161,11 +157,11 @@ class PlacesServiceV2 {
       final c = cm.allPlaces;
       if (c != null) return c;
     }
-    final results = await Future.wait([
-      loadLocalPlaces(),
-      fetchPodPlaces(forceRefresh: forceRefresh),
-    ]);
-    final all = <Place>[...results[1], ...results[0]];
+    // Local places are synchronous (compiled into binary) - get them immediately
+    final localPlaces = getLocalPlacesSync();
+    // Only await network data
+    final podPlaces = await fetchPodPlaces(forceRefresh: forceRefresh);
+    final all = <Place>[...podPlaces, ...localPlaces];
     cm.cacheAllPlaces(all);
     return all;
   }

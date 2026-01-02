@@ -28,12 +28,12 @@ library;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solidpod/solidpod.dart';
 
+import 'package:geopod/constants/example_places_data.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places/places_cache_manager.dart';
@@ -52,7 +52,17 @@ const String _keyPodPlacesCacheTimestamp = 'pod_places_cache_timestamp';
 const Duration _cacheExpiry = Duration(minutes: 5);
 
 class PlacesService {
+  /// Cached local places (lazily initialized from compiled constants).
   static List<Place>? _cachedLocalPlaces;
+
+  /// Get local example places synchronously.
+  /// Data is compiled into the binary, so no async loading needed.
+  static List<Place> getLocalPlacesSync() {
+    _cachedLocalPlaces ??= kExamplePlacesData
+        .map((json) => Place.fromJson(json, isLocalSource: true))
+        .toList();
+    return _cachedLocalPlaces!;
+  }
 
   static Future<String> _getFullFilePath() async {
     final path = await getDataDirPath();
@@ -127,24 +137,13 @@ class PlacesService {
     await Future.wait(ids.map((id) => _deleteIndividualPlaceFile(id)));
   }
 
+  /// Load local example places.
+  ///
+  /// Note: This is now synchronous internally (data is compiled in),
+  /// but keeps the async signature for API compatibility.
   static Future<List<Place>> loadLocalPlaces() async {
-    if (_cachedLocalPlaces != null) return _cachedLocalPlaces!;
-    final places = <Place>[];
-    try {
-      final json = await rootBundle.loadString('assets/data/places.json');
-      final decoded = jsonDecode(json);
-      if (decoded is List) {
-        for (final item in decoded) {
-          if (item is Map<String, dynamic>) {
-            try {
-              places.add(Place.fromJson(item, isLocalSource: true));
-            } catch (_) {}
-          }
-        }
-      }
-    } catch (_) {}
-    _cachedLocalPlaces = places;
-    return places;
+    // Use synchronous getter - data is compiled into binary
+    return getLocalPlacesSync();
   }
 
   static Future<String?> _readJsonFile() async {
@@ -195,11 +194,11 @@ class PlacesService {
       final c = cm.allPlaces;
       if (c != null) return c;
     }
-    final results = await Future.wait([
-      loadLocalPlaces(),
-      fetchPodPlaces(forceRefresh: forceRefresh),
-    ]);
-    final all = <Place>[...results[1], ...results[0]];
+    // Local places are synchronous (compiled into binary) - get them immediately
+    final localPlaces = getLocalPlacesSync();
+    // Only await network data
+    final podPlaces = await fetchPodPlaces(forceRefresh: forceRefresh);
+    final all = <Place>[...podPlaces, ...localPlaces];
     cm.cacheAllPlaces(all);
     return all;
   }
@@ -316,7 +315,8 @@ class PlacesService {
 
   static Future<List<Place>> refreshPodDataOnly() async {
     final cm = PlacesCacheManager();
-    final local = await loadLocalPlaces();
+    // Local places are synchronous (compiled into binary)
+    final local = getLocalPlacesSync();
     await clearPodCacheOnly();
     final pod = await fetchPodPlaces(forceRefresh: true);
     final all = <Place>[...pod, ...local];
@@ -556,31 +556,5 @@ class PlacesService {
   static bool isIndividualPlaceFile(String filePath) {
     final fileName = filePath.split('/').last.split('\\').last;
     return RegExp(r'^place_.+\.json$').hasMatch(fileName);
-  }
-}
-
-/// Preload places data in the background.
-///
-/// This is called at app startup and when entering the main app.
-/// It only fetches if the cache is empty or expired, avoiding
-/// duplicate fetches when the page itself will load data.
-///
-/// Note: For logged-in users, this is mainly useful when they
-/// navigate to non-places pages first (like Settings or Map).
-/// If they go directly to Locations page, the page will load data itself.
-Future<void> preloadPlacesData() async {
-  try {
-    final cm = PlacesCacheManager();
-    // Skip preload if we already have cached data
-    if (cm.allPlaces != null) {
-      debugPrint('preloadPlacesData: skipped (cache exists)');
-      return;
-    }
-
-    debugPrint('preloadPlacesData: starting...');
-    await PlacesService.fetchPlaces(forceRefresh: false);
-    debugPrint('preloadPlacesData: completed');
-  } catch (e) {
-    debugPrint('preloadPlacesData: error $e');
   }
 }

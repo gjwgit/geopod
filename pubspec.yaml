@@ -23,6 +23,7 @@ dependencies:
   flutter_colorpicker: ^1.1.0
   flutter_map: ^7.0.2
   flutter_map_cancellable_tile_provider: ^3.0.2
+  flutter_secure_storage: ^10.0.0-beta.4
   http: ^1.2.2
   latlong2: ^0.9.1
   shared_preferences: ^2.3.3
@@ -44,7 +45,6 @@ flutter:
   assets:
     - assets/images/app_icon.png
     - assets/images/app_image.png
-    - assets/data/places.json
   uses-material-design: true
 
 # 20250429 gjw Define launcher icons for all platforms (except Linux)

@@ -90,10 +90,9 @@ class _StartupPreloaderState extends State<_StartupPreloader> {
   void initState() {
     super.initState();
 
-    // Preload all data on app startup (both guests and logged-in users)
-    // This makes the map page feel instant when user navigates to it
+    // Preload map settings on app startup (both guests and logged-in users)
+    // Places data is now loaded on-demand by the map page
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(preloadPlacesData());
       unawaited(preloadMapSettings());
     });
   }

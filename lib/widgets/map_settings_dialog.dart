@@ -69,9 +69,13 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late double _initialLng;
   late double _initialZoom;
 
+  // Snapshot of initial settings to detect actual changes
+  late MapSettings _initialSnapshot;
+
   @override
   void initState() {
     super.initState();
+    _initialSnapshot = widget.currentSettings;
     _showLocalPlaces = widget.currentSettings.showLocalPlaces;
     _userPlacesColor = widget.currentSettings.userPlacesColor;
     _localPlacesColor = widget.currentSettings.localPlacesColor;
@@ -80,6 +84,18 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     _initialLat = widget.currentSettings.initialLat;
     _initialLng = widget.currentSettings.initialLng;
     _initialZoom = widget.currentSettings.initialZoom;
+  }
+
+  /// Check if current settings differ from initial snapshot.
+  bool _hasActualChanges() {
+    return _showLocalPlaces != _initialSnapshot.showLocalPlaces ||
+        _userPlacesColor != _initialSnapshot.userPlacesColor ||
+        _localPlacesColor != _initialSnapshot.localPlacesColor ||
+        _mapSource != _initialSnapshot.mapSource ||
+        _rememberViewport != _initialSnapshot.rememberViewport ||
+        _initialLat != _initialSnapshot.initialLat ||
+        _initialLng != _initialSnapshot.initialLng ||
+        _initialZoom != _initialSnapshot.initialZoom;
   }
 
   /// Saves current settings and notifies parent.
@@ -422,8 +438,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
         ElevatedButton(
           onPressed: () {
             Navigator.pop(context);
-            // Sync settings to POD in background when dialog closes
-            unawaited(MapSettingsService.syncToPod());
+            // Only sync to POD if there were actual changes
+            if (_hasActualChanges()) {
+              unawaited(MapSettingsService.syncToPod());
+            }
           },
           child: const Text('Done'),
         ),

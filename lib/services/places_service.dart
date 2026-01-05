@@ -84,7 +84,7 @@ class PlacesService {
     final places = <Place>[];
     final cm = PlacesCacheManager();
     try {
-      if (!await checkLoggedIn()) return places;
+      if (!AuthDataManager.isLoggedInSync()) return places;
       if (!forceRefresh) {
         final mc = cm.podPlaces;
         if (mc != null) {
@@ -165,7 +165,7 @@ class PlacesService {
   static void _refreshPodPlacesInBackground() {
     Future(() async {
       try {
-        if (!await checkLoggedIn()) return;
+        if (!AuthDataManager.isLoggedInSync()) return;
         final c = await readPlacesJsonFile();
         if (c != null && c.trim().isNotEmpty) await _cachePodPlaces(c);
       } catch (_) {}
@@ -207,7 +207,7 @@ class PlacesService {
     Widget returnWidget,
   ) async {
     try {
-      if (!await checkLoggedIn()) return false;
+      if (!AuthDataManager.isLoggedInSync()) return false;
       final cm = PlacesCacheManager();
       var existing = cm.podPlaces ?? await fetchPodPlaces();
       final updated = List<Place>.from(existing)..insert(0, place);
@@ -243,7 +243,7 @@ class PlacesService {
     Widget returnWidget,
   ) async {
     try {
-      if (!await checkLoggedIn()) return false;
+      if (!AuthDataManager.isLoggedInSync()) return false;
       final cm = PlacesCacheManager();
       var existing = cm.podPlaces ?? await fetchPodPlaces();
       final updated = List<Place>.from(existing)
@@ -283,7 +283,7 @@ class PlacesService {
     void Function(int, int)? onProgress,
   }) async {
     try {
-      if (!await checkLoggedIn()) return false;
+      if (!AuthDataManager.isLoggedInSync()) return false;
       final existing = await fetchPodPlaces();
       final ids = existing.map((p) => p.id).toSet();
       final newPlaces = imported.where((p) => !ids.contains(p.id)).toList();
@@ -332,7 +332,7 @@ class PlacesService {
     Widget returnWidget,
   ) async {
     try {
-      if (!await checkLoggedIn()) return false;
+      if (!AuthDataManager.isLoggedInSync()) return false;
 
       // Get all existing place IDs before clearing
       final existing = await fetchPodPlaces();
@@ -361,7 +361,7 @@ class PlacesService {
     bool coordinatesChanged = false,
   }) async {
     try {
-      if (!await checkLoggedIn()) return false;
+      if (!AuthDataManager.isLoggedInSync()) return false;
       final existing = await fetchPodPlaces();
       final list = List<Place>.from(existing);
       final i = list.indexWhere((p) => p.id == updated.id);

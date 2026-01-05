@@ -272,22 +272,27 @@ class MapSettingsService {
     }
   }
 
-  /// Saves settings to SharedPreferences and POD (background).
+  /// Saves settings to SharedPreferences only (fast, no network).
+  /// POD sync is done separately via syncToPod() when needed.
   static Future<bool> saveSettings(MapSettings settings) async {
     try {
-      // Save to SharedPreferences first (fast, blocking)
+      // Save to SharedPreferences only (fast, no blocking)
       await _saveToPrefs(settings);
-
-      // Save to POD in background (slow, non-blocking)
-      unawaited(
-        writeSettingsToPod(_settingsToJson(settings)).then((success) {
-          debugPrint('saveSettings: POD sync ${success ? 'ok' : 'failed'}');
-        }),
-      );
-
       return true;
     } catch (e) {
       debugPrint('Error saving settings: $e');
+      return false;
+    }
+  }
+
+  /// Manually sync current settings to POD.
+  /// Call this when user closes settings dialog or at app exit.
+  static Future<bool> syncToPod() async {
+    try {
+      final settings = await _loadFromPrefs();
+      return await writeSettingsToPod(_settingsToJson(settings));
+    } catch (e) {
+      debugPrint('Error syncing settings to POD: $e');
       return false;
     }
   }

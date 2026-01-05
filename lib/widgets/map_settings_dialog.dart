@@ -25,6 +25,8 @@
 
 library;
 
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -418,7 +420,11 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
       ),
       actions: [
         ElevatedButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pop(context);
+            // Sync settings to POD in background when dialog closes
+            unawaited(MapSettingsService.syncToPod());
+          },
           child: const Text('Done'),
         ),
       ],

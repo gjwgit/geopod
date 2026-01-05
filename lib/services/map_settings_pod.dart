@@ -36,9 +36,11 @@ Future<String> getSettingsFilePath() async {
 }
 
 /// Read settings from POD.
+/// Returns null if not logged in or if no settings exist.
 Future<Map<String, dynamic>?> readSettingsFromPod() async {
   try {
-    if (!await checkLoggedIn()) return null;
+    // Quick sync check - avoid slow async checkLoggedIn()
+    if (!AuthDataManager.isLoggedInSync()) return null;
 
     final fp = await getSettingsFilePath();
     final url = await getFileUrl(fp);
@@ -65,10 +67,9 @@ Future<Map<String, dynamic>?> readSettingsFromPod() async {
 }
 
 /// Write settings to POD (silently, in background).
+/// Note: This is only called when user is logged in (from settings dialog close).
 Future<bool> writeSettingsToPod(Map<String, dynamic> data) async {
   try {
-    if (!await checkLoggedIn()) return false;
-
     final fp = await getSettingsFilePath();
     final url = await getFileUrl(fp);
     final (:accessToken, :dPopToken) = await getTokensForResource(url, 'PUT');

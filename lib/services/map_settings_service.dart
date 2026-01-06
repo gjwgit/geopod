@@ -39,8 +39,10 @@ export 'package:geopod/services/map_source.dart';
 
 /// Keys for SharedPreferences storage.
 const String _keyShowLocalPlaces = 'map_show_local_places';
+const String _keyShowEncryptedPlaces = 'map_show_encrypted_places';
 const String _keyUserPlacesColor = 'map_user_places_color';
 const String _keyLocalPlacesColor = 'map_local_places_color';
+const String _keyEncryptedPlacesColor = 'map_encrypted_places_color';
 const String _keyMapSource = 'map_source';
 const String _keyRememberViewport = 'map_remember_viewport';
 const String _keyInitialLat = 'map_initial_lat';
@@ -55,17 +57,25 @@ const double defaultInitialZoom = 11.0;
 /// Default colors for map markers.
 const Color defaultUserColor = Colors.blue;
 const Color defaultLocalColor = Colors.orange;
+const Color defaultEncryptedColor = Colors.purple;
 
 /// Data class holding all map display settings.
 class MapSettings {
   /// Whether to show local (canned example) places on the map.
   final bool showLocalPlaces;
 
+  /// Whether to show encrypted places on the map.
+  /// Encrypted places require security key to decrypt.
+  final bool showEncryptedPlaces;
+
   /// Color for user's saved places (from Pod).
   final Color userPlacesColor;
 
   /// Color for local canned example places.
   final Color localPlacesColor;
+
+  /// Color for encrypted places.
+  final Color encryptedPlacesColor;
 
   /// Current map tile source.
   final MapSource mapSource;
@@ -84,8 +94,10 @@ class MapSettings {
 
   const MapSettings({
     this.showLocalPlaces = true,
+    this.showEncryptedPlaces = false,
     this.userPlacesColor = defaultUserColor,
     this.localPlacesColor = defaultLocalColor,
+    this.encryptedPlacesColor = defaultEncryptedColor,
     this.rememberViewport = true,
     this.initialLat = defaultInitialLat,
     this.initialLng = defaultInitialLng,
@@ -103,8 +115,10 @@ class MapSettings {
   /// Creates a copy with optional overrides.
   MapSettings copyWith({
     bool? showLocalPlaces,
+    bool? showEncryptedPlaces,
     Color? userPlacesColor,
     Color? localPlacesColor,
+    Color? encryptedPlacesColor,
     MapSource? mapSource,
     bool? rememberViewport,
     double? initialLat,
@@ -113,8 +127,10 @@ class MapSettings {
   }) {
     return MapSettings(
       showLocalPlaces: showLocalPlaces ?? this.showLocalPlaces,
+      showEncryptedPlaces: showEncryptedPlaces ?? this.showEncryptedPlaces,
       userPlacesColor: userPlacesColor ?? this.userPlacesColor,
       localPlacesColor: localPlacesColor ?? this.localPlacesColor,
+      encryptedPlacesColor: encryptedPlacesColor ?? this.encryptedPlacesColor,
       mapSource: mapSource ?? this.mapSource,
       rememberViewport: rememberViewport ?? this.rememberViewport,
       initialLat: initialLat ?? this.initialLat,
@@ -130,8 +146,10 @@ class MapSettingsService {
   static Map<String, dynamic> _settingsToJson(MapSettings settings) {
     return {
       'showLocalPlaces': settings.showLocalPlaces,
+      'showEncryptedPlaces': settings.showEncryptedPlaces,
       'userPlacesColor': settings.userPlacesColor.toARGB32(),
       'localPlacesColor': settings.localPlacesColor.toARGB32(),
+      'encryptedPlacesColor': settings.encryptedPlacesColor.toARGB32(),
       'mapSource': settings.mapSource.index,
       'rememberViewport': settings.rememberViewport,
       'initialLat': settings.initialLat,
@@ -152,12 +170,16 @@ class MapSettingsService {
 
     return MapSettings(
       showLocalPlaces: json['showLocalPlaces'] as bool? ?? true,
+      showEncryptedPlaces: json['showEncryptedPlaces'] as bool? ?? false,
       userPlacesColor: json['userPlacesColor'] != null
           ? Color(json['userPlacesColor'] as int)
           : defaultUserColor,
       localPlacesColor: json['localPlacesColor'] != null
           ? Color(json['localPlacesColor'] as int)
           : defaultLocalColor,
+      encryptedPlacesColor: json['encryptedPlacesColor'] != null
+          ? Color(json['encryptedPlacesColor'] as int)
+          : defaultEncryptedColor,
       mapSource: mapSource,
       rememberViewport: json['rememberViewport'] as bool? ?? true,
       initialLat: (json['initialLat'] as num?)?.toDouble() ?? defaultInitialLat,
@@ -171,6 +193,7 @@ class MapSettingsService {
   static Future<void> _saveToPrefs(MapSettings settings) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces);
+    await prefs.setBool(_keyShowEncryptedPlaces, settings.showEncryptedPlaces);
     await prefs.setInt(
       _keyUserPlacesColor,
       settings.userPlacesColor.toARGB32(),
@@ -178,6 +201,10 @@ class MapSettingsService {
     await prefs.setInt(
       _keyLocalPlacesColor,
       settings.localPlacesColor.toARGB32(),
+    );
+    await prefs.setInt(
+      _keyEncryptedPlacesColor,
+      settings.encryptedPlacesColor.toARGB32(),
     );
     await prefs.setInt(_keyMapSource, settings.mapSource.index);
     await prefs.setBool(_keyRememberViewport, settings.rememberViewport);
@@ -191,8 +218,10 @@ class MapSettingsService {
     final prefs = await SharedPreferences.getInstance();
 
     final showLocal = prefs.getBool(_keyShowLocalPlaces) ?? true;
+    final showEncrypted = prefs.getBool(_keyShowEncryptedPlaces) ?? false;
     final userColorValue = prefs.getInt(_keyUserPlacesColor);
     final localColorValue = prefs.getInt(_keyLocalPlacesColor);
+    final encryptedColorValue = prefs.getInt(_keyEncryptedPlacesColor);
     final rememberViewport = prefs.getBool(_keyRememberViewport) ?? true;
     final initialLat = prefs.getDouble(_keyInitialLat) ?? defaultInitialLat;
     final initialLng = prefs.getDouble(_keyInitialLng) ?? defaultInitialLng;
@@ -208,12 +237,16 @@ class MapSettingsService {
 
     return MapSettings(
       showLocalPlaces: showLocal,
+      showEncryptedPlaces: showEncrypted,
       userPlacesColor: userColorValue != null
           ? Color(userColorValue)
           : defaultUserColor,
       localPlacesColor: localColorValue != null
           ? Color(localColorValue)
           : defaultLocalColor,
+      encryptedPlacesColor: encryptedColorValue != null
+          ? Color(encryptedColorValue)
+          : defaultEncryptedColor,
       mapSource: mapSource,
       rememberViewport: rememberViewport,
       initialLat: initialLat,

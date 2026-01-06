@@ -61,13 +61,16 @@ class MapSettingsDialog extends StatefulWidget {
 
 class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late bool _showLocalPlaces;
+  late bool _showEncryptedPlaces;
   late Color _userPlacesColor;
   late Color _localPlacesColor;
+  late Color _encryptedPlacesColor;
   late MapSource _mapSource;
   late bool _rememberViewport;
   late double _initialLat;
   late double _initialLng;
   late double _initialZoom;
+  bool _isLoadingEncrypted = false;
 
   // Snapshot of initial settings to detect actual changes
   late MapSettings _initialSnapshot;
@@ -77,8 +80,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     super.initState();
     _initialSnapshot = widget.currentSettings;
     _showLocalPlaces = widget.currentSettings.showLocalPlaces;
+    _showEncryptedPlaces = widget.currentSettings.showEncryptedPlaces;
     _userPlacesColor = widget.currentSettings.userPlacesColor;
     _localPlacesColor = widget.currentSettings.localPlacesColor;
+    _encryptedPlacesColor = widget.currentSettings.encryptedPlacesColor;
     _mapSource = widget.currentSettings.mapSource;
     _rememberViewport = widget.currentSettings.rememberViewport;
     _initialLat = widget.currentSettings.initialLat;
@@ -89,8 +94,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   /// Check if current settings differ from initial snapshot.
   bool _hasActualChanges() {
     return _showLocalPlaces != _initialSnapshot.showLocalPlaces ||
+        _showEncryptedPlaces != _initialSnapshot.showEncryptedPlaces ||
         _userPlacesColor != _initialSnapshot.userPlacesColor ||
         _localPlacesColor != _initialSnapshot.localPlacesColor ||
+        _encryptedPlacesColor != _initialSnapshot.encryptedPlacesColor ||
         _mapSource != _initialSnapshot.mapSource ||
         _rememberViewport != _initialSnapshot.rememberViewport ||
         _initialLat != _initialSnapshot.initialLat ||
@@ -181,15 +188,16 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
 
         final message = deletedFiles.isNotEmpty
             ? 'Deleted ${deletedFiles.length} files. '
-                '${failedFiles.isNotEmpty ? "Failed: ${failedFiles.length}" : ""}'
-                '\nPlease logout and login.'
+                  '${failedFiles.isNotEmpty ? "Failed: ${failedFiles.length}" : ""}'
+                  '\nPlease logout and login.'
             : 'No files were deleted. ${failedFiles.length} failures.';
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor:
-                deletedFiles.isNotEmpty ? Colors.orange : Colors.red,
+            backgroundColor: deletedFiles.isNotEmpty
+                ? Colors.orange
+                : Colors.red,
           ),
         );
       }
@@ -198,10 +206,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
       if (context.mounted) {
         Navigator.pop(context); // Close loading
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -211,8 +216,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   void _saveAndNotify() {
     final newSettings = MapSettings(
       showLocalPlaces: _showLocalPlaces,
+      showEncryptedPlaces: _showEncryptedPlaces,
       userPlacesColor: _userPlacesColor,
       localPlacesColor: _localPlacesColor,
+      encryptedPlacesColor: _encryptedPlacesColor,
       mapSource: _mapSource,
       rememberViewport: _rememberViewport,
       initialLat: _initialLat,
@@ -289,8 +296,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   void _resetToDefaults() {
     setState(() {
       _showLocalPlaces = true;
+      _showEncryptedPlaces = false;
       _userPlacesColor = defaultUserColor;
       _localPlacesColor = defaultLocalColor;
+      _encryptedPlacesColor = defaultEncryptedColor;
       _mapSource = MapSettings.getDefaultMapSource();
       _rememberViewport = true;
       _initialLat = defaultInitialLat;
@@ -343,6 +352,45 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                   _showLocalPlaces ? Icons.visibility : Icons.visibility_off,
                   color: _showLocalPlaces ? Colors.green : Colors.grey,
                 ),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('Show Encrypted Places'),
+                subtitle: Text(
+                  _isLoadingEncrypted
+                      ? 'Loading encrypted data...'
+                      : 'Display encrypted places (requires key)',
+                ),
+                value: _showEncryptedPlaces,
+                onChanged: _isLoadingEncrypted
+                    ? null
+                    : (value) {
+                        setState(() {
+                          _showEncryptedPlaces = value;
+                          if (value) _isLoadingEncrypted = true;
+                        });
+                        _saveAndNotify();
+                        // Reset loading state after a delay
+                        if (value) {
+                          Future.delayed(const Duration(seconds: 3), () {
+                            if (mounted) {
+                              setState(() => _isLoadingEncrypted = false);
+                            }
+                          });
+                        }
+                      },
+                secondary: _isLoadingEncrypted
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        _showEncryptedPlaces ? Icons.lock_open : Icons.lock,
+                        color: _showEncryptedPlaces
+                            ? Colors.purple
+                            : Colors.grey,
+                      ),
               ),
               const Divider(height: 24),
 
@@ -530,8 +578,9 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                             // Close settings dialog first
                             Navigator.pop(context);
                             // Then handle logout
-                            await SolidAuthHandler.instance
-                                .handleLogout(context);
+                            await SolidAuthHandler.instance.handleLogout(
+                              context,
+                            );
                           },
                           icon: const Icon(Icons.logout, size: 18),
                           label: const Text('Logout'),

@@ -29,7 +29,7 @@ import 'package:geopod/models/place.dart';
 const String encryptedPlacesDirName = 'encrypted_data';
 
 /// File name for encrypted places.
-const String encryptedPlacesFileName = 'encrypted_places.json';
+const String encryptedPlacesFileName = 'encrypted_places.ttl';
 
 /// Service for managing encrypted places.
 class EncryptedPlacesService {
@@ -222,12 +222,21 @@ class EncryptedPlacesService {
         if (jsonList is List) {
           for (final item in jsonList) {
             if (item is Map<String, dynamic>) {
-              places.add(Place.fromJson(item, isLocalSource: false));
+              final place = Place.fromJson(
+                item,
+                isLocalSource: false,
+                isEncryptedSource: true,
+              );
+              debugPrint(
+                'Loaded encrypted place: ${place.id}, isEncrypted=${place.isEncrypted}',
+              );
+              places.add(place);
             }
           }
         }
-      } catch (_) {
-        debugPrint('Failed to parse encrypted places JSON');
+        debugPrint('Total encrypted places loaded: ${places.length}');
+      } catch (e) {
+        debugPrint('Failed to parse encrypted places JSON: $e');
       }
 
       places.sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -298,7 +307,8 @@ class EncryptedPlacesService {
   ) async {
     try {
       // Use cached data if available to avoid network roundtrip
-      final existingPlaces = _cachedEncryptedPlaces ?? await fetchEncryptedPlaces();
+      final existingPlaces =
+          _cachedEncryptedPlaces ?? await fetchEncryptedPlaces();
       final updatedPlaces = [place, ...existingPlaces];
       return await writeEncryptedPlaces(updatedPlaces, context, child);
     } catch (e) {
@@ -315,8 +325,9 @@ class EncryptedPlacesService {
   ) async {
     try {
       final existingPlaces = await fetchEncryptedPlaces();
-      final updatedPlaces =
-          existingPlaces.where((p) => p.id != placeId).toList();
+      final updatedPlaces = existingPlaces
+          .where((p) => p.id != placeId)
+          .toList();
       return await writeEncryptedPlaces(updatedPlaces, context, child);
     } catch (e) {
       debugPrint('Error deleting encrypted place: $e');
@@ -364,8 +375,9 @@ class EncryptedPlacesService {
       final existingIds = existingPlaces.map((p) => p.id).toSet();
 
       // Filter out duplicates
-      final newPlaces =
-          importedPlaces.where((p) => !existingIds.contains(p.id)).toList();
+      final newPlaces = importedPlaces
+          .where((p) => !existingIds.contains(p.id))
+          .toList();
 
       if (newPlaces.isEmpty && importedPlaces.isNotEmpty) {
         // All were duplicates

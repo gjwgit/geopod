@@ -26,6 +26,8 @@ import 'package:geopod/widgets/map/place_save_handler.dart';
 /// Handles optimistic save of a place.
 ///
 /// Updates UI immediately, then performs background save.
+/// If [encrypted] is true, the place will be marked as encrypted for
+/// immediate purple marker display.
 void handleOptimisticPlaceSave({
   required Place place,
   required List<Place> allPlaces,
@@ -33,20 +35,23 @@ void handleOptimisticPlaceSave({
   required BuildContext context,
   required void Function(void Function()) setState,
   required Future<void> Function(Place) performBackgroundSave,
+  bool encrypted = false,
 }) {
+  // Mark place as encrypted if saving to encrypted storage
+  final placeToSave = encrypted ? place.copyWith(isEncrypted: true) : place;
   // Update state first
   setState(() {
-    allPlaces.insert(0, place);
-    savingPlaceIds.add(place.id);
+    allPlaces.insert(0, placeToSave);
+    savingPlaceIds.add(placeToSave.id);
   });
   // Show snackbar after frame to avoid jank
   SchedulerBinding.instance.addPostFrameCallback((_) {
     if (context.mounted) {
-      showSavingSnackbar(context, place);
+      showSavingSnackbar(context, placeToSave);
     }
   });
   // Start background save
-  unawaited(performBackgroundSave(place));
+  unawaited(performBackgroundSave(placeToSave));
 }
 
 /// Performs background save and updates UI on completion.

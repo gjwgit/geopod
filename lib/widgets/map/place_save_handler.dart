@@ -102,6 +102,7 @@ Future<Place?> performBackgroundSave(
     note: originalPlace.note,
     timestamp: originalPlace.timestamp,
     address: address,
+    isEncrypted: encrypted,
   );
   if (!context.mounted) return null;
 

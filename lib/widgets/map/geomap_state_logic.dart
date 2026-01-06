@@ -82,6 +82,12 @@ class VerifyLoginResult {
 }
 
 /// Loads all places with optional force refresh.
-Future<List<Place>> loadAllPlaces({bool forceRefresh = false}) async {
-  return await PlacesService.fetchPlaces(forceRefresh: forceRefresh);
+Future<List<Place>> loadAllPlaces({
+  bool forceRefresh = false,
+  bool includeEncrypted = false,
+}) async {
+  return await PlacesService.fetchPlaces(
+    forceRefresh: forceRefresh,
+    includeEncrypted: includeEncrypted,
+  );
 }

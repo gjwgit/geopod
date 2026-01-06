@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:geopod/models/pod_file_item.dart';
 import 'package:geopod/services/places_service.dart';
@@ -165,7 +166,9 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
                 (i) => PlacesService.isIndividualPlaceFile(i.path),
               );
               if (_selectedFile?.path == item.path ||
-                  PlacesService.isIndividualPlaceFile(_selectedFile?.path ?? '')) {
+                  PlacesService.isIndividualPlaceFile(
+                    _selectedFile?.path ?? '',
+                  )) {
                 _selectedFile = null;
               }
             });
@@ -212,11 +215,15 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
       }
 
       // Regular file deletion
-      setState(() {
-        _items.removeWhere((i) => i.path == item.path);
-        if (_selectedFile?.path == item.path) _selectedFile = null;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _items.removeWhere((i) => i.path == item.path);
+            if (_selectedFile?.path == item.path) _selectedFile = null;
+          });
+        }
+        if (mounted) showDeletingSnackBar(context, item.name);
       });
-      if (mounted) showDeletingSnackBar(context, item.name);
 
       final success = await PodDirectoryService.delete(item.path);
       if (mounted) {

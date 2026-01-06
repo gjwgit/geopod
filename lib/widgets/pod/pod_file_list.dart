@@ -122,8 +122,8 @@ class _PodFileListState extends State<PodFileList> {
               isSelected: widget.selectedFilePath == item.path,
               isDeleting: _deletingItems.contains(item.path),
               onTap: () => widget.onDirectoryTap?.call(item),
-              onDelete: widget.showDelete &&
-                      (widget.canDelete?.call(item) ?? true)
+              onDelete:
+                  widget.showDelete && (widget.canDelete?.call(item) ?? true)
                   ? () => _confirmDelete(context, item)
                   : null,
               onDownload: null,
@@ -146,8 +146,8 @@ class _PodFileListState extends State<PodFileList> {
               isSelected: widget.selectedFilePath == item.path,
               isDeleting: _deletingItems.contains(item.path),
               onTap: () => widget.onFileTap?.call(item),
-              onDelete: widget.showDelete &&
-                      (widget.canDelete?.call(item) ?? true)
+              onDelete:
+                  widget.showDelete && (widget.canDelete?.call(item) ?? true)
                   ? () => _confirmDelete(context, item)
                   : null,
               onDownload: widget.onDownload != null
@@ -201,7 +201,7 @@ class _PodFileListState extends State<PodFileList> {
   void _performDelete(PodFileItem item) {
     // Start delete animation
     setState(() => _deletingItems.add(item.path));
-    
+
     // Schedule cleanup and delete after animation frame
     SchedulerBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 200), () {
@@ -303,11 +303,8 @@ class _AnimatedFileListTileState extends State<_AnimatedFileListTile>
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    );
+
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
   }
 
   @override

@@ -175,7 +175,9 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                   color: _encrypt ? Colors.green.shade50 : Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: _encrypt ? Colors.green.shade300 : Colors.grey.shade300,
+                    color: _encrypt
+                        ? Colors.green.shade300
+                        : Colors.grey.shade300,
                   ),
                 ),
                 child: Row(
@@ -205,7 +207,9 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                                 'Encrypt imported places',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: _encrypt ? Colors.green.shade700 : Colors.grey.shade700,
+                                  color: _encrypt
+                                      ? Colors.green.shade700
+                                      : Colors.grey.shade700,
                                 ),
                               ),
                             ],
@@ -373,12 +377,12 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
           onPressed: _editablePlaces.isEmpty
               ? null
               : () => Navigator.pop(
-                    context,
-                    ImportPreviewResult(
-                      places: _editablePlaces,
-                      encrypted: _encrypt,
-                    ),
+                  context,
+                  ImportPreviewResult(
+                    places: _editablePlaces,
+                    encrypted: _encrypt,
                   ),
+                ),
           icon: Icon(_encrypt ? Icons.lock : Icons.download, size: 18),
           label: Text(
             _encrypt

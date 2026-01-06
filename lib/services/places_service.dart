@@ -66,17 +66,30 @@ class PlacesService {
   /// Load local example places (async for API compatibility).
   static Future<List<Place>> loadLocalPlaces() async => getLocalPlacesSync();
 
-  static Future<List<Place>> fetchPlaces({bool forceRefresh = false}) async {
+  static Future<List<Place>> fetchPlaces({
+    bool forceRefresh = false,
+    bool includeEncrypted = false,
+  }) async {
     final cm = PlacesCacheManager();
     if (!forceRefresh) {
       final c = cm.allPlaces;
-      if (c != null) return c;
+      if (c != null) {
+        // If cached but need encrypted, check if encrypted is included
+        if (includeEncrypted && !c.any((p) => p.isEncrypted)) {
+          // Need to fetch encrypted separately
+        } else {
+          return c;
+        }
+      }
     }
     // Local places are synchronous (compiled into binary) - get them immediately
     final localPlaces = getLocalPlacesSync();
-    // Only await network data - both regular and encrypted
+    // Only await network data
     final podPlaces = await fetchPodPlaces(forceRefresh: forceRefresh);
-    final encryptedPlaces = await fetchEncryptedPlaces(forceRefresh: forceRefresh);
+    // Only fetch encrypted if explicitly requested
+    final encryptedPlaces = includeEncrypted
+        ? await fetchEncryptedPlaces(forceRefresh: forceRefresh)
+        : <Place>[];
     final all = <Place>[...podPlaces, ...encryptedPlaces, ...localPlaces];
     cm.cacheAllPlaces(all);
     return all;
@@ -84,7 +97,9 @@ class PlacesService {
 
   /// Fetch encrypted places from Pod.
   /// Returns empty list if not logged in or no security key.
-  static Future<List<Place>> fetchEncryptedPlaces({bool forceRefresh = false}) async {
+  static Future<List<Place>> fetchEncryptedPlaces({
+    bool forceRefresh = false,
+  }) async {
     try {
       if (!AuthDataManager.isLoggedInSync()) return [];
       // Import and use EncryptedPlacesService

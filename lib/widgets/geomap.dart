@@ -25,8 +25,9 @@ import 'package:solidui/solidui.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places_service.dart'
-    show PlacesCacheManager, placesChangeNotifier;
+    show PlacesCacheManager, PlacesService, placesChangeNotifier;
 import 'package:geopod/widgets/map/geomap_core.dart';
 import 'package:geopod/widgets/map/geomap_news_mixin.dart';
 import 'package:geopod/widgets/map/geomap_place_handlers.dart';
@@ -80,6 +81,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   int _lastPlacesHash = 0;
   int _lastSavingIdsHash = 0;
   bool _lastShowLocalPlaces = true;
+  bool _lastShowEncryptedPlaces = false;
 
   // Flag to skip placesChangeNotifier during local delete operations
   bool _skipPlacesChangeNotification = false;
@@ -167,12 +169,25 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     if (!mounted) return;
     _isPostLoginRefresh = true;
     _initialAnimationComplete = false;
-    setState(() => _isLoggedIn = true);
-    final places = await handleLoginStateChange(
-      wasLoggedIn: false,
-      isNowLoggedIn: true,
-    );
-    if (mounted) setState(() => _allPlaces = places);
+    // Immediately show local places for better UX
+    setState(() {
+      _isLoggedIn = true;
+      _allPlaces = PlacesService.getLocalPlacesSync();
+    });
+    // Load pod data in background without blocking UI
+    unawaited(_loadPodDataInBackground());
+  }
+
+  Future<void> _loadPodDataInBackground() async {
+    try {
+      final places = await handleLoginStateChange(
+        wasLoggedIn: false,
+        isNowLoggedIn: true,
+      );
+      if (mounted) setState(() => _allPlaces = places);
+    } catch (_) {
+      // Silently handle errors - local places are already shown
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -212,6 +227,11 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   Future<void> _verifyLoginStateAndLoadData() async {
+    // Show local places immediately
+    if (_allPlaces.isEmpty) {
+      setState(() => _allPlaces = PlacesService.getLocalPlacesSync());
+    }
+
     final result = await verifyLoginStateAndLoadData(
       currentIsLoggedIn: _isLoggedIn,
     );
@@ -223,7 +243,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       setState(() => _allPlaces = result.places!);
     }
     if (result.needsRefresh) {
-      await _loadAllPlaces(forceRefresh: true);
+      // Load in background without blocking
+      unawaited(_loadAllPlaces(forceRefresh: true));
     }
   }
 
@@ -233,6 +254,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       builder: (_) => MapSettingsDialog(
         currentSettings: _mapSettings,
         onSettingsChanged: (ns) {
+          final encryptedToggled =
+              _mapSettings.showEncryptedPlaces != ns.showEncryptedPlaces;
           setState(() {
             final changed = _mapSettings.mapSource != ns.mapSource;
             _mapSettings = ns;
@@ -245,6 +268,15 @@ class GeoMapWidgetState extends State<GeoMapWidget>
               );
             }
           });
+          // Load encrypted places if newly enabled
+          if (encryptedToggled && ns.showEncryptedPlaces) {
+            unawaited(_loadEncryptedPlaces());
+          } else if (encryptedToggled && !ns.showEncryptedPlaces) {
+            // Remove encrypted places from display
+            setState(() {
+              _allPlaces.removeWhere((p) => p.isEncrypted);
+            });
+          }
         },
       ),
     );
@@ -252,11 +284,17 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
   void showSettingsDialog() => _showSettingsDialog();
 
-  Future<void> _loadAllPlaces({bool forceRefresh = false}) async {
+  Future<void> _loadAllPlaces({
+    bool forceRefresh = false,
+    bool? includeEncrypted,
+  }) async {
     final cm = PlacesCacheManager();
     if (cm.allPlaces == null) setState(() => _isLoadingPlaces = true);
     try {
-      final places = await loadAllPlaces(forceRefresh: forceRefresh);
+      final places = await loadAllPlaces(
+        forceRefresh: forceRefresh,
+        includeEncrypted: includeEncrypted ?? _mapSettings.showEncryptedPlaces,
+      );
       if (mounted) {
         setState(() {
           _allPlaces = List.from(places);
@@ -268,18 +306,66 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     }
   }
 
+  /// Load encrypted places on demand when user enables the setting.
+  Future<void> _loadEncryptedPlaces() async {
+    if (!_isLoggedIn || !mounted) return;
+
+    // First ensure security key is available (will prompt user if needed)
+    final hasKey = await EncryptedPlacesService.ensureSecurityKey(
+      context,
+      widget,
+    );
+    if (!hasKey) {
+      // User cancelled or key not available, revert setting
+      if (mounted) {
+        setState(() {
+          _mapSettings = _mapSettings.copyWith(showEncryptedPlaces: false);
+        });
+        MapSettingsService.saveSettings(_mapSettings);
+      }
+      return;
+    }
+
+    try {
+      debugPrint('Loading encrypted places...');
+      final encryptedPlaces = await PlacesService.fetchEncryptedPlaces(
+        forceRefresh: true,
+      );
+      debugPrint(
+        'Fetched ${encryptedPlaces.length} encrypted places, '
+        'isEncrypted flags: ${encryptedPlaces.map((p) => p.isEncrypted).toList()}',
+      );
+      if (mounted && encryptedPlaces.isNotEmpty) {
+        setState(() {
+          // Remove any existing encrypted places first
+          _allPlaces.removeWhere((p) => p.isEncrypted);
+          // Add newly loaded encrypted places
+          _allPlaces.addAll(encryptedPlaces);
+          debugPrint(
+            'All places now: ${_allPlaces.length}, '
+            'encrypted count: ${_allPlaces.where((p) => p.isEncrypted).length}',
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading encrypted places: $e');
+    }
+  }
+
   /// Cached getter for filtered markers to avoid expensive rebuilds.
   List<MarkerData> get _filteredMarkers {
     // Compute hashes to detect changes
     final placesHash = Object.hashAll(_allPlaces.map((p) => p.id));
     final savingHash = Object.hashAll(_savingPlaceIds);
     final showLocal = _mapSettings.showLocalPlaces;
+    final showEncrypted = _mapSettings.showEncryptedPlaces;
 
     // Return cached if nothing changed
     if (_cachedFilteredMarkers != null &&
         placesHash == _lastPlacesHash &&
         savingHash == _lastSavingIdsHash &&
-        showLocal == _lastShowLocalPlaces) {
+        showLocal == _lastShowLocalPlaces &&
+        showEncrypted == _lastShowEncryptedPlaces) {
       return _cachedFilteredMarkers!;
     }
 
@@ -287,6 +373,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     _lastPlacesHash = placesHash;
     _lastSavingIdsHash = savingHash;
     _lastShowLocalPlaces = showLocal;
+    _lastShowEncryptedPlaces = showEncrypted;
     _cachedFilteredMarkers = buildFilteredMarkers(
       allPlaces: _allPlaces,
       mapSettings: _mapSettings,
@@ -313,11 +400,16 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       savingPlaceIds: _savingPlaceIds,
       context: context,
       setState: setState,
-      performBackgroundSave: (place) => _performBackgroundSave(place, encrypted: encrypted),
+      performBackgroundSave: (place) =>
+          _performBackgroundSave(place, encrypted: encrypted),
+      encrypted: encrypted,
     );
   }
 
-  Future<void> _performBackgroundSave(Place op, {bool encrypted = false}) async {
+  Future<void> _performBackgroundSave(
+    Place op, {
+    bool encrypted = false,
+  }) async {
     await performPlaceBackgroundSave(
       originalPlace: op,
       context: context,

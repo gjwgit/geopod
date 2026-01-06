@@ -377,10 +377,14 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _encrypt ? Colors.green.shade50 : Colors.grey.shade50,
+                    color: _encrypt
+                        ? Colors.green.shade50
+                        : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _encrypt ? Colors.green.shade300 : Colors.grey.shade300,
+                      color: _encrypt
+                          ? Colors.green.shade300
+                          : Colors.grey.shade300,
                     ),
                   ),
                   child: Row(
@@ -410,7 +414,9 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                                   'Encrypt this place',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: _encrypt ? Colors.green.shade700 : Colors.grey.shade700,
+                                    color: _encrypt
+                                        ? Colors.green.shade700
+                                        : Colors.grey.shade700,
                                   ),
                                 ),
                               ],

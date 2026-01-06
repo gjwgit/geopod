@@ -29,6 +29,8 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 
+import 'package:geopod/services/places/encrypted_places_service.dart';
+
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/widgets/settings/settings_actions.dart';
 import 'package:geopod/widgets/settings/settings_sections.dart';
@@ -172,19 +174,36 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                   setState(() => _showLocalPlaces = value);
                   _saveAndNotify();
                 },
-                onShowEncryptedChanged: (value) {
-                  setState(() {
-                    _showEncryptedPlaces = value;
-                    if (value) _isLoadingEncrypted = true;
-                  });
-                  _saveAndNotify();
-                  // Reset loading state after a delay
+                onShowEncryptedChanged: (value) async {
                   if (value) {
-                    Future.delayed(const Duration(seconds: 3), () {
-                      if (mounted) {
-                        setState(() => _isLoadingEncrypted = false);
-                      }
-                    });
+                    // Enabling encrypted places - verify security key first
+                    setState(() => _isLoadingEncrypted = true);
+
+                    // Check if security key is available, prompt if not
+                    final hasKey =
+                        await EncryptedPlacesService.ensureSecurityKey(
+                          context,
+                          widget,
+                        );
+
+                    if (!mounted) return;
+
+                    if (hasKey) {
+                      // Security key verified, enable the setting
+                      setState(() {
+                        _showEncryptedPlaces = true;
+                        _isLoadingEncrypted = false;
+                      });
+                      _saveAndNotify();
+                    } else {
+                      // User cancelled or key verification failed
+                      setState(() => _isLoadingEncrypted = false);
+                      // Don't change _showEncryptedPlaces - it stays false
+                    }
+                  } else {
+                    // Disabling encrypted places - no verification needed
+                    setState(() => _showEncryptedPlaces = false);
+                    _saveAndNotify();
                   }
                 },
               ),

@@ -28,7 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Maximum number of markers to animate simultaneously to prevent jank.
-const int _maxAnimatedMarkers = 8;
+const int _maxAnimatedMarkers = 10;
 
 /// Animated marker widget with delayed entrance animation.
 ///
@@ -119,9 +119,9 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
       return widget.child;
     }
 
-    // Animation not yet set up - show child with reduced opacity
+    // Animation not yet set up - show child directly without opacity reduction
     if (_controller == null || !_animationStarted) {
-      return Opacity(opacity: 0.3, child: widget.child);
+      return widget.child;
     }
 
     return FadeTransition(

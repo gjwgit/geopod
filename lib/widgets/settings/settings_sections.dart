@@ -83,7 +83,7 @@ Widget buildVisibilitySection({
   required bool showEncryptedPlaces,
   required bool isLoadingEncrypted,
   required void Function(bool) onShowLocalChanged,
-  required void Function(bool) onShowEncryptedChanged,
+  required Function(bool) onShowEncryptedChanged, // Can be async
 }) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,

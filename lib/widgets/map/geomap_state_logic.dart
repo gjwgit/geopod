@@ -25,7 +25,8 @@ Future<List<Place>> handleLoginStateChange({
     return await PlacesService.refreshPodDataOnly();
   } else if (!isNowLoggedIn && wasLoggedIn) {
     await PlacesService.clearPodCacheOnly();
-    return await PlacesService.loadLocalPlaces();
+    // Local places are compiled into the app, no async loading needed
+    return PlacesService.getLocalPlacesSync();
   }
   return [];
 }
@@ -90,4 +91,42 @@ Future<List<Place>> loadAllPlaces({
     forceRefresh: forceRefresh,
     includeEncrypted: includeEncrypted,
   );
+}
+
+/// Cache state for filtered markers.
+class FilteredMarkersCache {
+  List<dynamic>? markers;
+  int placesHash = 0;
+  int savingIdsHash = 0;
+  bool showLocalPlaces = true;
+  bool showEncryptedPlaces = false;
+
+  /// Checks if cache is valid for given parameters.
+  bool isValid({
+    required int placesHash,
+    required int savingIdsHash,
+    required bool showLocalPlaces,
+    required bool showEncryptedPlaces,
+  }) {
+    return markers != null &&
+        this.placesHash == placesHash &&
+        this.savingIdsHash == savingIdsHash &&
+        this.showLocalPlaces == showLocalPlaces &&
+        this.showEncryptedPlaces == showEncryptedPlaces;
+  }
+
+  /// Updates cache with new values.
+  void update({
+    required List<dynamic> newMarkers,
+    required int placesHash,
+    required int savingIdsHash,
+    required bool showLocalPlaces,
+    required bool showEncryptedPlaces,
+  }) {
+    markers = newMarkers;
+    this.placesHash = placesHash;
+    this.savingIdsHash = savingIdsHash;
+    this.showLocalPlaces = showLocalPlaces;
+    this.showEncryptedPlaces = showEncryptedPlaces;
+  }
 }

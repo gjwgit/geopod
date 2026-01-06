@@ -59,7 +59,10 @@ class PlacesService {
     return _cachedLocalPlaces!;
   }
 
-  /// Load local example places (async for API compatibility).
+  /// Load local example places (async wrapper for API compatibility).
+  /// NOTE: Prefer using getLocalPlacesSync() directly as local places
+  /// are now compiled into the app and don't require async loading.
+  @Deprecated('Use getLocalPlacesSync() instead - local data is compiled in')
   static Future<List<Place>> loadLocalPlaces() async => getLocalPlacesSync();
 
   static Future<List<Place>> fetchPlaces({
@@ -92,18 +95,29 @@ class PlacesService {
   }
 
   /// Fetch encrypted places from Pod.
-  /// Returns empty list if not logged in or no security key.
+  /// Returns empty list if not logged in or no security key available.
+  /// NOTE: Will not prompt for security key - use EncryptedPlacesService
+  /// directly if you need to prompt the user.
   static Future<List<Place>> fetchEncryptedPlaces({
     bool forceRefresh = false,
   }) async {
     try {
       if (!AuthDataManager.isLoggedInSync()) return [];
+      // Check if security key is available - don't try to load if not
+      final hasKey = await EncryptedPlacesService.isSecurityKeyAvailable();
+      if (!hasKey) {
+        debugPrint(
+          'PlacesService.fetchEncryptedPlaces: no security key, skipping',
+        );
+        return [];
+      }
       // Import and use EncryptedPlacesService
       final encPlaces = await EncryptedPlacesService.fetchEncryptedPlaces(
         forceRefresh: forceRefresh,
       );
       return encPlaces;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('PlacesService.fetchEncryptedPlaces error: $e');
       return [];
     }
   }

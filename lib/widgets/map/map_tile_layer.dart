@@ -67,10 +67,6 @@ Widget buildMapTileLayer({
       tileUpdateTransformer: TileUpdateTransformers.throttle(
         const Duration(milliseconds: 100),
       ),
-      errorImage: const AssetImage(
-        'assets/images/tile_error.png',
-        package: 'solidpod',
-      ),
     ),
   );
 }

@@ -20,7 +20,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'package:solidpod/solidpod.dart';
-import 'package:solidui/solidui.dart' show getKeyFromUserIfRequired;
+import 'package:solidui/solidui.dart' show SecurityKeyStatusChangedNotification;
 
 import 'package:geopod/models/place.dart';
 
@@ -98,6 +98,7 @@ class EncryptedPlacesService {
   /// Prompt user for security key if not available.
   /// Returns true if key is now available, false otherwise.
   /// Uses session caching to avoid repeated checks.
+  /// Uses dialog mode instead of full-screen to avoid navigation issues on cancel.
   static Future<bool> ensureSecurityKey(
     BuildContext context,
     Widget child,
@@ -140,17 +141,168 @@ class EncryptedPlacesService {
       return false;
     }
 
-    // Prompt for security key
-    try {
-      await getKeyFromUserIfRequired(context, child);
-      final available = await isSecurityKeyAvailable();
-      if (available) {
-        _securityKeyVerified = true;
+    // Prompt for security key using dialog mode (not full-screen)
+    // This avoids navigation issues when user cancels
+    if (!context.mounted) return false;
+    final result = await _showSecurityKeyDialog(context);
+    if (result) {
+      _securityKeyVerified = true;
+      // Notify the status bar that security key is now available
+      if (context.mounted) {
+        const SecurityKeyStatusChangedNotification(
+          isKeySaved: true,
+        ).dispatch(context);
+        debugPrint('Security key status notification dispatched');
       }
-      return available;
-    } catch (_) {
-      return false;
     }
+    return result;
+  }
+
+  /// Shows a dialog to prompt user for security key.
+  /// Returns true if key was successfully entered and verified.
+  static Future<bool> _showSecurityKeyDialog(BuildContext context) async {
+    final keyController = TextEditingController();
+    bool result = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        bool isLoading = false;
+        bool obscureText = true;
+        String? errorText;
+
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.key, color: Colors.blue),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Enter Security Key',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Please enter your security key to access encrypted data.',
+                  style: TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: keyController,
+                  obscureText: obscureText,
+                  decoration: InputDecoration(
+                    labelText: 'Security Key',
+                    border: const OutlineInputBorder(),
+                    errorText: errorText,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscureText ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setState(() => obscureText = !obscureText),
+                    ),
+                  ),
+                  enabled: !isLoading,
+                  onSubmitted: (_) async {
+                    if (keyController.text.isNotEmpty && !isLoading) {
+                      setState(() {
+                        isLoading = true;
+                        errorText = null;
+                      });
+                      try {
+                        final verificationKey =
+                            await KeyManager.getVerificationKey();
+                        if (verifySecurityKey(
+                          keyController.text,
+                          verificationKey,
+                        )) {
+                          await KeyManager.setSecurityKey(keyController.text);
+                          result = true;
+                          if (ctx.mounted) Navigator.pop(ctx);
+                        } else {
+                          setState(() {
+                            errorText = 'Incorrect security key';
+                            isLoading = false;
+                          });
+                        }
+                      } catch (e) {
+                        setState(() {
+                          errorText = 'Error verifying key';
+                          isLoading = false;
+                        });
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        if (keyController.text.isEmpty) {
+                          setState(() => errorText = 'Please enter a key');
+                          return;
+                        }
+                        setState(() {
+                          isLoading = true;
+                          errorText = null;
+                        });
+                        try {
+                          final verificationKey =
+                              await KeyManager.getVerificationKey();
+                          if (verifySecurityKey(
+                            keyController.text,
+                            verificationKey,
+                          )) {
+                            await KeyManager.setSecurityKey(keyController.text);
+                            result = true;
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          } else {
+                            setState(() {
+                              errorText = 'Incorrect security key';
+                              isLoading = false;
+                            });
+                          }
+                        } catch (e) {
+                          setState(() {
+                            errorText = 'Error verifying key';
+                            isLoading = false;
+                          });
+                        }
+                      },
+                child: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Confirm'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    keyController.dispose();
+    return result;
   }
 
   /// Ensure the encrypted places directory exists.
@@ -300,13 +452,27 @@ class EncryptedPlacesService {
 
   /// Add a single encrypted place.
   /// Uses local cache to avoid fetching from server if available.
+  /// IMPORTANT: If cache is empty, ensures security key is available before
+  /// fetching existing places to prevent data loss.
   static Future<bool> addEncryptedPlace(
     Place place,
     BuildContext context,
     Widget child,
   ) async {
     try {
-      // Use cached data if available to avoid network roundtrip
+      // If no cached data, we MUST ensure security key is available first
+      // before fetching existing places. Otherwise, fetchEncryptedPlaces()
+      // might return empty list and we'd overwrite existing data.
+      if (_cachedEncryptedPlaces == null) {
+        if (!await ensureSecurityKey(context, child)) {
+          debugPrint(
+            'Security key not available, cannot safely add encrypted place',
+          );
+          return false;
+        }
+      }
+
+      // Now safe to get existing places (either from cache or fetch with key)
       final existingPlaces =
           _cachedEncryptedPlaces ?? await fetchEncryptedPlaces();
       final updatedPlaces = [place, ...existingPlaces];
@@ -318,13 +484,25 @@ class EncryptedPlacesService {
   }
 
   /// Delete an encrypted place by ID.
+  /// Ensures security key is available before modifying encrypted data.
   static Future<bool> deleteEncryptedPlace(
     String placeId,
     BuildContext context,
     Widget child,
   ) async {
     try {
-      final existingPlaces = await fetchEncryptedPlaces();
+      // Ensure security key is available before fetching/modifying data
+      if (_cachedEncryptedPlaces == null) {
+        if (!await ensureSecurityKey(context, child)) {
+          debugPrint(
+            'Security key not available, cannot safely delete encrypted place',
+          );
+          return false;
+        }
+      }
+
+      final existingPlaces =
+          _cachedEncryptedPlaces ?? await fetchEncryptedPlaces();
       final updatedPlaces = existingPlaces
           .where((p) => p.id != placeId)
           .toList();
@@ -336,13 +514,25 @@ class EncryptedPlacesService {
   }
 
   /// Update an encrypted place.
+  /// Ensures security key is available before modifying encrypted data.
   static Future<bool> updateEncryptedPlace(
     Place updatedPlace,
     BuildContext context,
     Widget child,
   ) async {
     try {
-      final existingPlaces = await fetchEncryptedPlaces();
+      // Ensure security key is available before fetching/modifying data
+      if (_cachedEncryptedPlaces == null) {
+        if (!await ensureSecurityKey(context, child)) {
+          debugPrint(
+            'Security key not available, cannot safely update encrypted place',
+          );
+          return false;
+        }
+      }
+
+      final existingPlaces =
+          _cachedEncryptedPlaces ?? await fetchEncryptedPlaces();
       final updatedPlaces = existingPlaces.map((p) {
         return p.id == updatedPlace.id ? updatedPlace : p;
       }).toList();

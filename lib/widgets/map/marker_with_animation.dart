@@ -27,7 +27,16 @@ library;
 
 import 'package:flutter/material.dart';
 
+/// Maximum number of markers to animate simultaneously to prevent jank.
+const int _maxAnimatedMarkers = 8;
+
 /// Animated marker widget with delayed entrance animation.
+///
+/// Performance optimizations:
+/// - Only animates first [_maxAnimatedMarkers] markers to reduce overhead
+/// - Uses lightweight easeOutBack curve instead of elasticOut
+/// - Minimal stagger delay (max 200ms total)
+/// - Returns child directly when animation not needed
 class MarkerWithAnimation extends StatefulWidget {
   const MarkerWithAnimation({
     super.key,
@@ -46,66 +55,78 @@ class MarkerWithAnimation extends StatefulWidget {
 
 class _MarkerWithAnimationState extends State<MarkerWithAnimation>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
+  AnimationController? _controller;
+  Animation<double>? _scaleAnimation;
+  Animation<double>? _fadeAnimation;
+  bool _animationStarted = false;
 
   @override
   void initState() {
     super.initState();
 
-    if (widget.shouldAnimate) {
-      // Create animation controller with staggered delay based on index
-      _controller = AnimationController(
-        duration: const Duration(milliseconds: 300),
-        vsync: this,
-      );
+    // Skip animation for markers beyond threshold to reduce jank
+    final shouldActuallyAnimate =
+        widget.shouldAnimate && widget.index < _maxAnimatedMarkers;
 
-      // Scale animation: use easeOutBack instead of elasticOut (much lighter)
-      _scaleAnimation = CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutBack,
-      );
-
-      // Fade animation: smooth fade-in
-      _fadeAnimation = CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      );
-
-      // Start animation with minimal stagger (max 500ms total delay)
-      final delay = (widget.index * 30).clamp(0, 500);
-      Future.delayed(Duration(milliseconds: delay), () {
-        if (mounted) {
-          _controller.forward();
-        }
+    if (shouldActuallyAnimate) {
+      // Defer controller creation to avoid blocking initState
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _setupAnimation();
       });
-    } else {
-      // No animation needed - create dummy controller
-      _controller = AnimationController(duration: Duration.zero, vsync: this)
-        ..value = 1.0;
-
-      _scaleAnimation = const AlwaysStoppedAnimation(1.0);
-      _fadeAnimation = const AlwaysStoppedAnimation(1.0);
     }
+  }
+
+  void _setupAnimation() {
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 250), // Shorter duration
+      vsync: this,
+    );
+
+    // Use lighter curves
+    _scaleAnimation = CurvedAnimation(
+      parent: _controller!,
+      curve: Curves.easeOutCubic, // Lighter than easeOutBack
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller!,
+      curve: Curves.easeOut,
+    );
+
+    // Reduced stagger: max 200ms total delay for better perceived performance
+    final delay = (widget.index * 25).clamp(0, 200);
+    Future.delayed(Duration(milliseconds: delay), () {
+      if (mounted && _controller != null) {
+        _animationStarted = true;
+        _controller!.forward();
+        // Trigger rebuild to show animation
+        if (mounted) setState(() {});
+      }
+    });
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.shouldAnimate) {
-      // No animation - return child directly
+    // Fast path: no animation needed
+    if (!widget.shouldAnimate || widget.index >= _maxAnimatedMarkers) {
       return widget.child;
     }
 
+    // Animation not yet set up - show child with reduced opacity
+    if (_controller == null || !_animationStarted) {
+      return Opacity(opacity: 0.3, child: widget.child);
+    }
+
     return FadeTransition(
-      opacity: _fadeAnimation,
-      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
+      opacity: _fadeAnimation!,
+      child: ScaleTransition(scale: _scaleAnimation!, child: widget.child),
     );
   }
 }

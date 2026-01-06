@@ -23,6 +23,10 @@ import 'package:geopod/widgets/map/news_marker_layer.dart';
 import 'package:geopod/widgets/map/places_marker_layer.dart';
 
 /// Builds the core FlutterMap widget with all layers.
+///
+/// Performance optimizations:
+/// - Uses RepaintBoundary to isolate map repaints from overlay UI
+/// - Defers marker layer updates when not animating
 Widget buildFlutterMapWidget({
   required MapController mapController,
   required Animation<double> fadeAnimation,
@@ -42,39 +46,46 @@ Widget buildFlutterMapWidget({
   required double initialZoom,
   double? maxZoom,
 }) {
-  return FadeTransition(
-    opacity: fadeAnimation,
-    child: FlutterMap(
-      // Use key to force rebuild when map source changes (different maxZoom)
-      key: ValueKey('map_${mapSettings.mapSource.name}'),
-      mapController: mapController,
-      options: MapOptions(
-        initialCenter: initialCenter,
-        initialZoom: initialZoom,
-        minZoom: 3.0,
-        maxZoom: maxZoom ?? mapSettings.mapSource.maxNativeZoom.toDouble(),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        onPositionChanged: onPositionChanged,
-      ),
-      children: [
-        buildMapTileLayer(
-          mapSettings: mapSettings,
-          tileProvider: tileProvider,
-          applyFilter: applyFilter,
+  return RepaintBoundary(
+    child: FadeTransition(
+      opacity: fadeAnimation,
+      child: FlutterMap(
+        // Use key to force rebuild when map source changes (different maxZoom)
+        key: ValueKey('map_${mapSettings.mapSource.name}'),
+        mapController: mapController,
+        options: MapOptions(
+          initialCenter: initialCenter,
+          initialZoom: initialZoom,
+          minZoom: 3.0,
+          maxZoom: maxZoom ?? mapSettings.mapSource.maxNativeZoom.toDouble(),
+          onTap: onTap,
+          onLongPress: onLongPress,
+          onPositionChanged: onPositionChanged,
         ),
-        buildPlacesMarkerLayer(
-          context: context,
-          markers: filteredMarkers,
-          shouldAnimate: shouldAnimate,
-          onDelete: onDeletePlace,
-        ),
-        if (showNewsMarkers)
-          buildNewsMarkerLayer(
-            context: context,
-            newsMarkers: visibleNewsMarkers,
+        children: [
+          buildMapTileLayer(
+            mapSettings: mapSettings,
+            tileProvider: tileProvider,
+            applyFilter: applyFilter,
           ),
-      ],
+          // Wrap marker layer in RepaintBoundary to isolate marker animations
+          RepaintBoundary(
+            child: buildPlacesMarkerLayer(
+              context: context,
+              markers: filteredMarkers,
+              shouldAnimate: shouldAnimate,
+              onDelete: onDeletePlace,
+            ),
+          ),
+          if (showNewsMarkers)
+            RepaintBoundary(
+              child: buildNewsMarkerLayer(
+                context: context,
+                newsMarkers: visibleNewsMarkers,
+              ),
+            ),
+        ],
+      ),
     ),
   );
 }

@@ -1,6 +1,6 @@
 /// The primary map widget.
 ///
-// Time-stamp: <Monday 2025-12-08 08:22:27 +1100 Graham Williams>
+// Time-stamp: <2026-01-07 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -25,10 +25,10 @@ import 'package:solidui/solidui.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
-import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places_service.dart'
-    show PlacesCacheManager, PlacesService, placesChangeNotifier;
+    show PlacesService, placesChangeNotifier;
 import 'package:geopod/widgets/map/geomap_core.dart';
+import 'package:geopod/widgets/map/geomap_encrypted_places.dart';
 import 'package:geopod/widgets/map/geomap_news_mixin.dart';
 import 'package:geopod/widgets/map/geomap_place_handlers.dart';
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
@@ -98,20 +98,33 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       curve: Curves.easeOut,
     );
     _animationController.addStatusListener((s) {
-      if (s == AnimationStatus.completed) {
-        setState(() {
-          _initialAnimationComplete = true;
-          _isPostLoginRefresh = false;
-        });
+      if (s == AnimationStatus.completed && mounted) {
+        // Batch state updates to reduce rebuilds
+        _initialAnimationComplete = true;
+        _isPostLoginRefresh = false;
+        // Only call setState if truly needed for UI
+        if (_isLoadingPlaces) setState(() {});
       }
     });
+    // Sync check - no setState needed
     _isLoggedIn = AuthDataManager.isLoggedInSync();
-    authStateNotifier.addListener(_onAuthStateChanged);
-    placesChangeNotifier.addListener(_onPlacesChanged);
-    _loadSettingsSync();
-    _verifyLoginStateAndLoadData();
+    // Show local places immediately (sync, no setState needed until build)
+    _allPlaces = PlacesService.getLocalPlacesSync();
+
+    // Defer listener setup and data loading to after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _animationController.forward();
+      if (!mounted) return;
+      authStateNotifier.addListener(_onAuthStateChanged);
+      placesChangeNotifier.addListener(_onPlacesChanged);
+      _animationController.forward();
+      // Defer settings loading slightly to not block animation
+      Future.microtask(() {
+        if (mounted) _loadSettingsSync();
+      });
+      // Defer login verification even more
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (mounted) _verifyLoginStateAndLoadData();
+      });
     });
     WidgetsBinding.instance.addObserver(this);
   }
@@ -208,43 +221,50 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     MapSettingsService.loadSettings()
         .then((s) async {
           if (!mounted) return;
-          setState(() => _mapSettings = s);
-          // Load startup viewport after settings are loaded
+          MapSettings finalSettings = s;
+          LatLng? newCenter;
+          double? newZoom;
+
           if (!_viewportInitialized) {
             final viewport = await MapSettingsService.getStartupViewport(s);
-            if (mounted) {
-              setState(() {
-                _initialCenter = LatLng(viewport.lat, viewport.lng);
-                _initialZoom = viewport.zoom;
-                _viewportInitialized = true;
-              });
-              // Move map to the loaded viewport
-              mapController.move(_initialCenter, _initialZoom);
+            newCenter = LatLng(viewport.lat, viewport.lng);
+            newZoom = viewport.zoom;
+          }
+
+          if (!mounted) return;
+          setState(() {
+            _mapSettings = finalSettings;
+            if (newCenter != null && newZoom != null) {
+              _initialCenter = newCenter;
+              _initialZoom = newZoom;
+              _viewportInitialized = true;
             }
+          });
+          if (newCenter != null && newZoom != null) {
+            mapController.move(newCenter, newZoom);
           }
         })
         .catchError((_) {});
   }
 
   Future<void> _verifyLoginStateAndLoadData() async {
-    // Show local places immediately
-    if (_allPlaces.isEmpty) {
-      setState(() => _allPlaces = PlacesService.getLocalPlacesSync());
-    }
-
     final result = await verifyLoginStateAndLoadData(
       currentIsLoggedIn: _isLoggedIn,
     );
     if (!mounted) return;
-    if (result.loginStateChanged) {
-      setState(() => _isLoggedIn = result.actuallyLoggedIn);
+
+    final needsRebuild = result.loginStateChanged || result.places != null;
+    if (needsRebuild) {
+      setState(() {
+        if (result.loginStateChanged) _isLoggedIn = result.actuallyLoggedIn;
+        if (result.places != null) _allPlaces = result.places!;
+      });
     }
-    if (result.places != null) {
-      setState(() => _allPlaces = result.places!);
-    }
+
     if (result.needsRefresh) {
-      // Load in background without blocking
-      unawaited(_loadAllPlaces(forceRefresh: true));
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) unawaited(_loadAllPlaces(forceRefresh: true));
+      });
     }
   }
 
@@ -261,21 +281,16 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             _mapSettings = ns;
             if (changed) {
               _tileProvider = CancellableNetworkTileProvider();
-              // Adjust zoom level if current zoom exceeds new map source's max
               adjustZoomForMapSource(
                 mapController: mapController,
                 mapSettings: ns,
               );
             }
           });
-          // Load encrypted places if newly enabled
           if (encryptedToggled && ns.showEncryptedPlaces) {
             unawaited(_loadEncryptedPlaces());
           } else if (encryptedToggled && !ns.showEncryptedPlaces) {
-            // Remove encrypted places from display
-            setState(() {
-              _allPlaces.removeWhere((p) => p.isEncrypted);
-            });
+            setState(() => _allPlaces.removeWhere((p) => p.isEncrypted));
           }
         },
       ),
@@ -288,21 +303,25 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     bool forceRefresh = false,
     bool? includeEncrypted,
   }) async {
-    final cm = PlacesCacheManager();
-    if (cm.allPlaces == null) setState(() => _isLoadingPlaces = true);
+    if (mounted && _allPlaces.isEmpty) setState(() => _isLoadingPlaces = true);
     try {
       final places = await loadAllPlaces(
         forceRefresh: forceRefresh,
         includeEncrypted: includeEncrypted ?? _mapSettings.showEncryptedPlaces,
       );
       if (mounted) {
-        setState(() {
-          _allPlaces = List.from(places);
-          _isLoadingPlaces = false;
-        });
+        final hasChanges =
+            _allPlaces.length != places.length ||
+            !_allPlaces.every((p) => places.any((np) => np.id == p.id));
+        if (hasChanges || _isLoadingPlaces) {
+          setState(() {
+            _allPlaces = List.from(places);
+            _isLoadingPlaces = false;
+          });
+        }
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoadingPlaces = false);
+      if (mounted && _isLoadingPlaces) setState(() => _isLoadingPlaces = false);
     }
   }
 
@@ -310,45 +329,27 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   Future<void> _loadEncryptedPlaces() async {
     if (!_isLoggedIn || !mounted) return;
 
-    // First ensure security key is available (will prompt user if needed)
-    final hasKey = await EncryptedPlacesService.ensureSecurityKey(
-      context,
-      widget,
+    final result = await loadEncryptedPlaces(
+      context: context,
+      widget: widget,
+      isLoggedIn: _isLoggedIn,
     );
-    if (!hasKey) {
-      // User cancelled or key not available, revert setting
-      if (mounted) {
-        setState(() {
-          _mapSettings = _mapSettings.copyWith(showEncryptedPlaces: false);
-        });
-        MapSettingsService.saveSettings(_mapSettings);
-      }
+
+    if (!mounted) return;
+
+    if (result.cancelled) {
+      setState(() {
+        _mapSettings = _mapSettings.copyWith(showEncryptedPlaces: false);
+      });
+      MapSettingsService.saveSettings(_mapSettings);
       return;
     }
 
-    try {
-      debugPrint('Loading encrypted places...');
-      final encryptedPlaces = await PlacesService.fetchEncryptedPlaces(
-        forceRefresh: true,
-      );
-      debugPrint(
-        'Fetched ${encryptedPlaces.length} encrypted places, '
-        'isEncrypted flags: ${encryptedPlaces.map((p) => p.isEncrypted).toList()}',
-      );
-      if (mounted && encryptedPlaces.isNotEmpty) {
-        setState(() {
-          // Remove any existing encrypted places first
-          _allPlaces.removeWhere((p) => p.isEncrypted);
-          // Add newly loaded encrypted places
-          _allPlaces.addAll(encryptedPlaces);
-          debugPrint(
-            'All places now: ${_allPlaces.length}, '
-            'encrypted count: ${_allPlaces.where((p) => p.isEncrypted).length}',
-          );
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading encrypted places: $e');
+    if (result.success && result.places.isNotEmpty) {
+      setState(() {
+        _allPlaces.removeWhere((p) => p.isEncrypted);
+        _allPlaces.addAll(result.places);
+      });
     }
   }
 
@@ -469,31 +470,40 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             initialCenter: _initialCenter,
             initialZoom: _initialZoom,
           ),
-          buildLoadingIndicator(isLoading: _isLoadingPlaces),
-          AddPlaceOverlayButton(
-            isLoading: _isLoadingPlaces,
-            isLoggedIn: _isLoggedIn,
-            onTap: () {
-              if (_isLoggedIn) {
-                _showAddPlaceDialog();
-              } else {
-                SolidAuthHandler.instance.handleLogin(context);
-              }
-            },
+          // Wrap overlay buttons in RepaintBoundary to isolate from map repaints
+          RepaintBoundary(
+            child: buildLoadingIndicator(isLoading: _isLoadingPlaces),
           ),
-          NewsOverlayButton(
-            isLoadingNews: isLoadingNews,
-            showNewsMarkers: showNewsMarkers,
-            visibleNewsCount: getVisibleNewsMarkersImpl().length,
-            onTap: toggleNewsMarkers,
+          RepaintBoundary(
+            child: AddPlaceOverlayButton(
+              isLoading: _isLoadingPlaces,
+              isLoggedIn: _isLoggedIn,
+              onTap: () {
+                if (_isLoggedIn) {
+                  _showAddPlaceDialog();
+                } else {
+                  SolidAuthHandler.instance.handleLogin(context);
+                }
+              },
+            ),
+          ),
+          RepaintBoundary(
+            child: NewsOverlayButton(
+              isLoadingNews: isLoadingNews,
+              showNewsMarkers: showNewsMarkers,
+              visibleNewsCount: getVisibleNewsMarkersImpl().length,
+              onTap: toggleNewsMarkers,
+            ),
           ),
         ],
       ),
-      floatingActionButton: MapFloatingButtons(
-        isLoadingPlaces: _isLoadingPlaces,
-        onZoomIn: () => zoomIn(mapController),
-        onZoomOut: () => zoomOut(mapController),
-        onRefresh: _loadAllPlaces,
+      floatingActionButton: RepaintBoundary(
+        child: MapFloatingButtons(
+          isLoadingPlaces: _isLoadingPlaces,
+          onZoomIn: () => zoomIn(mapController),
+          onZoomOut: () => zoomOut(mapController),
+          onRefresh: _loadAllPlaces,
+        ),
       ),
     );
   }

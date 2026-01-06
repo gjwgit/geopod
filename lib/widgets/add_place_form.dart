@@ -79,7 +79,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   Timer? _debounceTimer;
 
   /// Whether to encrypt this place.
-  bool _encrypt = false;
+  bool _encrypt = true;
 
   @override
   void initState() {

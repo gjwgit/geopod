@@ -12,8 +12,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:geopod/services/places_service.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
+import 'package:geopod/services/places_service.dart';
 import 'package:geopod/widgets/locations/import_format_dialog.dart';
 import 'package:geopod/widgets/locations/import_preview_dialog.dart';
 import 'package:geopod/widgets/locations_page.dart';

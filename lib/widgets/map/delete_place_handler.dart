@@ -13,9 +13,9 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:geopod/models/place.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, PlacesCacheManager;
-import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/widgets/geomap.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 

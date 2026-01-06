@@ -16,8 +16,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
-import 'package:geopod/services/places_service.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
+import 'package:geopod/services/places_service.dart';
 import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/geomap.dart';
 import 'package:geopod/widgets/map/login_required_dialog.dart';

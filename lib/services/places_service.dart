@@ -35,6 +35,7 @@ import 'package:solidpod/solidpod.dart';
 import 'package:geopod/constants/example_places_data.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places/places_cache_manager.dart';
 import 'package:geopod/services/places/places_import_export.dart';
 import 'package:geopod/services/places/places_pod_file.dart';
@@ -73,11 +74,27 @@ class PlacesService {
     }
     // Local places are synchronous (compiled into binary) - get them immediately
     final localPlaces = getLocalPlacesSync();
-    // Only await network data
+    // Only await network data - both regular and encrypted
     final podPlaces = await fetchPodPlaces(forceRefresh: forceRefresh);
-    final all = <Place>[...podPlaces, ...localPlaces];
+    final encryptedPlaces = await fetchEncryptedPlaces(forceRefresh: forceRefresh);
+    final all = <Place>[...podPlaces, ...encryptedPlaces, ...localPlaces];
     cm.cacheAllPlaces(all);
     return all;
+  }
+
+  /// Fetch encrypted places from Pod.
+  /// Returns empty list if not logged in or no security key.
+  static Future<List<Place>> fetchEncryptedPlaces({bool forceRefresh = false}) async {
+    try {
+      if (!AuthDataManager.isLoggedInSync()) return [];
+      // Import and use EncryptedPlacesService
+      final encPlaces = await EncryptedPlacesService.fetchEncryptedPlaces(
+        forceRefresh: forceRefresh,
+      );
+      return encPlaces;
+    } catch (_) {
+      return [];
+    }
   }
 
   static Future<List<Place>> fetchPodPlaces({bool forceRefresh = false}) async {

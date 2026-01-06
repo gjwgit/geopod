@@ -75,6 +75,15 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   double _initialZoom = defaultInitialZoom;
   bool _viewportInitialized = false;
 
+  // Cached filtered markers to avoid rebuilding on every setState
+  List<MarkerData>? _cachedFilteredMarkers;
+  int _lastPlacesHash = 0;
+  int _lastSavingIdsHash = 0;
+  bool _lastShowLocalPlaces = true;
+
+  // Flag to skip placesChangeNotifier during local delete operations
+  bool _skipPlacesChangeNotification = false;
+
   @override
   void initState() {
     super.initState();
@@ -125,6 +134,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   void _onPlacesChanged() {
+    // Skip if we triggered this ourselves (during delete operations)
+    if (_skipPlacesChangeNotification) return;
     if (mounted && _isLoggedIn) _loadAllPlaces(forceRefresh: false);
   }
 
@@ -257,39 +268,63 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     }
   }
 
-  List<MarkerData> get _filteredMarkers => buildFilteredMarkers(
-    allPlaces: _allPlaces,
-    mapSettings: _mapSettings,
-    savingPlaceIds: _savingPlaceIds,
-  );
+  /// Cached getter for filtered markers to avoid expensive rebuilds.
+  List<MarkerData> get _filteredMarkers {
+    // Compute hashes to detect changes
+    final placesHash = Object.hashAll(_allPlaces.map((p) => p.id));
+    final savingHash = Object.hashAll(_savingPlaceIds);
+    final showLocal = _mapSettings.showLocalPlaces;
+
+    // Return cached if nothing changed
+    if (_cachedFilteredMarkers != null &&
+        placesHash == _lastPlacesHash &&
+        savingHash == _lastSavingIdsHash &&
+        showLocal == _lastShowLocalPlaces) {
+      return _cachedFilteredMarkers!;
+    }
+
+    // Rebuild and cache
+    _lastPlacesHash = placesHash;
+    _lastSavingIdsHash = savingHash;
+    _lastShowLocalPlaces = showLocal;
+    _cachedFilteredMarkers = buildFilteredMarkers(
+      allPlaces: _allPlaces,
+      mapSettings: _mapSettings,
+      savingPlaceIds: _savingPlaceIds,
+    );
+    return _cachedFilteredMarkers!;
+  }
 
   Future<void> _showAddPlaceDialog({double? lat, double? lng}) async {
-    final place = await showAddPlaceDialogIfLoggedIn(
+    final result = await showAddPlaceDialogIfLoggedIn(
       context: context,
       latitude: lat,
       longitude: lng,
     );
-    if (place != null && mounted) _handleOptimisticSave(place);
+    if (result != null && mounted) {
+      _handleOptimisticSave(result.place, encrypted: result.encrypted);
+    }
   }
 
-  void _handleOptimisticSave(Place p) {
+  void _handleOptimisticSave(Place p, {bool encrypted = false}) {
     handleOptimisticPlaceSave(
       place: p,
       allPlaces: _allPlaces,
       savingPlaceIds: _savingPlaceIds,
       context: context,
       setState: setState,
-      performBackgroundSave: _performBackgroundSave,
+      performBackgroundSave: (place) => _performBackgroundSave(place, encrypted: encrypted),
     );
   }
 
-  Future<void> _performBackgroundSave(Place op) async {
+  Future<void> _performBackgroundSave(Place op, {bool encrypted = false}) async {
     await performPlaceBackgroundSave(
       originalPlace: op,
       context: context,
       allPlaces: _allPlaces,
       savingPlaceIds: _savingPlaceIds,
       setState: setState,
+      encrypted: encrypted,
     );
   }
 
@@ -301,12 +336,18 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   Future<void> _confirmAndDeletePlace(MarkerData m) async {
-    await confirmAndDeletePlace(
-      marker: m,
-      context: context,
-      allPlaces: _allPlaces,
-      setState: setState,
-    );
+    // Set flag to skip placesChangeNotifier during our delete operation
+    _skipPlacesChangeNotification = true;
+    try {
+      await confirmAndDeletePlace(
+        marker: m,
+        context: context,
+        allPlaces: _allPlaces,
+        setState: setState,
+      );
+    } finally {
+      _skipPlacesChangeNotification = false;
+    }
   }
 
   @override

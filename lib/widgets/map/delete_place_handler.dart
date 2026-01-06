@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, PlacesCacheManager;
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/widgets/geomap.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 
@@ -66,15 +67,27 @@ void updateCacheAfterDelete(List<Place> allPlaces) {
 }
 
 /// Performs the delete operation on the server.
+/// Routes to appropriate service based on whether the place is encrypted.
 Future<bool> performDeleteOnServer({
   required String placeId,
   required BuildContext context,
+  required bool isEncrypted,
 }) async {
-  return await PlacesService.deletePlace(
-    placeId,
-    context,
-    const GeoMapWidget(),
-  );
+  if (isEncrypted) {
+    // Delete from encrypted places service
+    return await EncryptedPlacesService.deleteEncryptedPlace(
+      placeId,
+      context,
+      const GeoMapWidget(),
+    );
+  } else {
+    // Delete from regular places service
+    return await PlacesService.deletePlace(
+      placeId,
+      context,
+      const GeoMapWidget(),
+    );
+  }
 }
 
 /// Shows a confirmation dialog for deleting a place.

@@ -39,7 +39,10 @@ import 'package:geopod/services/places_service.dart';
 class AddPlaceResult {
   final Place place;
 
-  AddPlaceResult({required this.place});
+  /// Whether the place should be encrypted.
+  final bool encrypted;
+
+  AddPlaceResult({required this.place, this.encrypted = false});
 }
 
 /// A form widget that allows users to add a new place with coordinates and
@@ -74,6 +77,9 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   String? _addressPreview;
   bool _isLoadingAddress = false;
   Timer? _debounceTimer;
+
+  /// Whether to encrypt this place.
+  bool _encrypt = false;
 
   @override
   void initState() {
@@ -227,7 +233,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
     );
 
     // INSTANT: Close dialog and return Place for optimistic update.
-    Navigator.pop(context, AddPlaceResult(place: place));
+    Navigator.pop(context, AddPlaceResult(place: place, encrypted: _encrypt));
   }
 
   @override
@@ -364,6 +370,66 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                   ),
                   maxLines: 4,
                   validator: _validateNote,
+                ),
+                const SizedBox(height: 16),
+
+                // Encryption checkbox.
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _encrypt ? Colors.green.shade50 : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _encrypt ? Colors.green.shade300 : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: _encrypt,
+                        onChanged: (value) {
+                          setState(() {
+                            _encrypt = value ?? false;
+                          });
+                        },
+                        activeColor: Colors.green,
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  _encrypt ? Icons.lock : Icons.lock_open,
+                                  size: 18,
+                                  color: _encrypt ? Colors.green : Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Encrypt this place',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: _encrypt ? Colors.green.shade700 : Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _encrypt
+                                  ? 'This place will be stored securely with encryption'
+                                  : 'Enable to store this place with encryption',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

@@ -57,14 +57,14 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
     if (widget.shouldAnimate) {
       // Create animation controller with staggered delay based on index
       _controller = AnimationController(
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 300),
         vsync: this,
       );
 
-      // Scale animation: bounce effect (0.0 → 1.0 with overshoot)
+      // Scale animation: use easeOutBack instead of elasticOut (much lighter)
       _scaleAnimation = CurvedAnimation(
         parent: _controller,
-        curve: Curves.elasticOut,
+        curve: Curves.easeOutBack,
       );
 
       // Fade animation: smooth fade-in
@@ -73,8 +73,9 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
         curve: Curves.easeOut,
       );
 
-      // Start animation with staggered delay (50ms per marker)
-      Future.delayed(Duration(milliseconds: 100 + (widget.index * 50)), () {
+      // Start animation with minimal stagger (max 500ms total delay)
+      final delay = (widget.index * 30).clamp(0, 500);
+      Future.delayed(Duration(milliseconds: delay), () {
         if (mounted) {
           _controller.forward();
         }

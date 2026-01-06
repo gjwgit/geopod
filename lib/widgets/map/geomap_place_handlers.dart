@@ -15,6 +15,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places_service.dart' show PlacesCacheManager;
@@ -33,11 +34,18 @@ void handleOptimisticPlaceSave({
   required void Function(void Function()) setState,
   required Future<void> Function(Place) performBackgroundSave,
 }) {
+  // Update state first
   setState(() {
     allPlaces.insert(0, place);
     savingPlaceIds.add(place.id);
   });
-  showSavingSnackbar(context, place);
+  // Show snackbar after frame to avoid jank
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    if (context.mounted) {
+      showSavingSnackbar(context, place);
+    }
+  });
+  // Start background save
   unawaited(performBackgroundSave(place));
 }
 
@@ -48,26 +56,39 @@ Future<void> performPlaceBackgroundSave({
   required List<Place> allPlaces,
   required Set<String> savingPlaceIds,
   required void Function(void Function()) setState,
+  bool encrypted = false,
 }) async {
   try {
-    final updatedPlace = await performBackgroundSave(originalPlace, context);
+    final updatedPlace = await performBackgroundSave(
+      originalPlace,
+      context,
+      encrypted: encrypted,
+    );
     if (!context.mounted) return;
     if (updatedPlace != null) {
-      setState(() {
-        final index = allPlaces.indexWhere((x) => x.id == originalPlace.id);
-        if (index != -1) allPlaces[index] = updatedPlace;
-        savingPlaceIds.remove(originalPlace.id);
+      // Schedule state update after current frame to avoid animation jank
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        setState(() {
+          final index = allPlaces.indexWhere((x) => x.id == originalPlace.id);
+          if (index != -1) allPlaces[index] = updatedPlace;
+          savingPlaceIds.remove(originalPlace.id);
+        });
+        PlacesCacheManager().cacheAllPlaces(allPlaces);
+        showSaveSuccessSnackbar(context);
       });
-      PlacesCacheManager().cacheAllPlaces(allPlaces);
-      showSaveSuccessSnackbar(context);
     }
   } catch (e) {
     if (!context.mounted) return;
-    setState(() {
-      allPlaces.removeWhere((x) => x.id == originalPlace.id);
-      savingPlaceIds.remove(originalPlace.id);
+    // Schedule error handling after current frame
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      setState(() {
+        allPlaces.removeWhere((x) => x.id == originalPlace.id);
+        savingPlaceIds.remove(originalPlace.id);
+      });
+      showSaveErrorSnackbar(context, e);
     });
-    showSaveErrorSnackbar(context, e);
   }
 }
 
@@ -90,15 +111,19 @@ Future<void> confirmAndDeletePlace({
   setState(() => allPlaces.removeAt(prep.removedIndex!));
   if (!context.mounted) return;
 
+  // Update cache BEFORE server delete to prevent race condition
+  // (placesChangeNotifier triggers _loadAllPlaces which would restore old data)
+  updateCacheAfterDelete(allPlaces);
+
   showDeletingSnackbar(context);
   final success = await performDeleteOnServer(
     placeId: marker.id,
     context: context,
+    isEncrypted: marker.isEncrypted,
   );
 
   if (!context.mounted) return;
   if (success) {
-    updateCacheAfterDelete(allPlaces);
     showDeleteSuccessSnackbar(context);
   } else {
     setState(

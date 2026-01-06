@@ -30,6 +30,14 @@ import 'package:flutter/material.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/widgets/locations/edit_import_place_dialog.dart';
 
+/// Result of import preview dialog containing places and encryption flag.
+class ImportPreviewResult {
+  final List<Place> places;
+  final bool encrypted;
+
+  ImportPreviewResult({required this.places, this.encrypted = false});
+}
+
 /// Dialog showing a preview of places to be imported with edit/delete capabilities.
 class ImportPreviewDialog extends StatefulWidget {
   const ImportPreviewDialog({
@@ -49,6 +57,9 @@ class ImportPreviewDialog extends StatefulWidget {
 
 class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
   late List<Place> _editablePlaces;
+
+  /// Whether to encrypt imported places.
+  bool _encrypt = false;
 
   @override
   void initState() {
@@ -151,6 +162,65 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                           fontSize: 12,
                           color: Colors.blue.shade800,
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Encryption option.
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _encrypt ? Colors.green.shade50 : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _encrypt ? Colors.green.shade300 : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _encrypt,
+                      onChanged: (value) {
+                        setState(() {
+                          _encrypt = value ?? false;
+                        });
+                      },
+                      activeColor: Colors.green,
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                _encrypt ? Icons.lock : Icons.lock_open,
+                                size: 18,
+                                color: _encrypt ? Colors.green : Colors.grey,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Encrypt imported places',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: _encrypt ? Colors.green.shade700 : Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _encrypt
+                                ? 'Places will be stored securely with encryption'
+                                : 'Enable to store imported places with encryption',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -302,11 +372,21 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
         ElevatedButton.icon(
           onPressed: _editablePlaces.isEmpty
               ? null
-              : () => Navigator.pop(context, _editablePlaces),
-          icon: const Icon(Icons.download, size: 18),
-          label: Text('Import ${_editablePlaces.length} Places'),
+              : () => Navigator.pop(
+                    context,
+                    ImportPreviewResult(
+                      places: _editablePlaces,
+                      encrypted: _encrypt,
+                    ),
+                  ),
+          icon: Icon(_encrypt ? Icons.lock : Icons.download, size: 18),
+          label: Text(
+            _encrypt
+                ? 'Import ${_editablePlaces.length} (Encrypted)'
+                : 'Import ${_editablePlaces.length} Places',
+          ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
+            backgroundColor: _encrypt ? Colors.green.shade700 : Colors.green,
             foregroundColor: Colors.white,
           ),
         ),

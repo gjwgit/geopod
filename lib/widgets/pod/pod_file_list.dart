@@ -1,6 +1,6 @@
 /// POD file list widget for displaying files and directories.
 ///
-// Time-stamp: <2026-01-01 Miduo>
+// Time-stamp: <2026-01-06 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -10,12 +10,15 @@
 
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:geopod/models/pod_file_item.dart';
 
-/// Widget for displaying a list of POD files and directories.
-class PodFileList extends StatelessWidget {
+/// Widget for displaying a list of POD files and directories with animations.
+class PodFileList extends StatefulWidget {
   /// List of file items to display.
   final List<PodFileItem> items;
 
@@ -54,8 +57,16 @@ class PodFileList extends StatelessWidget {
   });
 
   @override
+  State<PodFileList> createState() => _PodFileListState();
+}
+
+class _PodFileListState extends State<PodFileList> {
+  /// Set of item paths currently being deleted (for animation).
+  final Set<String> _deletingItems = {};
+
+  @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
+    if (widget.items.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -91,8 +102,8 @@ class PodFileList extends StatelessWidget {
     }
 
     // Separate directories and files
-    final directories = items.where((i) => i.isDirectory).toList();
-    final files = items.where((i) => !i.isDirectory).toList();
+    final directories = widget.items.where((i) => i.isDirectory).toList();
+    final files = widget.items.where((i) => !i.isDirectory).toList();
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -105,11 +116,14 @@ class PodFileList extends StatelessWidget {
             icon: Icons.folder,
           ),
           ...directories.map(
-            (item) => _FileListTile(
+            (item) => _AnimatedFileListTile(
+              key: ValueKey('dir_${item.path}'),
               item: item,
-              isSelected: selectedFilePath == item.path,
-              onTap: () => onDirectoryTap?.call(item),
-              onDelete: showDelete && (canDelete?.call(item) ?? true)
+              isSelected: widget.selectedFilePath == item.path,
+              isDeleting: _deletingItems.contains(item.path),
+              onTap: () => widget.onDirectoryTap?.call(item),
+              onDelete: widget.showDelete &&
+                      (widget.canDelete?.call(item) ?? true)
                   ? () => _confirmDelete(context, item)
                   : null,
               onDownload: null,
@@ -126,15 +140,18 @@ class PodFileList extends StatelessWidget {
             icon: Icons.insert_drive_file,
           ),
           ...files.map(
-            (item) => _FileListTile(
+            (item) => _AnimatedFileListTile(
+              key: ValueKey('file_${item.path}'),
               item: item,
-              isSelected: selectedFilePath == item.path,
-              onTap: () => onFileTap?.call(item),
-              onDelete: showDelete && (canDelete?.call(item) ?? true)
+              isSelected: widget.selectedFilePath == item.path,
+              isDeleting: _deletingItems.contains(item.path),
+              onTap: () => widget.onFileTap?.call(item),
+              onDelete: widget.showDelete &&
+                      (widget.canDelete?.call(item) ?? true)
                   ? () => _confirmDelete(context, item)
                   : null,
-              onDownload: onDownload != null
-                  ? () => onDownload?.call(item)
+              onDownload: widget.onDownload != null
+                  ? () => widget.onDownload?.call(item)
                   : null,
             ),
           ),
@@ -168,7 +185,7 @@ class PodFileList extends StatelessWidget {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              onDelete?.call(item);
+              _performDelete(item);
             },
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
@@ -178,6 +195,26 @@ class PodFileList extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Performs delete with animation.
+  void _performDelete(PodFileItem item) {
+    // Start delete animation
+    setState(() => _deletingItems.add(item.path));
+    
+    // Schedule cleanup and delete after animation frame
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted) {
+          setState(() => _deletingItems.remove(item.path));
+        }
+        // Fire and forget - don't block on the async delete
+        final onDelete = widget.onDelete;
+        if (onDelete != null) {
+          unawaited(Future(() => onDelete(item)));
+        }
+      });
+    });
   }
 }
 
@@ -231,15 +268,99 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Single file/directory list tile.
-class _FileListTile extends StatelessWidget {
+/// Animated file/directory list tile with delete animation.
+class _AnimatedFileListTile extends StatefulWidget {
+  final PodFileItem item;
+  final bool isSelected;
+  final bool isDeleting;
+  final VoidCallback? onTap;
+  final VoidCallback? onDelete;
+  final VoidCallback? onDownload;
+
+  const _AnimatedFileListTile({
+    super.key,
+    required this.item,
+    this.isSelected = false,
+    this.isDeleting = false,
+    this.onTap,
+    this.onDelete,
+    this.onDownload,
+  });
+
+  @override
+  State<_AnimatedFileListTile> createState() => _AnimatedFileListTileState();
+}
+
+class _AnimatedFileListTileState extends State<_AnimatedFileListTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedFileListTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isDeleting && !oldWidget.isDeleting) {
+      _controller.forward();
+    } else if (!widget.isDeleting && oldWidget.isDeleting) {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Use single AnimatedBuilder for better performance
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        final value = 1.0 - _animation.value;
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(-30 * _animation.value, 0),
+            child: child,
+          ),
+        );
+      },
+      child: _FileListTileContent(
+        item: widget.item,
+        isSelected: widget.isSelected,
+        onTap: widget.onTap,
+        onDelete: widget.onDelete,
+        onDownload: widget.onDownload,
+      ),
+    );
+  }
+}
+
+/// Single file/directory list tile content.
+class _FileListTileContent extends StatelessWidget {
   final PodFileItem item;
   final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final VoidCallback? onDownload;
 
-  const _FileListTile({
+  const _FileListTileContent({
     required this.item,
     this.isSelected = false,
     this.onTap,

@@ -26,45 +26,69 @@ MarkerLayer buildPlacesMarkerLayer({
   required void Function(MarkerData) onDelete,
 }) {
   return MarkerLayer(
-    markers: markers.asMap().entries.map((e) {
-      final i = e.key;
-      final m = e.value;
-      return Marker(
-        point: m.position,
-        width: 40,
-        height: 40,
-        child: MarkerWithAnimation(
+    markers: [
+      for (int i = 0; i < markers.length; i++)
+        _buildMarker(
+          context: context,
+          marker: markers[i],
           index: i,
           shouldAnimate: shouldAnimate,
-          child: GestureDetector(
-            onTap: () =>
-                showMarkerDetailsSheet(context, m, onDelete: () => onDelete(m)),
-            child: m.isSaving
-                ? Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 40,
-                        color: Colors.orange.shade400,
-                      ),
-                      const Positioned(
-                        top: 8,
-                        child: SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : Icon(Icons.location_on, size: 40, color: m.color),
-          ),
+          onDelete: onDelete,
         ),
-      );
-    }).toList(),
+    ],
+  );
+}
+
+/// Builds a single marker widget.
+Marker _buildMarker({
+  required BuildContext context,
+  required MarkerData marker,
+  required int index,
+  required bool shouldAnimate,
+  required void Function(MarkerData) onDelete,
+}) {
+  // Skip entrance animation for markers being saved (they have their own indicator)
+  final animate = shouldAnimate && !marker.isSaving;
+  
+  return Marker(
+    key: ValueKey('marker_${marker.id}'),
+    point: marker.position,
+    width: 40,
+    height: 40,
+    child: MarkerWithAnimation(
+      key: ValueKey('anim_${marker.id}'),
+      index: index,
+      shouldAnimate: animate,
+      child: GestureDetector(
+        onTap: () => showMarkerDetailsSheet(
+          context,
+          marker,
+          onDelete: () => onDelete(marker),
+        ),
+        child: marker.isSaving
+            ? _buildSavingMarker()
+            : Icon(Icons.location_on, size: 40, color: marker.color),
+      ),
+    ),
+  );
+}
+
+/// Builds the saving state marker with lightweight pulse indicator.
+Widget _buildSavingMarker() {
+  return Stack(
+    alignment: Alignment.center,
+    children: [
+      Icon(Icons.location_on, size: 40, color: Colors.orange.shade400),
+      // Use a simple static indicator instead of animated spinner
+      // This avoids animation overhead during save
+      const Positioned(
+        top: 6,
+        child: Icon(
+          Icons.cloud_upload_outlined,
+          size: 14,
+          color: Colors.white,
+        ),
+      ),
+    ],
   );
 }

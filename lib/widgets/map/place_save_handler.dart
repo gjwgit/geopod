@@ -17,6 +17,7 @@ import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/geomap.dart';
 import 'package:geopod/widgets/map/login_required_dialog.dart';
@@ -84,10 +85,12 @@ void showSaveErrorSnackbar(BuildContext context, dynamic error) {
 
 /// Performs background save of a place with address lookup.
 /// Note: Context is passed through to PlacesService which handles mounted checks internally.
+/// If [encrypted] is true, saves to encrypted storage.
 Future<Place?> performBackgroundSave(
   Place originalPlace,
-  BuildContext context,
-) async {
+  BuildContext context, {
+  bool encrypted = false,
+}) async {
   final address = await GeocodingService.getAddress(
     originalPlace.lat,
     originalPlace.lng,
@@ -101,21 +104,35 @@ Future<Place?> performBackgroundSave(
     address: address,
   );
   if (!context.mounted) return null;
-  final success = await PlacesService.addPlace(
-    updatedPlace,
-    context,
-    const GeoMapWidget(),
-  );
+
+  bool success;
+  if (encrypted) {
+    // Save to encrypted storage
+    success = await EncryptedPlacesService.addEncryptedPlace(
+      updatedPlace,
+      context,
+      const GeoMapWidget(),
+    );
+  } else {
+    // Save to regular storage
+    success = await PlacesService.addPlace(
+      updatedPlace,
+      context,
+      const GeoMapWidget(),
+    );
+  }
+
   if (success) {
     return updatedPlace;
   } else {
-    throw Exception('WritePod failed');
+    throw Exception(encrypted ? 'Encrypted save failed' : 'WritePod failed');
   }
 }
 
 /// Shows the add place dialog and returns the result.
 /// Returns null if user is not logged in or cancels.
-Future<Place?> showAddPlaceDialogIfLoggedIn({
+/// Returns AddPlaceResult with place and encryption flag.
+Future<AddPlaceResult?> showAddPlaceDialogIfLoggedIn({
   required BuildContext context,
   double? latitude,
   double? longitude,
@@ -135,7 +152,7 @@ Future<Place?> showAddPlaceDialogIfLoggedIn({
       returnWidget: const GeoMapWidget(),
     ),
   );
-  return result?.place;
+  return result;
 }
 
 /// Zoom in the map by a fixed amount.

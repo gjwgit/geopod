@@ -38,10 +38,10 @@ from the [Solid Community AU](https://solidcommunity.au) repository:
   [solidcommunity](https://geopod.solidcommunity.au/);
 + **GNU/Linux**
   [deb](https://solidcommunity.au/installers/geopod_amd64.deb) or
-  [zip](https://solidcommunity.au/installers/geopod-dev-linux.zip);
+  [zip](https://solidcommunity.au/installers/geopod-linux.zip);
 + **Windows**
-  [zip](https://solidcommunity.au/installers/geopod-dev-windows.zip) or
-  [inno](https://solidcommunity.au/installers/geopod-dev-windows-inno.exe).
+  [zip](https://solidcommunity.au/installers/geopod-windows.zip) or
+  [inno](https://solidcommunity.au/installers/geopod-windows-inno.exe).
 
 Contributions are welcome. Visit
 [github](https://github.com/gjwgit/geopod) to submit an issue or, even
@@ -79,7 +79,7 @@ flutter run [--debug -d macos]
 ```
 
 <!-- markdownlint-disable MD036 -->
-*Time-stamp: <Friday 2025-11-21 19:19:17 +1100 Graham Williams>*
+*Time-stamp: <Friday 2026-01-02 19:07:50 +1100 Graham Williams>*
 <!-- markdownlint-enable MD036 -->
 
 <!-- markdownlint-disable MD053 -->

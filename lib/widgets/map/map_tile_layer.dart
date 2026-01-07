@@ -61,7 +61,7 @@ Widget buildMapTileLayer({
       panBuffer: 1,
       maxZoom: 19,
       maxNativeZoom: mapSettings.mapSource.maxNativeZoom,
-      tileSize: 256,
+      tileDimension: 256,
       retinaMode: false,
       // Tile update behavior - prefer faster updates
       tileUpdateTransformer: TileUpdateTransformers.throttle(

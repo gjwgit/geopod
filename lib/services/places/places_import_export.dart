@@ -74,9 +74,8 @@ class PlacesImportExport {
       final bytes = Uint8List.fromList(utf8.encode(jsonContent));
 
       await FileSaver.instance.saveFile(
-        name: 'places',
+        name: 'places.json',
         bytes: bytes,
-        ext: 'json',
         mimeType: MimeType.json,
       );
 

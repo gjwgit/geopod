@@ -31,10 +31,31 @@ import 'package:solidui/solidui.dart';
 
 import 'constants/app.dart';
 import 'home.dart';
+import 'services/fullscreen_service.dart';
 import 'widgets/files_page.dart';
 import 'widgets/locations_page.dart';
 
-var appScaffold = SolidScaffold(
+/// App scaffold widget that responds to fullscreen mode changes.
+class AppScaffoldWidget extends StatelessWidget {
+  const AppScaffoldWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: fullscreenModeNotifier,
+      builder: (context, isFullscreen, child) {
+        if (isFullscreen) {
+          // Fullscreen mode: show only the Home content without navigation
+          return const Home(title: appTitle);
+        }
+        // Normal mode: show full scaffold with navigation
+        return _buildFullScaffold();
+      },
+    );
+  }
+
+  Widget _buildFullScaffold() {
+    return SolidScaffold(
   // MENU
   menu: [
     const SolidMenuItem(
@@ -155,13 +176,18 @@ var appScaffold = SolidScaffold(
           [Source code.](https://github.com/gjwgit/geopod)
 
           ''',
-  ),
+    ),
 
-  // THEME DARK/LIGHT Mode
-  themeToggle: const SolidThemeToggleConfig(
-    enabled: true,
-    showInAppBarActions: true,
-  ),
+    // THEME DARK/LIGHT Mode
+    themeToggle: const SolidThemeToggleConfig(
+      enabled: true,
+      showInAppBarActions: true,
+    ),
 
-  child: const Home(title: appTitle),
-);
+    child: const Home(title: appTitle),
+  );
+  }
+}
+
+/// Convenience variable for backward compatibility.
+final appScaffold = const AppScaffoldWidget();

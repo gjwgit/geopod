@@ -28,6 +28,7 @@ import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesCacheManager, PlacesService, placesChangeNotifier;
+import 'package:geopod/widgets/map/fullscreen_toggle_button.dart';
 import 'package:geopod/widgets/map/geomap_core.dart';
 import 'package:geopod/widgets/map/geomap_news_mixin.dart';
 import 'package:geopod/widgets/map/geomap_place_handlers.dart';
@@ -586,6 +587,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             visibleNewsCount: getVisibleNewsMarkersImpl().length,
             onTap: toggleNewsMarkers,
           ),
+          // Fullscreen toggle button
+          const FullscreenToggleButton(),
         ],
       ),
       floatingActionButton: RepaintBoundary(

@@ -39,14 +39,15 @@ class FullscreenToggleButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isFullscreen
                         ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withValues(alpha: 0.5),
+                        : Theme.of(
+                            context,
+                          ).colorScheme.surface.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isFullscreen ? 0.3 : 0.15),
+                        color: Colors.black.withValues(
+                          alpha: isFullscreen ? 0.3 : 0.15,
+                        ),
                         blurRadius: isFullscreen ? 8 : 4,
                         offset: const Offset(0, 2),
                       ),
@@ -66,10 +67,9 @@ class FullscreenToggleButton extends StatelessWidget {
                       size: 18,
                       color: isFullscreen
                           ? Theme.of(context).colorScheme.onPrimaryContainer
-                          : Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.7),
+                          : Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                 ),

@@ -27,7 +27,6 @@ dependencies:
   http: ^1.2.2
   latlong2: ^0.9.1
   shared_preferences: ^2.3.3
-  solid_auth: ^0.3.0
   solidpod: ^0.8.7
   solidui: ^0.0.19
   url_launcher: ^6.3.1

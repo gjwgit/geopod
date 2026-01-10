@@ -1,6 +1,6 @@
 /// The primary app scaffold with navigation menu.
 ///
-// Time-stamp: <2025-12-04 Miduo>
+// Time-stamp: <Thursday 2025-12-18 14:36:37 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -99,7 +99,7 @@ var appScaffold = SolidScaffold(
             **Files:** Tap here to browse the files for the app on your Pod.
 
             ''',
-      child: SolidFile(basePath: 'geopod'),
+      child: SolidFile(basePath: 'geopod/data'),
     ),
   ],
 

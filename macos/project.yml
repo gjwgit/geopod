@@ -11,41 +11,65 @@
 # CODE_SIGN_IDENTITY to signing certificate name
 # PROVISIONING_PROFILE_SPECIFIER to provisioning profile name
 # And ensure that developer team and entitlements are set, and
-# that entitlemnts file includes developer team
-# CODE_SIGN_ENTITLEMENTS: set to correct Runner/*.entitlemnts file
+# that entitlements file includes developer team
+# CODE_SIGN_ENTITLEMENTS: set to correct Runner/*.entitlements file
 # DEVELOPMENT_TEAM: [developer_team on Apple Developer account]
+# Note: On macos, keychain access entitlement is needed to use local
+# secure storage and requires app code signing. Local secure storage
+# is used by Solid apps for app security key.
 
 name: Runner
 
 # Optional: include configuration in other yaml files
 # if project config split over multiple files
 # include:
-#   - xcodegen/setting/base.yml
+#   - other.yml
 
 options:
   deploymentTarget:
-    macOS: "15.1"
+    macOS: "10.15" # Minimum supported by Flutter 3.38.5 (default 15.1)
+  xcodeVersion: "1510" # Set
   createIntermediateGroups: true
 
+# Configs (ie. [build mode]-[build flavor])
 configs:
   Debug: Debug
   Debug-unsigned: Debug-unsigned
+  Debug-dev: Debug-dev
+  Debug-staging: Debug-staging
   Profile: Profile
   Profile-unsigned: Profile-unsigned
+  Profile-dev: Profile-dev
+  Profile-staging: Profile-staging
   Release: Release
   Release-unsigned: Release-unsigned
+  Release-dev: Release-dev
+  Release-staging: Release-staging
 
+# Config files for config
 configFiles:
   Debug: Flutter/Flutter-Debug.xcconfig
   Debug-unsigned: Flutter/Flutter-Debug.xcconfig
+  Debug-dev: Flutter/Flutter-Debug.xcconfig
+  Debug-staging: Flutter/Flutter-Debug.xcconfig
   Profile: Flutter/Flutter-Release.xcconfig
   Profile-unsigned: Flutter/Flutter-Release.xcconfig
+  Profile-dev: Flutter/Flutter-Release.xcconfig
+  Profile-staging: Flutter/Flutter-Release.xcconfig
   Release: Flutter/Flutter-Release.xcconfig
   Release-unsigned: Flutter/Flutter-Release.xcconfig
+  Release-dev: Flutter/Flutter-Release.xcconfig
+  Release-staging: Flutter/Flutter-Release.xcconfig
 
 settings:
   base:
-    PRODUCT_NAME: "geopod" # "$(TARGET_NAME)" # 'NONE'
+    # TODO: Optionally set to NONE and use APP_NAME to set flavor specific product name
+    # Eg. https://github.com/lllttt06/xcodegen_flutter_sample/blob/main/ios/project.yml
+    PRODUCT_NAME: "geopod" # 'NONE'
+    # TODO: Optionally use a different app icon for each
+    # flavor in a different app icon subfolder in Runner/assets.xcassets/
+    # Eg. https://github.com/lllttt06/xcodegen_flutter_sample/blob/main/ios/project.yml
+    ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
     DEVELOPMENT_TEAM: G7843T3SD3 # Togaware Apple Developer Team ID
     SWIFT_VERSION: "5.0"
 
@@ -54,6 +78,7 @@ targets:
     type: application
     platform: macOS
     attributes:
+      # TODO: Update when move to manual code signing
       ProvisioningStyle: Automatic
       SystemCapabilities:
         com.apple.Sandbox:
@@ -86,22 +111,40 @@ targets:
         outputFiles:
           ["$(DERIVED_FILE_DIR)/Pods-Runner-checkManifestLockResult.txt"]
         script: "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n"
-      # ShellScript build
-      - name: "ShellScript"
+
+      # Build script
+      - name: "ShellScript - build"
         basedOnDependencyAnalysis: false
         script: "\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh build\n"
-      # ShellScript embed
-      - name: "ShellScript"
+
+    postBuildScripts:
+      # Embed script
+      - name: "ShellScript - embed"
         basedOnDependencyAnalysis: false
         script: "echo \"$PRODUCT_NAME.app\" > \"$PROJECT_DIR\"/Flutter/ephemeral/.app_filename && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh embed\n"
 
+    info:
+      path: Runner/Info.plist
+      properties:
+        LSApplicationCategoryType: "public.app-category.productivity"
+        CFBundleDisplayName: "$(APP_DISPLAY_NAME)"
+        CFBundleIconFile: ""
+        NSHumanReadableCopyright: "$(PRODUCT_COPYRIGHT)"
+        NSMainNibFile: "MainMenu"
+        NSPrincipalClass: "NSApplication"
+        LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
+        CFBundleVersion: "$(FLUTTER_BUILD_NUMBER)"
+        CFBundleShortVersionString: "$(FLUTTER_BUILD_NAME)"
+        # Specify encryption use
+        ITSAppUsesNonExemptEncryption: "false"
+
     settings:
       base:
-        # Use App Bundle ID
-        PRODUCT_BUNDLE_IDENTIFIER: com.togaware.geopod
+        # TODO: set app bundle ID
+        PRODUCT_BUNDLE_IDENTIFIER: com.togaware.geopod # App Bundle ID from Apple Developer account
+
         ALWAYS_SEARCH_USER_PATHS: "NO"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "YES"
-        ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
         CLANG_ANALYZER_NONNULL: "YES"
         CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION: "YES_AGGRESSIVE"
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++14"
@@ -135,17 +178,17 @@ targets:
         GCC_WARN_UNINITIALIZED_AUTOS: "YES_AGGRESSIVE"
         GCC_WARN_UNUSED_FUNCTION: "YES"
         GCC_WARN_UNUSED_VARIABLE: "YES"
-        INFOPLIST_FILE: "Runner/Info.plist"
         LD_RUNPATH_SEARCH_PATHS:
           ["$(inherited)", "@executable_path/../Frameworks"]
         SDKROOT: "macosx"
 
+      # TODO: add flavor setup here
       configs:
         Debug:
-          CODE_SIGN_STYLE: "Automatic"
-          CODE_SIGN_IDENTITY: "-"
-          CODE_SIGN_ENTITLEMENTS: "Runner/DebugProfile.entitlements"
-          PROVISIONING_PROFILE_SPECIFIER: ""
+          CODE_SIGN_STYLE: "Manual"
+          CODE_SIGN_IDENTITY: "Apple Development: Jessica Moore (N5ML45W92P)"
+          CODE_SIGN_ENTITLEMENTS: "Runner/RunnerDebug.entitlements"
+          PROVISIONING_PROFILE_SPECIFIER: "Wildcard_Development_Mac_App_Development"
 
           DEBUG_INFORMATION_FORMAT: "dwarf"
           ENABLE_TESTABILITY: "YES"
@@ -160,7 +203,47 @@ targets:
         Debug-unsigned:
           CODE_SIGN_STYLE: "Manual"
           CODE_SIGN_IDENTITY: "-"
-          CODE_SIGN_ENTITLEMENTS: "Runner/DebugProfile.entitlements"
+          # Use entitlement file with empty keychain-access-groups
+          # Unsigned only builds with empty or no keychain-access-groups in entitlements
+          CODE_SIGN_ENTITLEMENTS: "Runner/RunnerDebug.entitlements"
+          PROVISIONING_PROFILE_SPECIFIER: ""
+
+          DEBUG_INFORMATION_FORMAT: "dwarf"
+          ENABLE_TESTABILITY: "YES"
+          GCC_DYNAMIC_NO_PIC: "NO"
+          GCC_OPTIMIZATION_LEVEL: "0"
+          GCC_PREPROCESSOR_DEFINITIONS: ["DEBUG=1", "$(inherited)"]
+          MTL_ENABLE_DEBUG_INFO: "YES"
+          ONLY_ACTIVE_ARCH: "YES"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG"
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+
+        Debug-dev:
+          CODE_SIGN_STYLE: "Manual"
+          CODE_SIGN_IDENTITY: "Apple Development: Jessica Moore (N5ML45W92P)"
+          # As this is a signed app
+          # Use entitlement file with keychain-access-groups
+          # value set to dev team+bundle id
+          CODE_SIGN_ENTITLEMENTS: "Runner/Release.entitlements" # "Runner/RunnerDebug.entitlements"
+          PROVISIONING_PROFILE_SPECIFIER: "Wildcard_Development_Mac_App_Development"
+
+          DEBUG_INFORMATION_FORMAT: "dwarf"
+          ENABLE_TESTABILITY: "YES"
+          GCC_DYNAMIC_NO_PIC: "NO"
+          GCC_OPTIMIZATION_LEVEL: "0"
+          GCC_PREPROCESSOR_DEFINITIONS: ["DEBUG=1", "$(inherited)"]
+          MTL_ENABLE_DEBUG_INFO: "YES"
+          ONLY_ACTIVE_ARCH: "YES"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG"
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+
+        Debug-staging:
+          CODE_SIGN_STYLE: "Manual"
+          CODE_SIGN_IDENTITY: "-"
+          # For debug
+          # Use entitlement file with empty keychain-access-groups
+          # Unsigned only builds with empty or no keychain-access-groups in entitlements
+          CODE_SIGN_ENTITLEMENTS: "Runner/RunnerDebug.entitlements"
           PROVISIONING_PROFILE_SPECIFIER: ""
 
           DEBUG_INFORMATION_FORMAT: "dwarf"
@@ -188,8 +271,42 @@ targets:
         Release-unsigned:
           CODE_SIGN_STYLE: "Manual"
           CODE_SIGN_IDENTITY: "-"
-          CODE_SIGN_ENTITLEMENTS: "Runner/Release.entitlements"
+          # Use entitlement file with empty keychain-access-groups
+          # Unsigned only builds with empty or no keychain-access-groups in entitlements
+          CODE_SIGN_ENTITLEMENTS: "Runner/RunnerDebug.entitlements"
           PROVISIONING_PROFILE_SPECIFIER: ""
+
+          DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+          ENABLE_NS_ASSERTIONS: "NO"
+          MTL_ENABLE_DEBUG_INFO: "NO"
+          SWIFT_COMPILATION_MODE: "wholemodule"
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+
+        Release-dev:
+          CODE_SIGN_STYLE: "Manual"
+          CODE_SIGN_IDENTITY: "Apple Development: Jessica Moore (N5ML45W92P)"
+          # For Release
+          # Use entitlement file with keychain-access-groups
+          # set with DEV Team and Bundle id to match
+          # those values in signing certificates
+          CODE_SIGN_ENTITLEMENTS: "Runner/Release.entitlements"
+          PROVISIONING_PROFILE_SPECIFIER: "Wildcard_Development_Mac_App_Development"
+
+          DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+          ENABLE_NS_ASSERTIONS: "NO"
+          MTL_ENABLE_DEBUG_INFO: "NO"
+          SWIFT_COMPILATION_MODE: "wholemodule"
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+
+        Release-staging:
+          CODE_SIGN_STYLE: "Manual"
+          CODE_SIGN_IDENTITY: "3rd Party Mac Developer Application"
+          # For Release
+          # Use entitlement file with keychain-access-groups
+          # set with DEV Team and Bundle id to match
+          # those values in signing certificates
+          CODE_SIGN_ENTITLEMENTS: "Runner/Release.entitlements"
+          PROVISIONING_PROFILE_SPECIFIER: "GeoPod_Mac_Distribution_Mac_Appstore_Connect"
 
           DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
           ENABLE_NS_ASSERTIONS: "NO"
@@ -212,7 +329,41 @@ targets:
         Profile-unsigned:
           CODE_SIGN_STYLE: "Manual"
           CODE_SIGN_IDENTITY: "-"
-          CODE_SIGN_ENTITLEMENTS: "Runner/DebugProfile.entitlements"
+          # For profile
+          # Use entitlement file with empty keychain-access-groups
+          # Unsigned only builds with empty or no keychain-access-groups in entitlements
+          CODE_SIGN_ENTITLEMENTS: "Runner/RunnerDebug.entitlements"
+          PROVISIONING_PROFILE_SPECIFIER: ""
+
+          DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+          ENABLE_NS_ASSERTIONS: "NO"
+          MTL_ENABLE_DEBUG_INFO: "NO"
+          SWIFT_COMPILATION_MODE: "wholemodule"
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+
+        Profile-dev:
+          CODE_SIGN_STYLE: "Manual"
+          CODE_SIGN_IDENTITY: "Apple Development: Jessica Moore (N5ML45W92P)"
+          # For Profile
+          # Use entitlement file with keychain-access-groups
+          # set with DEV Team and Bundle id to match
+          # those values in signing certificates
+          CODE_SIGN_ENTITLEMENTS: "Runner/Release.entitlements"
+          PROVISIONING_PROFILE_SPECIFIER: "Wildcard_Development_Mac_App_Development"
+
+          DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+          ENABLE_NS_ASSERTIONS: "NO"
+          MTL_ENABLE_DEBUG_INFO: "NO"
+          SWIFT_COMPILATION_MODE: "wholemodule"
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+
+        Profile-staging:
+          CODE_SIGN_STYLE: "Manual"
+          CODE_SIGN_IDENTITY: "-"
+          # For profile
+          # Use entitlement file with empty keychain-access-groups
+          # Unsigned only builds with empty or no keychain-access-groups in entitlements
+          CODE_SIGN_ENTITLEMENTS: "Runner/RunnerDebug.entitlements"
           PROVISIONING_PROFILE_SPECIFIER: ""
 
           DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
@@ -251,7 +402,8 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: "YES"
         MARKETING_VERSION: "1.0"
-        PRODUCT_BUNDLE_IDENTIFIER: "com.example.test.RunnerTests"
+        # TODO: set app bundle ID
+        PRODUCT_BUNDLE_IDENTIFIER: "com.togaware.test.RunnerTests"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/test.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/test"
 
       # Add any config specific build settings for RunnerTests go here
@@ -263,11 +415,13 @@ targets:
 
       #   Profile:
 
+# Default build mode for flutter commands of each flavor
 schemes:
   Runner:
     build:
       targets:
         Runner: all
+      enableGPUValidationMode: true
     run:
       config: Debug
     test:
@@ -292,3 +446,31 @@ schemes:
       config: Debug-unsigned
     archive:
       config: Release-unsigned
+  dev:
+    build:
+      targets:
+        Runner: all
+    run:
+      config: Debug-dev
+    test:
+      config: Debug-dev
+    profile:
+      config: Profile-dev
+    analyze:
+      config: Debug-dev
+    archive:
+      config: Release-dev
+  staging:
+    build:
+      targets:
+        Runner: all
+    run:
+      config: Debug-staging
+    test:
+      config: Debug-staging
+    profile:
+      config: Profile-staging
+    analyze:
+      config: Debug-staging
+    archive:
+      config: Release-staging

@@ -28,6 +28,7 @@ dependencies:
   shared_preferences: ^2.3.3
   solidpod: ^0.8.7
   solidui: 0.0.18
+  url_launcher: ^6.3.1
   uuid: ^4.5.1
   web: ^1.1.0
   window_manager: ^0.5.0
@@ -76,3 +77,9 @@ dependency_overrides:
     git:
       url: https://github.com/miduo666/solidui.git
       ref: dev
+  solidui:
+    git:
+      url: https://github.com/lambadajester50-byte/solidui.git
+      ref: dev
+
+  

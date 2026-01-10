@@ -30,12 +30,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:solidpod/solidpod.dart';
+import 'package:solidui/solidui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
-import 'package:geopod/services/places_service.dart';
+import 'package:geopod/services/places_service.dart'
+    show PlacesService, Place, PlacesCacheManager, placesChangeNotifier;
 import 'package:geopod/widgets/add_place_form.dart';
 import 'package:geopod/widgets/map_settings_dialog.dart';
 
@@ -52,8 +56,15 @@ class GeoMapWidget extends StatefulWidget {
   State<GeoMapWidget> createState() => GeoMapWidgetState();
 }
 
-class GeoMapWidgetState extends State<GeoMapWidget> {
+class GeoMapWidgetState extends State<GeoMapWidget>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final MapController _mapController = MapController();
+
+  /// Tile provider instance for downloading map tiles
+  /// Recreated when app resumes from background to avoid connection issues
+  /// Using NetworkTileProvider (built-in) instead of CancellableNetworkTileProvider
+  /// to avoid Dio adapter closure problems on Android
+  TileProvider _tileProvider = NetworkTileProvider();
 
   /// All places (local + Pod) loaded and cached for instant access.
   List<Place> _allPlaces = [];
@@ -69,22 +80,243 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     mapSource: MapSettings.getDefaultMapSource(),
   );
 
+  /// Track user login status for UI updates
+  bool _isLoggedIn = false;
+
+  /// Animation controller for smooth map entrance
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  /// Track if initial animation has completed
+  bool _initialAnimationComplete = false;
+
+  /// Track if this is a post-login data refresh (to replay animations)
+  bool _isPostLoginRefresh = false;
+
+  /// GDELT news service for fetching geospatial news
+  final GdeltNewsService _newsService = GdeltNewsService();
+
+  /// List of news markers fetched from GDELT API
+  List<NewsMarker> _newsMarkers = [];
+
+  /// Whether news markers should be displayed on the map
+  bool _showNewsMarkers = false;
+
+  /// Whether news data is currently being fetched
+  bool _isLoadingNews = false;
+
   @override
   void initState() {
     super.initState();
 
-    // Pre-load data after first frame for instant sidebar access.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadSettings();
-      _loadAllPlaces();
+    // Initialize animation controller for smooth entrance (300ms)
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    // Create fade-in animation with smooth curve
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    );
+
+    // Mark animation as complete when done
+    _animationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          _initialAnimationComplete = true;
+          _isPostLoginRefresh = false; // Clear post-login flag after animation
+        });
+      }
     });
+
+    // Check initial login state synchronously (fast but may be stale)
+    _isLoggedIn = AuthDataManager.isLoggedInSync();
+
+    // Listen for login/logout events
+    authStateNotifier.addListener(_onAuthStateChanged);
+
+    // Listen for places data changes (add/delete/update)
+    placesChangeNotifier.addListener(_onPlacesChanged);
+
+    // Load settings SYNCHRONOUSLY from cache (should be preloaded on app startup)
+    // This ensures UI renders with correct settings immediately, not defaults
+    _loadSettingsSync();
+
+    // CRITICAL: Verify login state asynchronously after app restart
+    // This handles the case where app was killed in background and token expired
+    _verifyLoginStateAndLoadData();
+
+    // Start fade-in animation after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _animationController.forward();
+      }
+    });
+
+    // Register lifecycle observer to handle app resume/pause
+    WidgetsBinding.instance.addObserver(this);
   }
 
-  /// Loads map settings from SharedPreferences.
-  Future<void> _loadSettings() async {
-    final settings = await MapSettingsService.loadSettings();
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _newsService.dispose();
+    authStateNotifier.removeListener(_onAuthStateChanged);
+    placesChangeNotifier.removeListener(_onPlacesChanged);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Called when places data changes (add/delete/update)
+  void _onPlacesChanged() {
+    if (mounted && _isLoggedIn) {
+      // Places data changed - try to use cache first (faster)
+      // Cache was cleared by the operation, so next load will fetch fresh data
+      _loadAllPlaces(forceRefresh: false);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // Recreate tile provider when app resumes from background
+    // This fixes connection issues on Android after app pause/resume
+    if (state == AppLifecycleState.resumed) {
+      setState(() {
+        _tileProvider = NetworkTileProvider();
+      });
+    }
+  }
+
+  /// Called when auth state changes (login/logout)
+  void _onAuthStateChanged() {
     if (mounted) {
-      setState(() => _mapSettings = settings);
+      final wasLoggedIn = _isLoggedIn;
+      final isNowLoggedIn = authStateNotifier.value;
+
+      // Only react if state actually changed
+      if (isNowLoggedIn == wasLoggedIn) {
+        return; // No change, preserve cache
+      }
+
+      setState(() {
+        _isLoggedIn = isNowLoggedIn;
+      });
+
+      // After login, clear guest cache and reload user's Pod data
+      if (isNowLoggedIn && !wasLoggedIn) {
+        _handleLogin();
+      } else if (!isNowLoggedIn && wasLoggedIn) {
+        _handleLogout();
+      }
+    }
+  }
+
+  /// Handles login: incrementally loads user's Pod data (keeps local places cached)
+  /// This is much faster than full refresh because local places are already cached.
+  Future<void> _handleLogin() async {
+    if (mounted) {
+      // Prepare for smooth transition with animation
+      _isPostLoginRefresh = true;
+      _initialAnimationComplete = false; // Allow markers to animate again
+
+      // Update login state immediately (UI shows logged-in state)
+      setState(() {
+        _isLoggedIn = true;
+      });
+
+      // Incrementally load Pod data while keeping local places cached
+      // This is much faster than clearCache + forceRefresh
+      final places = await PlacesService.refreshPodDataOnly();
+
+      if (mounted) {
+        setState(() {
+          _allPlaces = places;
+        });
+      }
+    }
+  }
+
+  /// Handles logout: clears Pod cache and shows local places only
+  Future<void> _handleLogout() async {
+    // User logged out - clear Pod cache only, keep local places cached
+    await PlacesService.clearPodCacheOnly();
+
+    if (mounted) {
+      _isPostLoginRefresh = false;
+      _initialAnimationComplete = false;
+
+      // Update login state immediately
+      setState(() {
+        _isLoggedIn = false; // CRITICAL: Mark as logged out
+      });
+
+      // Load local places only (instant from cache)
+      final localPlaces = await PlacesService.loadLocalPlaces();
+      if (mounted) {
+        setState(() {
+          _allPlaces = localPlaces;
+        });
+      }
+    }
+  }
+
+  /// Loads map settings SYNCHRONOUSLY from cache.
+  /// Should be instant since settings are preloaded on app startup.
+  void _loadSettingsSync() {
+    // Use fire-and-forget async call but apply immediately when ready
+    MapSettingsService.loadSettings()
+        .then((settings) {
+          if (mounted) {
+            setState(() => _mapSettings = settings);
+          }
+        })
+        .catchError((_) {
+          // Ignore errors - will use default settings
+        });
+  }
+
+  /// Verifies actual login state asynchronously and loads appropriate data.
+  /// This is critical for handling app restarts after being killed in background.
+  Future<void> _verifyLoginStateAndLoadData() async {
+    // Verify actual login state (checks token expiry)
+    final actuallyLoggedIn = await checkLoggedIn();
+
+    if (!mounted) return;
+
+    // Check if sync state was wrong (e.g., app killed in background, token expired)
+    if (_isLoggedIn != actuallyLoggedIn) {
+      setState(() {
+        _isLoggedIn = actuallyLoggedIn;
+      });
+
+      // Update global auth state
+      authStateNotifier.value = actuallyLoggedIn;
+
+      // Clear stale cache immediately
+      PlacesService.clearCache();
+    }
+
+    // Now check cache with verified login state
+    final cacheManager = PlacesCacheManager();
+    final cachedPlaces = cacheManager.allPlaces;
+    final cacheLoginState = cacheManager.wasLoggedInWhenCached;
+
+    // Use cache only if login state matches
+    if (cachedPlaces != null && cacheLoginState == _isLoggedIn) {
+      setState(() {
+        _allPlaces = List.from(cachedPlaces);
+      });
+    } else {
+      // No cache OR auth state mismatch - clear and reload
+      if (cachedPlaces != null && cacheLoginState != _isLoggedIn) {
+        PlacesService.clearCache();
+      }
+      // Load fresh data
+      await _loadAllPlaces(forceRefresh: true);
     }
   }
 
@@ -95,7 +327,18 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
       builder: (context) => MapSettingsDialog(
         currentSettings: _mapSettings,
         onSettingsChanged: (newSettings) {
-          setState(() => _mapSettings = newSettings);
+          setState(() {
+            // Check if map source changed - need new tile provider
+            final mapSourceChanged =
+                _mapSettings.mapSource != newSettings.mapSource;
+            _mapSettings = newSettings;
+
+            // Recreate tile provider when map source changes
+            // This prevents "Client is already closed" errors
+            if (mapSourceChanged) {
+              _tileProvider = NetworkTileProvider();
+            }
+          });
         },
       ),
     );
@@ -109,7 +352,13 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
   /// Loads all places (local + Pod) using cache-aware fetch.
   /// This will be instant if data is already cached in memory.
   Future<void> _loadAllPlaces({bool forceRefresh = false}) async {
-    setState(() => _isLoadingPlaces = true);
+    // Skip loading indicator if cache is warm (instant response expected)
+    final cacheManager = PlacesCacheManager();
+    final hasCache = cacheManager.allPlaces != null;
+
+    if (!hasCache) {
+      setState(() => _isLoadingPlaces = true);
+    }
 
     try {
       // Use cache-aware fetch - instant if cached, slow if not
@@ -167,6 +416,39 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     double? latitude,
     double? longitude,
   }) async {
+    // Check if user is logged in
+    final webId = await getWebId();
+    if (webId == null || webId.isEmpty) {
+      // Show dialog prompting user to login
+      if (!mounted) return;
+
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Login Required'),
+          content: const Text(
+            'Please log in to add places to your collection.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                SolidAuthHandler.instance.handleLogin(context);
+              },
+              child: const Text('Login'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
     final result = await showDialog<AddPlaceResult>(
       context: context,
       builder: (context) => AddPlaceForm(
@@ -306,7 +588,37 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
   }
 
   /// Shows options when user taps on the map.
-  void _onMapTap(TapPosition tapPosition, LatLng latLng) {
+  void _onMapTap(TapPosition tapPosition, LatLng latLng) async {
+    // Check if user is logged in
+    final webId = await getWebId();
+    if (webId == null || webId.isEmpty) {
+      // Show dialog prompting user to login
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Login Required'),
+          content: const Text(
+            'Please log in to add places to your collection.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                SolidAuthHandler.instance.handleLogin(context);
+              },
+              child: const Text('Login'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     _showAddPlaceDialog(latitude: latLng.latitude, longitude: latLng.longitude);
   }
 
@@ -322,6 +634,518 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     final currentZoom = _mapController.camera.zoom;
     final newZoom = (currentZoom - 0.6).clamp(3.0, 18.0);
     _mapController.move(_mapController.camera.center, newZoom);
+  }
+
+  /// Toggles the display of news markers on the map.
+  void _toggleNewsMarkers() {
+    // Always show the news list dialog when clicked
+    _showNewsListDialog();
+  }
+
+  /// Shows a dialog with the list of all news in current view.
+  Future<void> _showNewsListDialog() async {
+    // Fetch news first
+    setState(() {
+      _isLoadingNews = true;
+      _showNewsMarkers = true;
+    });
+
+    try {
+      final bounds = _mapController.camera.visibleBounds;
+      final newsMarkers = await _newsService.fetchNews(
+        bounds: bounds,
+        query: 'news',
+        maxResults: 50,
+        timeSpan: '24h',
+      );
+
+      if (mounted) {
+        setState(() {
+          _newsMarkers = newsMarkers;
+          _isLoadingNews = false;
+        });
+
+        // Show the list dialog
+        showDialog(
+          context: context,
+          builder: (dialogContext) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              width: 500,
+              height: 600,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.article,
+                        color: Colors.blue.shade700,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'News in Current View',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          // Only close dialog, keep news markers visible
+                          Navigator.of(dialogContext).pop();
+                        },
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Text(
+                    '${_getVisibleNewsMarkers().length} news items in current view',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 12),
+                  // News list
+                  Expanded(
+                    child: _getVisibleNewsMarkers().isEmpty
+                        ? Center(
+                            child: Text(
+                              'No news found in this area',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _getVisibleNewsMarkers().length,
+                            itemBuilder: (context, index) {
+                              final news = _getVisibleNewsMarkers()[index];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(vertical: 8),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.blue.shade700,
+                                    child: const Icon(
+                                      Icons.article,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    news.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 4),
+                                      if (news.source != null)
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.public,
+                                              size: 14,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                news.source!,
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.location_on,
+                                            size: 14,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${news.location.latitude.toStringAsFixed(2)}, ${news.location.longitude.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: news.url != null
+                                      ? IconButton(
+                                          icon: const Icon(Icons.open_in_new),
+                                          onPressed: () =>
+                                              _launchUrl(news.url!),
+                                          tooltip: 'Read Article',
+                                        )
+                                      : null,
+                                  onTap: () {
+                                    Navigator.of(dialogContext).pop();
+                                    // Zoom to news location
+                                    _mapController.move(news.location, 12.0);
+                                    // Show details
+                                    Future.delayed(
+                                      const Duration(milliseconds: 300),
+                                      () {
+                                        _showNewsMarkerDetails(news);
+                                      },
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Close button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        // Close news feature completely
+                        setState(() {
+                          _showNewsMarkers = false;
+                          _newsMarkers = [];
+                        });
+                      },
+                      icon: const Icon(Icons.close),
+                      label: const Text('Close News'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingNews = false;
+          _showNewsMarkers = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to fetch news: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Fetches news markers for the current map viewport bounds.
+  Future<void> _fetchNewsForCurrentBounds() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingNews = true;
+    });
+
+    try {
+      // Get current map bounds
+      final bounds = _mapController.camera.visibleBounds;
+
+      debugPrint('=== Fetching news for map bounds ===');
+      debugPrint('Southwest: ${bounds.south}, ${bounds.west}');
+      debugPrint('Northeast: ${bounds.north}, ${bounds.east}');
+      debugPrint(
+        'Center: ${bounds.center.latitude}, ${bounds.center.longitude}',
+      );
+
+      // Fetch news from GDELT API with debouncing
+      // Note: GDELT requires actual keywords, not '*'
+      final newsMarkers = await _newsService.fetchNews(
+        bounds: bounds,
+        query: 'news', // Use 'news' as default query
+        maxResults: 50, // Reduced from 250 to avoid timeout
+        timeSpan: '24h',
+      );
+
+      debugPrint('Received ${newsMarkers.length} news markers');
+      if (newsMarkers.isNotEmpty) {
+        debugPrint(
+          'First marker: ${newsMarkers[0].title} at ${newsMarkers[0].location.latitude}, ${newsMarkers[0].location.longitude}',
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _newsMarkers = newsMarkers;
+          _isLoadingNews = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingNews = false;
+        });
+        // Show error message to user
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to fetch news: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Called when map position changes (zoom or pan).
+  void _onMapPositionChanged(MapCamera position, bool hasGesture) {
+    // Only fetch news if news markers are enabled
+    if (_showNewsMarkers && hasGesture) {
+      // Try to use cached data first
+      _updateNewsFromCache();
+    }
+  }
+
+  /// Update news markers from cache or fetch if needed.
+  void _updateNewsFromCache() {
+    if (!mounted) return;
+
+    final bounds = _mapController.camera.visibleBounds;
+
+    // First, try to get markers from cache
+    final cachedMarkers = _newsService.getMarkersInBounds(bounds);
+
+    if (cachedMarkers.isNotEmpty) {
+      // Update UI with cached markers immediately
+      setState(() {
+        _newsMarkers = cachedMarkers;
+      });
+      debugPrint('Updated ${cachedMarkers.length} news markers from cache');
+    }
+
+    // If bounds are not covered by cache, fetch new data
+    if (!_newsService.isBoundsCovered(bounds)) {
+      debugPrint('Bounds not fully covered, fetching new data...');
+      _fetchNewsForCurrentBounds();
+    }
+  }
+
+  /// Get list of news markers that are currently visible on screen.
+  List<NewsMarker> _getVisibleNewsMarkers() {
+    if (!_showNewsMarkers || _newsMarkers.isEmpty) return [];
+
+    final bounds = _mapController.camera.visibleBounds;
+    return _newsMarkers.where((marker) {
+      return marker.location.latitude >= bounds.south &&
+          marker.location.latitude <= bounds.north &&
+          marker.location.longitude >= bounds.west &&
+          marker.location.longitude <= bounds.east;
+    }).toList();
+  }
+
+  /// Shows detailed information about a news marker in a bottom sheet.
+  void _showNewsMarkerDetails(NewsMarker newsMarker) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.all(18.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with news icon
+            Row(
+              children: [
+                Icon(
+                  Icons.article_outlined,
+                  color: Colors.blue.shade700,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'News Article',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+
+            // News title
+            Text(
+              newsMarker.title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+
+            // Source and date
+            if (newsMarker.source != null || newsMarker.publishedAt != null)
+              Row(
+                children: [
+                  if (newsMarker.source != null) ...[
+                    Icon(Icons.public, size: 16, color: Colors.grey.shade600),
+                    const SizedBox(width: 4),
+                    Text(
+                      newsMarker.source!,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                  if (newsMarker.source != null &&
+                      newsMarker.publishedAt != null)
+                    Text(' • ', style: TextStyle(color: Colors.grey.shade600)),
+                  if (newsMarker.publishedAt != null) ...[
+                    Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDateTime(newsMarker.publishedAt!),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+
+            // Tone indicator
+            if (newsMarker.tone != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    newsMarker.tone! > 0
+                        ? Icons.sentiment_satisfied
+                        : newsMarker.tone! < 0
+                        ? Icons.sentiment_dissatisfied
+                        : Icons.sentiment_neutral,
+                    size: 16,
+                    color: newsMarker.tone! > 0
+                        ? Colors.green
+                        : newsMarker.tone! < 0
+                        ? Colors.red
+                        : Colors.grey,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Tone: ${newsMarker.tone!.toStringAsFixed(1)}',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                  ),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Location info
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 16, color: Colors.grey.shade600),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '${newsMarker.location.latitude.toStringAsFixed(4)}, ${newsMarker.location.longitude.toStringAsFixed(4)}',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  child: const Text('Close'),
+                ),
+                if (newsMarker.url != null) ...[
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      _launchUrl(newsMarker.url!);
+                    },
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    label: const Text('Read Article'),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Format DateTime for display.
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}';
+    }
+  }
+
+  /// Launch URL in browser.
+  Future<void> _launchUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw Exception('Could not launch URL');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open article: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
   }
 
   /// Shows detailed information about a marker in a bottom sheet.
@@ -625,82 +1449,156 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
     return Scaffold(
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: const LatLng(-12.46, 130.84), // Darwin
-              // initialCenter: const LatLng(-35.2809, 149.1300), // Canberra
-              initialZoom: 13.0,
-              minZoom: 3.0,
-              maxZoom: 18.0,
-              onTap: _onMapTap,
-              onLongPress: (tapPosition, latLng) {
-                _showAddPlaceDialog(
-                  latitude: latLng.latitude,
-                  longitude: latLng.longitude,
-                );
-              },
-            ),
-            children: [
-              // Apply color filter ONLY to tile layer, not markers
-              ColorFiltered(
-                colorFilter: shouldApplyFilter
-                    ? const ColorFilter.matrix(midnightMatrix)
-                    : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
-                child: TileLayer(
-                  key: ValueKey(_mapSettings.mapSource),
-                  urlTemplate: _mapSettings.mapSource.urlTemplate,
-                  subdomains: _mapSettings.mapSource.subdomains,
-                  userAgentPackageName: 'com.togaware.geopod',
-                  tileProvider: CancellableNetworkTileProvider(),
-                  keepBuffer: 3,
-                  maxZoom: 19,
-                  maxNativeZoom: 18,
-                ),
+          // Fade-in animation for smooth entrance
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: const LatLng(-12.46, 130.84), // Darwin
+                // initialCenter: const LatLng(-35.2809, 149.1300), // Canberra
+                initialZoom: 13.0,
+                minZoom: 3.0,
+                maxZoom: 18.0,
+                onTap: _onMapTap,
+                onLongPress: (tapPosition, latLng) {
+                  _showAddPlaceDialog(
+                    latitude: latLng.latitude,
+                    longitude: latLng.longitude,
+                  );
+                },
+                onPositionChanged: _onMapPositionChanged,
               ),
+              children: [
+                // Apply color filter ONLY to tile layer, not markers
+                ColorFiltered(
+                  colorFilter: shouldApplyFilter
+                      ? const ColorFilter.matrix(midnightMatrix)
+                      : const ColorFilter.mode(
+                          Colors.transparent,
+                          BlendMode.dst,
+                        ),
+                  child: TileLayer(
+                    key: ValueKey(_mapSettings.mapSource),
+                    urlTemplate: _mapSettings.mapSource.urlTemplate,
+                    subdomains: _mapSettings.mapSource.subdomains,
+                    userAgentPackageName: 'com.togaware.geopod',
+                    tileProvider: _tileProvider,
 
-              // Marker layer - NOT affected by color filter
-              MarkerLayer(
-                markers: _filteredMarkers.map((markerData) {
-                  return Marker(
-                    point: markerData.position,
-                    width: 40,
-                    height: 40,
-                    child: GestureDetector(
-                      onTap: () => _showMarkerDetails(markerData),
-                      child: markerData.isSaving
-                          ? Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Icon(
+                    // CRITICAL: Remove failed tiles so they can be retried
+                    // Without this, white tiles persist after loading failures
+                    evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
+
+                    // Optimized buffer settings to reduce white tiles
+                    // keepBuffer: tiles to keep cached outside visible area (0-10 recommended)
+                    // Higher = smoother scroll/zoom but more memory (~10MB per +2)
+                    keepBuffer:
+                        5, // Reduced further to prevent memory issues during fast zoom
+                    // panBuffer: preload tiles around visible area (0-4 recommended)
+                    // Higher = smoother pan but more network requests
+                    panBuffer: 1, // Minimal preload to prevent request flooding
+                    // Zoom settings
+                    maxZoom: 19,
+                    maxNativeZoom: 18,
+
+                    // Additional optimization for mobile and fast zoom
+                    tileSize: 256,
+                    retinaMode:
+                        false, // Disable for performance on non-retina screens
+                    // Error handling for tile loading failures
+                    errorImage: const AssetImage(
+                      'assets/images/tile_error.png',
+                      package: 'solidpod',
+                    ),
+                  ),
+                ),
+
+                // Marker layer - NOT affected by color filter
+                MarkerLayer(
+                  markers: _filteredMarkers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final markerData = entry.value;
+
+                    return Marker(
+                      point: markerData.position,
+                      width: 40,
+                      height: 40,
+                      child: _MarkerWithAnimation(
+                        index: index,
+                        // Animate on initial load OR after login refresh
+                        shouldAnimate:
+                            !_initialAnimationComplete || _isPostLoginRefresh,
+                        child: GestureDetector(
+                          onTap: () => _showMarkerDetails(markerData),
+                          child: markerData.isSaving
+                              ? Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 40,
+                                      color: Colors.orange.shade400,
+                                    ),
+                                    const Positioned(
+                                      top: 8,
+                                      child: SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Icon(
                                   Icons.location_on,
                                   size: 40,
-                                  color: Colors.orange.shade400,
+                                  // Use custom color from settings.
+                                  color: markerData.color,
                                 ),
-                                const Positioned(
-                                  top: 8,
-                                  child: SizedBox(
-                                    width: 12,
-                                    height: 12,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                // News marker layer - only display markers visible on current screen
+                if (_showNewsMarkers)
+                  MarkerLayer(
+                    markers: _getVisibleNewsMarkers().map((newsMarker) {
+                      return Marker(
+                        point: newsMarker.location,
+                        width: 36,
+                        height: 36,
+                        child: GestureDetector(
+                          onTap: () => _showNewsMarkerDetails(newsMarker),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade700,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
-                            )
-                          : Icon(
-                              Icons.location_on,
-                              size: 40,
-                              // Use custom color from settings.
-                              color: markerData.color,
                             ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
+                            child: const Icon(
+                              Icons.article,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+              ],
+            ),
           ),
           if (_isLoadingPlaces)
             const Positioned(
@@ -715,24 +1613,131 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
           Positioned(
             top: 16,
             left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(20),
+            child: GestureDetector(
+              onTap: _isLoadingPlaces
+                  ? null
+                  : () {
+                      if (_isLoggedIn) {
+                        // Logged in: show add place dialog
+                        _showAddPlaceDialog();
+                      } else {
+                        // Not logged in: navigate to login page
+                        SolidAuthHandler.instance.handleLogin(context);
+                      }
+                    },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: _isLoggedIn
+                      ? Colors.green.withValues(alpha: 0.85)
+                      : Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  // Visual hint for clickable state
+                  border: _isLoggedIn
+                      ? Border.all(color: Colors.green.shade300, width: 1.5)
+                      : !_isLoadingPlaces
+                      ? Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1,
+                        )
+                      : null,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _isLoadingPlaces
+                          ? Icons.hourglass_empty
+                          : _isLoggedIn
+                          ? Icons.add_location
+                          : Icons.login,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _isLoadingPlaces
+                          ? 'Loading places...'
+                          : _isLoggedIn
+                          ? 'Tap to Add Place'
+                          : 'Login to add places',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: _isLoggedIn
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.touch_app, color: Colors.white, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    _isLoadingPlaces
-                        ? 'Loading places...'
-                        : 'Tap map to add place',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
+            ),
+          ),
+
+          // News markers toggle button
+          Positioned(
+            top: 68, // Below the add place button
+            left: 16,
+            child: GestureDetector(
+              onTap: _isLoadingNews ? null : _toggleNewsMarkers,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: _showNewsMarkers
+                      ? Colors.blue.withValues(alpha: 0.85)
+                      : Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: _showNewsMarkers
+                      ? Border.all(color: Colors.blue.shade300, width: 1.5)
+                      : Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isLoadingNews)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else
+                      Icon(
+                        _showNewsMarkers
+                            ? Icons.article
+                            : Icons.article_outlined,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _isLoadingNews
+                          ? 'Loading news...'
+                          : _showNewsMarkers
+                          ? 'News: ${_getVisibleNewsMarkers().length}'
+                          : 'Show News',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: _showNewsMarkers
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -779,18 +1784,89 @@ class GeoMapWidgetState extends State<GeoMapWidget> {
                   )
                 : const Icon(Icons.refresh),
           ),
-          const SizedBox(height: 8),
-          // Add Place button
-          FloatingActionButton(
-            heroTag: 'add',
-            onPressed: () => _showAddPlaceDialog(),
-            tooltip: 'Add Place',
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            child: const Icon(Icons.add_location),
-          ),
         ],
       ),
+    );
+  }
+}
+
+/// Animated marker widget with delayed entrance animation
+class _MarkerWithAnimation extends StatefulWidget {
+  const _MarkerWithAnimation({
+    required this.index,
+    required this.shouldAnimate,
+    required this.child,
+  });
+
+  final int index;
+  final bool shouldAnimate;
+  final Widget child;
+
+  @override
+  State<_MarkerWithAnimation> createState() => _MarkerWithAnimationState();
+}
+
+class _MarkerWithAnimationState extends State<_MarkerWithAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.shouldAnimate) {
+      // Create animation controller with staggered delay based on index
+      _controller = AnimationController(
+        duration: const Duration(milliseconds: 400),
+        vsync: this,
+      );
+
+      // Scale animation: bounce effect (0.0 �?1.0 with overshoot)
+      _scaleAnimation = CurvedAnimation(
+        parent: _controller,
+        curve: Curves.elasticOut,
+      );
+
+      // Fade animation: smooth fade-in
+      _fadeAnimation = CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOut,
+      );
+
+      // Start animation with staggered delay (50ms per marker)
+      Future.delayed(Duration(milliseconds: 100 + (widget.index * 50)), () {
+        if (mounted) {
+          _controller.forward();
+        }
+      });
+    } else {
+      // No animation needed - create dummy controller
+      _controller = AnimationController(duration: Duration.zero, vsync: this)
+        ..value = 1.0;
+
+      _scaleAnimation = const AlwaysStoppedAnimation(1.0);
+      _fadeAnimation = const AlwaysStoppedAnimation(1.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.shouldAnimate) {
+      // No animation - return child directly
+      return widget.child;
+    }
+
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
 }

@@ -28,10 +28,11 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:solidpod/solidpod.dart';
+import 'package:solidui/solidui.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart'
-    show PlacesService, PlacesCacheManager, Place;
+    show PlacesService, PlacesCacheManager, Place, placesChangeNotifier;
 
 /// A page that displays all saved locations from the user's Solid Pod.
 ///
@@ -66,66 +67,176 @@ class _LocationsPageState extends State<LocationsPage> {
   void initState() {
     super.initState();
 
-    // Check if we have cached places - if so, don't show loading animation
-    final cachedPlaces = PlacesCacheManager().podPlaces;
-    if (cachedPlaces != null) {
+    // Check current login state
+    _isLoggedIn = authStateNotifier.value;
+
+    // Check if we have cached places - try both podPlaces and allPlaces
+    final cacheManager = PlacesCacheManager();
+    final cachedPlaces = cacheManager.podPlaces;
+
+    if (cachedPlaces != null && cachedPlaces.isNotEmpty) {
+      // Found podPlaces cache
       _places = cachedPlaces;
       _isLoading = false;
       _hasLoadedOnce = true;
     } else {
-      _isLoading = true;
+      // Try allPlaces cache (from map page) and filter out local places
+      final allPlaces = cacheManager.allPlaces;
+      if (allPlaces != null && allPlaces.isNotEmpty) {
+        _places = allPlaces.where((p) => !p.isLocal).toList();
+        if (_places.isNotEmpty) {
+          _isLoading = false;
+          _hasLoadedOnce = true;
+        } else {
+          _isLoading = true;
+        }
+      } else {
+        _isLoading = true;
+      }
     }
 
-    _checkLoginAndLoad();
+    // Listen for auth state changes (logout events)
+    authStateNotifier.addListener(_onAuthStateChanged);
+
+    // Listen for places data changes (add/delete/update)
+    placesChangeNotifier.addListener(_onPlacesChanged);
+
+    // Verify actual login state asynchronously
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _verifyLoginAndRefresh();
+    });
   }
 
-  /// Checks login status and loads places.
-  /// Assumes user is logged in, but verifies in background.
-  /// Uses cache if available to avoid loading animation on subsequent visits.
-  Future<void> _checkLoginAndLoad() async {
-    // First, actively check login status using getWebId()
-    bool loggedIn = false;
-    try {
-      final webId = await getWebId();
-      loggedIn = webId != null && webId.isNotEmpty;
-    } catch (_) {
-      loggedIn = false;
-    }
+  /// Verify actual login state and refresh if needed
+  Future<void> _verifyLoginAndRefresh() async {
+    // Check actual token validity (not just notifier state)
+    final actuallyLoggedIn = await checkLoggedIn();
 
     if (!mounted) return;
 
-    // If login check fails, mark as logged out and clear all caches
-    if (!loggedIn) {
-      // Clear both in-memory and SharedPreferences caches
-      await PlacesService.clearCache();
+    // Only refresh if state actually changed (e.g., token expired)
+    if (actuallyLoggedIn != _isLoggedIn) {
+      setState(() {
+        _isLoggedIn = actuallyLoggedIn;
+      });
 
+      // State changed - need to reload appropriate data
+      if (actuallyLoggedIn) {
+        // Was guest, now logged in - check if GeoMap has already loaded data
+        final cacheManager = PlacesCacheManager();
+        final cachedPlaces = cacheManager.allPlaces;
+
+        if (cachedPlaces != null && cachedPlaces.isNotEmpty) {
+          // GeoMap has already loaded data, use it directly
+          final userPlaces = cachedPlaces.where((p) => !p.isLocal).toList();
+          if (mounted) {
+            setState(() {
+              _places = userPlaces;
+              _isLoading = false;
+              _hasLoadedOnce = true;
+            });
+          }
+        } else {
+          // No cache yet, load from network
+          _loadPlaces(forceRefresh: false);
+        }
+      } else {
+        // Was logged in, now guest - clear Pod cache and reload
+        PlacesService.clearCache();
+        setState(() {
+          _places = [];
+          _hasLoadedOnce = false;
+        });
+        _loadPlaces();
+      }
+    } else if (!_hasLoadedOnce) {
+      // Haven't loaded data yet - check if GeoMap has already loaded the data
+      final cacheManager = PlacesCacheManager();
+      final cachedPlaces = cacheManager.allPlaces;
+
+      if (cachedPlaces != null && cachedPlaces.isNotEmpty) {
+        // GeoMap has already loaded data, use it directly
+        final userPlaces = actuallyLoggedIn
+            ? cachedPlaces.where((p) => !p.isLocal).toList()
+            : cachedPlaces;
+        if (mounted) {
+          setState(() {
+            _places = userPlaces;
+            _isLoading = false;
+            _hasLoadedOnce = true;
+          });
+        }
+      } else {
+        // No cache available, load from network
+        _loadPlaces(forceRefresh: false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    authStateNotifier.removeListener(_onAuthStateChanged);
+    placesChangeNotifier.removeListener(_onPlacesChanged);
+    super.dispose();
+  }
+
+  /// Called when places data changes (add/delete/update)
+  void _onPlacesChanged() {
+    if (mounted && _isLoggedIn) {
+      // Places data changed - try to use cache first (faster)
+      // Cache was cleared by the operation, so next load will fetch fresh data
+      _loadPlaces(forceRefresh: false);
+    }
+  }
+
+  /// Called when auth state changes (login/logout)
+  void _onAuthStateChanged() {
+    final isLoggedIn = authStateNotifier.value;
+
+    // Only react if state actually changed
+    if (isLoggedIn == _isLoggedIn) {
+      return; // No change, don't clear cache
+    }
+
+    // Only handle logout - login is handled by _verifyLoginAndRefresh
+    // because the page is typically recreated after login
+    if (!isLoggedIn && mounted) {
+      // User logged out - clear data
+      _handleLogout();
+    } else if (isLoggedIn && mounted) {
+      // User logged in - just update state, _verifyLoginAndRefresh will handle loading
+      setState(() {
+        _isLoggedIn = true;
+      });
+    }
+  }
+
+  /// Handles logout: clears cache and updates UI state
+  Future<void> _handleLogout() async {
+    // Clear cache first (wait for completion to ensure it's done)
+    await PlacesService.clearCache();
+
+    if (mounted) {
       setState(() {
         _isLoggedIn = false;
-        _isLoading = false;
         _places = [];
         _hasLoadedOnce = false;
       });
-      return;
-    }
-
-    // User is logged in, proceed with loading places
-    setState(() => _isLoggedIn = true);
-
-    // If we haven't loaded yet, fetch from Pod
-    if (!_hasLoadedOnce) {
-      await _loadPlaces();
     }
   }
 
   /// Loads places from Pod.
-  Future<void> _loadPlaces() async {
+  Future<void> _loadPlaces({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final places = await PlacesService.fetchPlaces();
+      final places = await PlacesService.fetchPlaces(
+        forceRefresh: forceRefresh,
+      );
+
       if (mounted) {
         setState(() {
           _places = places;
@@ -143,9 +254,9 @@ class _LocationsPageState extends State<LocationsPage> {
     }
   }
 
-  /// Manual refresh.
+  /// Manual refresh - force reload from server.
   Future<void> _refresh() async {
-    await _loadPlaces();
+    await _loadPlaces(forceRefresh: true);
   }
 
   /// Exports user's places to a JSON file.
@@ -617,9 +728,9 @@ class _LocationsPageState extends State<LocationsPage> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: _checkLoginAndLoad,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Check Again'),
+              onPressed: () => SolidAuthHandler.instance.handleLogin(context),
+              icon: const Icon(Icons.login),
+              label: const Text('Login to View'),
             ),
           ],
         ),

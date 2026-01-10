@@ -27,9 +27,12 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:solidpod/solidpod.dart' show KeyManager, setAppDirName;
+import 'package:solidui/solidui.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:geopod/app.dart';
+import 'package:geopod/app_scaffold.dart';
 import 'package:geopod/constants/app.dart';
 import 'package:geopod/utils/is_desktop.dart';
 
@@ -49,6 +52,30 @@ void main() async {
   // to set the Linux desktop window [title].
 
   WidgetsFlutterBinding.ensureInitialized();
+
+  // CRITICAL: Set app directory name BEFORE any Pod operations
+  // This must be called early to prevent double-slash bug in file paths
+  // Without this, paths become //data/places.json instead of geopod/data/places.json
+  await setAppDirName('geopod');
+
+  // Configure SolidAuthHandler with app-specific settings
+  // This ensures proper login page navigation when guest users want to authenticate
+  SolidAuthHandler.instance.configure(
+    SolidAuthConfig(
+      appTitle: appTitle,
+      appDirectory: 'geopod',
+      defaultServerUrl: 'https://pods.solidcommunity.au',
+      appImage: const AssetImage('assets/images/app_image.png'),
+      appLogo: const AssetImage('assets/images/app_icon.png'),
+      loginSuccessWidget: appScaffold,
+      // Clear security key on logout to ensure clean state
+      onSecurityKeyReset: () async {
+        await KeyManager.clear();
+        debugPrint('GeoPod: Security key cleared on logout');
+      },
+    ),
+  );
+
   if (isDesktop) {
     await windowManager.ensureInitialized();
     const windowOptions = WindowOptions(title: appTitle);

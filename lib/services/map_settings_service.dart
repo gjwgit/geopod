@@ -303,3 +303,18 @@ class MapSettingsService {
     }
   }
 }
+
+/// Preloads map settings in the background to warm up cache.
+/// Call this on app startup to make settings instantly available.
+/// This is fire-and-forget - errors are silently ignored.
+Future<void> preloadMapSettings() async {
+  try {
+    // Fire preload without blocking caller
+    await MapSettingsService.loadSettings().catchError((_) {
+      // Silently ignore preload errors - will use defaults
+      return MapSettings(mapSource: MapSettings.getDefaultMapSource());
+    });
+  } catch (_) {
+    // Silently ignore preload errors
+  }
+}

@@ -28,6 +28,8 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:solidpod/solidpod.dart';
+import 'package:solidui/solidui.dart';
 
 import 'package:geopod/services/map_settings_service.dart';
 
@@ -313,6 +315,34 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 label: const Text('Reset to Defaults'),
                 style: TextButton.styleFrom(foregroundColor: Colors.grey),
               ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Logout button - only show if user is logged in
+            FutureBuilder<String?>(
+              future: getWebId(),
+              builder: (context, snapshot) {
+                final isLoggedIn =
+                    snapshot.data != null && snapshot.data!.isNotEmpty;
+                if (!isLoggedIn) return const SizedBox.shrink();
+
+                return Center(
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      // Close settings dialog first
+                      Navigator.pop(context);
+                      // Then handle logout
+                      await SolidAuthHandler.instance.handleLogout(context);
+                    },
+                    icon: const Icon(Icons.logout, size: 18),
+                    label: const Text('Logout'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red.shade400,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),

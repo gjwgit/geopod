@@ -133,6 +133,7 @@ var appScaffold = SolidScaffold(
     serverInfo: SolidServerInfo(serverUri: 'https://pods.solidcommunity.au'),
     loginStatus: SolidLoginStatus(),
     securityKeyStatus: SolidSecurityKeyStatus(),
+    showOnNarrowScreens: true, // Show status bar on Android/mobile
   ),
 
   // ABOUT

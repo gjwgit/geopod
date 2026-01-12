@@ -14,10 +14,10 @@ The latest version of the app can be downloaded and installed from the
 
 + **GNU/Linux**
 [deb](https://solidcommunity.au/installers/geopod_amd64.deb) or
-[zip](https://solidcommunity.au/installers/geopod-dev-linux.zip);
+[zip](https://solidcommunity.au/installers/geopod-linux.zip);
 + **Windows**
-[zip](https://solidcommunity.au/installers/geopod-dev-windows.zip) or
-[inno](https://solidcommunity.au/installers/geopod-dev-windows-inno.exe).
+[zip](https://solidcommunity.au/installers/geopod-windows.zip) or
+[inno](https://solidcommunity.au/installers/geopod-windows-inno.exe).
 
 Contributions are welcome. Visit
 [github](https://github.com/gjwgit/geopod) to submit an issue or,

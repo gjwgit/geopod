@@ -31,7 +31,6 @@ import 'package:solidui/solidui.dart';
 
 import 'constants/app.dart';
 import 'home.dart';
-import 'widgets/files_page.dart';
 import 'widgets/locations_page.dart';
 
 var appScaffold = SolidScaffold(
@@ -100,7 +99,7 @@ var appScaffold = SolidScaffold(
             **Files:** Tap here to browse the files for the app on your Pod.
 
             ''',
-      child: FilesPage(),
+      child: SolidFile(basePath: 'geopod/data'),
     ),
   ],
 

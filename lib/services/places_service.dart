@@ -226,8 +226,8 @@ class PlacesService {
 
         await clearCache();
         placesChangeNotifier.value++;
-        // Invalidate directory cache and notify file browser
-        PodDirectoryService.invalidateCache('data/places');
+        // Clear directory cache completely to force refresh
+        PodDirectoryService.clearCache();
         PodDirectoryService.notifyChange();
       }
       return mainSuccess;

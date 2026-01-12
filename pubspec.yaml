@@ -72,10 +72,10 @@ flutter_launcher_icons:
 dependency_overrides:
   solidpod:
     git:
-      url: https://github.com/lambadajester50-byte/solidpod.git
+      url: https://github.com/miduo666/solidpod.git
       ref: dev
   solidui:
     git:
-      url: https://github.com/lambadajester50-byte/solidui.git
+      url: https://github.com/miduo666/solidui.git
       ref: dev
   

@@ -1,7 +1,7 @@
 name: geopod
 description: "Map interface to Solid Server Data Vault Pods."
 publish_to: 'none'
-version: 0.0.6+15
+version: 0.0.7+16
 
 environment:
   sdk: ^3.10.0
@@ -74,8 +74,11 @@ dependency_overrides:
     git:
       url: https://github.com/lambadajester50-byte/solidpod.git
       ref: dev
+<<<<<<< HEAD
   solidui:
     git:
       url: https://github.com/lambadajester50-byte/solidui.git
       ref: dev
   
+=======
+>>>>>>> origin/dev

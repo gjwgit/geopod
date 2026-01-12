@@ -26,6 +26,7 @@ a Pull Request. Thanks.
 
 ## 0.1 First beta release
 
++ Re-enginer to split large file into function-based files [0.0.7 20260110 miduo]
 + FILES begins in app data folder [0.0.6 20251218 gjw]
 + Add zoom +/- buttons [0.0.5 20251210 miduo]
 + Read and write places of interest from Pods and files [0.0.4 20251208 miduo]

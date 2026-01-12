@@ -74,11 +74,8 @@ dependency_overrides:
     git:
       url: https://github.com/lambadajester50-byte/solidpod.git
       ref: dev
-<<<<<<< HEAD
   solidui:
     git:
       url: https://github.com/lambadajester50-byte/solidui.git
       ref: dev
   
-=======
->>>>>>> origin/dev

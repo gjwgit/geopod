@@ -1,6 +1,6 @@
 /// Service for managing map display settings with persistence.
 ///
-// Time-stamp: <2025-12-08 Miduo>
+// Time-stamp: <2026-01-02 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -25,168 +25,36 @@
 
 library;
 
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:geopod/services/map_settings_pod.dart';
+import 'package:geopod/services/map_source.dart';
+
+export 'package:geopod/services/map_settings_pod.dart' show ViewportPosition;
+export 'package:geopod/services/map_source.dart';
 
 /// Keys for SharedPreferences storage.
 const String _keyShowLocalPlaces = 'map_show_local_places';
 const String _keyUserPlacesColor = 'map_user_places_color';
 const String _keyLocalPlacesColor = 'map_local_places_color';
 const String _keyMapSource = 'map_source';
+const String _keyRememberViewport = 'map_remember_viewport';
+const String _keyInitialLat = 'map_initial_lat';
+const String _keyInitialLng = 'map_initial_lng';
+const String _keyInitialZoom = 'map_initial_zoom';
+
+/// Default viewport settings (Darwin centered).
+const double defaultInitialLat = -12.4634;
+const double defaultInitialLng = 130.8456;
+const double defaultInitialZoom = 11.0;
 
 /// Default colors for map markers.
 const Color defaultUserColor = Colors.blue;
 const Color defaultLocalColor = Colors.orange;
-
-/// Available map tile sources.
-enum MapSource {
-  /// OpenStreetMap - Standard street map (day default)
-  openStreetMap,
-
-  /// CartoDB Voyager - Colorful detailed map
-  cartoVoyager,
-
-  /// CartoDB Dark Matter - Night-optimized dark map
-  cartoDarkMatter,
-
-  /// Stadia Alidade Smooth Dark - Elegant dark map
-  stadiaAlidadeSmoothDark,
-
-  /// Esri World Street Map - Professional street map
-  esriWorldStreetMap,
-
-  /// Esri World Imagery - Satellite imagery
-  esriWorldImagery,
-
-  /// Esri World Topo - Topographic map
-  esriWorldTopo,
-
-  /// Stamen Terrain - Terrain map with hills shading
-  stamenTerrain,
-
-  /// CyclOSM - Optimized for cycling
-  cyclOSM,
-}
-
-/// Extension for MapSource to get tile URLs and metadata.
-extension MapSourceExtension on MapSource {
-  /// Returns the tile URL template for this map source.
-  String get urlTemplate {
-    switch (this) {
-      case MapSource.openStreetMap:
-        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-      case MapSource.cartoVoyager:
-        return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
-      case MapSource.cartoDarkMatter:
-        return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-      case MapSource.stadiaAlidadeSmoothDark:
-        return 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png';
-      case MapSource.esriWorldStreetMap:
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
-      case MapSource.esriWorldImagery:
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      case MapSource.esriWorldTopo:
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
-      case MapSource.stamenTerrain:
-        return 'https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png';
-      case MapSource.cyclOSM:
-        return 'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png';
-    }
-  }
-
-  /// Returns subdomains if applicable (for load balancing).
-  List<String> get subdomains {
-    switch (this) {
-      case MapSource.cartoVoyager:
-      case MapSource.cartoDarkMatter:
-        return ['a', 'b', 'c', 'd'];
-      case MapSource.cyclOSM:
-        return ['a', 'b', 'c'];
-      default:
-        return [];
-    }
-  }
-
-  /// Display name.
-  String get displayName {
-    switch (this) {
-      case MapSource.openStreetMap:
-        return 'OpenStreetMap';
-      case MapSource.cartoVoyager:
-        return 'CartoDB Voyager';
-      case MapSource.cartoDarkMatter:
-        return 'CartoDB Dark Matter';
-      case MapSource.stadiaAlidadeSmoothDark:
-        return 'Stadia Dark';
-      case MapSource.esriWorldStreetMap:
-        return 'Esri Street Map';
-      case MapSource.esriWorldImagery:
-        return 'Esri Satellite';
-      case MapSource.esriWorldTopo:
-        return 'Esri Topographic';
-      case MapSource.stamenTerrain:
-        return 'Stamen Terrain';
-      case MapSource.cyclOSM:
-        return 'CyclOSM';
-    }
-  }
-
-  /// Short description.
-  String get description {
-    switch (this) {
-      case MapSource.openStreetMap:
-        return 'Classic open source map';
-      case MapSource.cartoVoyager:
-        return 'Colorful and detailed';
-      case MapSource.cartoDarkMatter:
-        return 'Night-optimized dark theme';
-      case MapSource.stadiaAlidadeSmoothDark:
-        return 'Elegant dark with smooth labels';
-      case MapSource.esriWorldStreetMap:
-        return 'Professional street map';
-      case MapSource.esriWorldImagery:
-        return 'High-resolution satellite';
-      case MapSource.esriWorldTopo:
-        return 'Topographic with contours';
-      case MapSource.stamenTerrain:
-        return 'Terrain with hill shading';
-      case MapSource.cyclOSM:
-        return 'Optimized for cycling';
-    }
-  }
-
-  /// Icon for this map source.
-  IconData get icon {
-    switch (this) {
-      case MapSource.openStreetMap:
-      case MapSource.cartoVoyager:
-      case MapSource.esriWorldStreetMap:
-      case MapSource.cyclOSM:
-        return Icons.map;
-      case MapSource.cartoDarkMatter:
-      case MapSource.stadiaAlidadeSmoothDark:
-        return Icons.dark_mode;
-      case MapSource.esriWorldImagery:
-        return Icons.satellite_alt;
-      case MapSource.esriWorldTopo:
-      case MapSource.stamenTerrain:
-        return Icons.terrain;
-    }
-  }
-
-  /// Whether this is a priority source (preload on startup).
-  bool get isPriority {
-    return this == MapSource.openStreetMap || this == MapSource.cartoDarkMatter;
-  }
-
-  /// Whether this is a dark/night-optimized map source.
-  /// Dark sources don't need color matrix filter in dark mode.
-  bool get isDarkSource {
-    return this == MapSource.cartoDarkMatter ||
-        this == MapSource.stadiaAlidadeSmoothDark;
-  }
-}
 
 /// Data class holding all map display settings.
 class MapSettings {
@@ -202,10 +70,26 @@ class MapSettings {
   /// Current map tile source.
   final MapSource mapSource;
 
+  /// Whether to remember the last viewed viewport on restart.
+  final bool rememberViewport;
+
+  /// Initial viewport latitude (used when rememberViewport is off).
+  final double initialLat;
+
+  /// Initial viewport longitude (used when rememberViewport is off).
+  final double initialLng;
+
+  /// Initial viewport zoom level (used when rememberViewport is off).
+  final double initialZoom;
+
   const MapSettings({
     this.showLocalPlaces = true,
     this.userPlacesColor = defaultUserColor,
     this.localPlacesColor = defaultLocalColor,
+    this.rememberViewport = true,
+    this.initialLat = defaultInitialLat,
+    this.initialLng = defaultInitialLng,
+    this.initialZoom = defaultInitialZoom,
     MapSource? mapSource,
   }) : mapSource = mapSource ?? MapSource.openStreetMap;
 
@@ -222,71 +106,212 @@ class MapSettings {
     Color? userPlacesColor,
     Color? localPlacesColor,
     MapSource? mapSource,
+    bool? rememberViewport,
+    double? initialLat,
+    double? initialLng,
+    double? initialZoom,
   }) {
     return MapSettings(
       showLocalPlaces: showLocalPlaces ?? this.showLocalPlaces,
       userPlacesColor: userPlacesColor ?? this.userPlacesColor,
       localPlacesColor: localPlacesColor ?? this.localPlacesColor,
       mapSource: mapSource ?? this.mapSource,
+      rememberViewport: rememberViewport ?? this.rememberViewport,
+      initialLat: initialLat ?? this.initialLat,
+      initialLng: initialLng ?? this.initialLng,
+      initialZoom: initialZoom ?? this.initialZoom,
     );
   }
 }
 
 /// Service for loading and saving map display settings.
 class MapSettingsService {
-  /// Loads settings from SharedPreferences.
+  /// Convert MapSettings to JSON map.
+  static Map<String, dynamic> _settingsToJson(MapSettings settings) {
+    return {
+      'showLocalPlaces': settings.showLocalPlaces,
+      'userPlacesColor': settings.userPlacesColor.toARGB32(),
+      'localPlacesColor': settings.localPlacesColor.toARGB32(),
+      'mapSource': settings.mapSource.index,
+      'rememberViewport': settings.rememberViewport,
+      'initialLat': settings.initialLat,
+      'initialLng': settings.initialLng,
+      'initialZoom': settings.initialZoom,
+    };
+  }
+
+  /// Create MapSettings from JSON map.
+  static MapSettings _settingsFromJson(Map<String, dynamic> json) {
+    final savedSourceIndex = json['mapSource'] as int?;
+    final mapSource =
+        savedSourceIndex != null &&
+            savedSourceIndex >= 0 &&
+            savedSourceIndex < MapSource.values.length
+        ? MapSource.values[savedSourceIndex]
+        : MapSettings.getDefaultMapSource();
+
+    return MapSettings(
+      showLocalPlaces: json['showLocalPlaces'] as bool? ?? true,
+      userPlacesColor: json['userPlacesColor'] != null
+          ? Color(json['userPlacesColor'] as int)
+          : defaultUserColor,
+      localPlacesColor: json['localPlacesColor'] != null
+          ? Color(json['localPlacesColor'] as int)
+          : defaultLocalColor,
+      mapSource: mapSource,
+      rememberViewport: json['rememberViewport'] as bool? ?? true,
+      initialLat: (json['initialLat'] as num?)?.toDouble() ?? defaultInitialLat,
+      initialLng: (json['initialLng'] as num?)?.toDouble() ?? defaultInitialLng,
+      initialZoom:
+          (json['initialZoom'] as num?)?.toDouble() ?? defaultInitialZoom,
+    );
+  }
+
+  /// Save settings to SharedPreferences.
+  static Future<void> _saveToPrefs(MapSettings settings) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces);
+    await prefs.setInt(
+      _keyUserPlacesColor,
+      settings.userPlacesColor.toARGB32(),
+    );
+    await prefs.setInt(
+      _keyLocalPlacesColor,
+      settings.localPlacesColor.toARGB32(),
+    );
+    await prefs.setInt(_keyMapSource, settings.mapSource.index);
+    await prefs.setBool(_keyRememberViewport, settings.rememberViewport);
+    await prefs.setDouble(_keyInitialLat, settings.initialLat);
+    await prefs.setDouble(_keyInitialLng, settings.initialLng);
+    await prefs.setDouble(_keyInitialZoom, settings.initialZoom);
+  }
+
+  /// Load settings from SharedPreferences.
+  static Future<MapSettings> _loadFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final showLocal = prefs.getBool(_keyShowLocalPlaces) ?? true;
+    final userColorValue = prefs.getInt(_keyUserPlacesColor);
+    final localColorValue = prefs.getInt(_keyLocalPlacesColor);
+    final rememberViewport = prefs.getBool(_keyRememberViewport) ?? true;
+    final initialLat = prefs.getDouble(_keyInitialLat) ?? defaultInitialLat;
+    final initialLng = prefs.getDouble(_keyInitialLng) ?? defaultInitialLng;
+    final initialZoom = prefs.getDouble(_keyInitialZoom) ?? defaultInitialZoom;
+
+    final savedSourceIndex = prefs.getInt(_keyMapSource);
+    final mapSource =
+        savedSourceIndex != null &&
+            savedSourceIndex >= 0 &&
+            savedSourceIndex < MapSource.values.length
+        ? MapSource.values[savedSourceIndex]
+        : MapSettings.getDefaultMapSource();
+
+    return MapSettings(
+      showLocalPlaces: showLocal,
+      userPlacesColor: userColorValue != null
+          ? Color(userColorValue)
+          : defaultUserColor,
+      localPlacesColor: localColorValue != null
+          ? Color(localColorValue)
+          : defaultLocalColor,
+      mapSource: mapSource,
+      rememberViewport: rememberViewport,
+      initialLat: initialLat,
+      initialLng: initialLng,
+      initialZoom: initialZoom,
+    );
+  }
+
+  /// Check if we have cached settings in SharedPreferences.
+  static Future<bool> _hasLocalCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Check if any setting key exists (mapSource is always saved)
+    return prefs.containsKey(_keyMapSource);
+  }
+
+  /// Loads settings from SharedPreferences (fast, non-blocking).
+  /// POD sync is done separately via syncFromPod().
   static Future<MapSettings> loadSettings() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      final showLocal = prefs.getBool(_keyShowLocalPlaces) ?? true;
-      final userColorValue = prefs.getInt(_keyUserPlacesColor);
-      final localColorValue = prefs.getInt(_keyLocalPlacesColor);
-
-      // Load saved map source, or use time-based default
-      final savedSourceIndex = prefs.getInt(_keyMapSource);
-      final mapSource =
-          savedSourceIndex != null &&
-              savedSourceIndex >= 0 &&
-              savedSourceIndex < MapSource.values.length
-          ? MapSource.values[savedSourceIndex]
-          : MapSettings.getDefaultMapSource();
-
-      return MapSettings(
-        showLocalPlaces: showLocal,
-        userPlacesColor: userColorValue != null
-            ? Color(userColorValue)
-            : defaultUserColor,
-        localPlacesColor: localColorValue != null
-            ? Color(localColorValue)
-            : defaultLocalColor,
-        mapSource: mapSource,
-      );
-    } catch (_) {
+      // Always load from SharedPreferences first (fast, no network)
+      debugPrint('loadSettings: loading from SharedPreferences');
+      return await _loadFromPrefs();
+    } catch (e) {
+      debugPrint('Error loading settings: $e');
       return MapSettings(mapSource: MapSettings.getDefaultMapSource());
     }
   }
 
-  /// Saves settings to SharedPreferences.
+  /// Smart load: if no local cache, try POD first (for first login).
+  /// Otherwise load from local cache (fast).
+  static Future<MapSettings> loadSettingsSmart() async {
+    try {
+      // Check if we have local cache
+      if (await _hasLocalCache()) {
+        debugPrint('loadSettingsSmart: using local cache');
+        return await _loadFromPrefs();
+      }
+
+      // No local cache - try to load from POD first (first login scenario)
+      debugPrint('loadSettingsSmart: no local cache, trying POD...');
+      final podData = await readSettingsFromPod();
+      if (podData != null) {
+        debugPrint('loadSettingsSmart: loaded from POD');
+        final settings = _settingsFromJson(podData);
+        // Save to local cache
+        await _saveToPrefs(settings);
+        return settings;
+      }
+
+      // POD also empty - use defaults
+      debugPrint('loadSettingsSmart: POD empty, using defaults');
+      return MapSettings(mapSource: MapSettings.getDefaultMapSource());
+    } catch (e) {
+      debugPrint('Error in loadSettingsSmart: $e');
+      return MapSettings(mapSource: MapSettings.getDefaultMapSource());
+    }
+  }
+
+  /// Saves settings to SharedPreferences only (fast, no network).
+  /// POD sync is done separately via syncToPod() when needed.
   static Future<bool> saveSettings(MapSettings settings) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces);
-      await prefs.setInt(
-        _keyUserPlacesColor,
-        settings.userPlacesColor.toARGB32(),
-      );
-      await prefs.setInt(
-        _keyLocalPlacesColor,
-        settings.localPlacesColor.toARGB32(),
-      );
-      await prefs.setInt(_keyMapSource, settings.mapSource.index);
-
+      // Save to SharedPreferences only (fast, no blocking)
+      await _saveToPrefs(settings);
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error saving settings: $e');
       return false;
     }
+  }
+
+  /// Manually sync current settings to POD.
+  /// Call this when user closes settings dialog or at app exit.
+  static Future<bool> syncToPod() async {
+    try {
+      final settings = await _loadFromPrefs();
+      return await writeSettingsToPod(_settingsToJson(settings));
+    } catch (e) {
+      debugPrint('Error syncing settings to POD: $e');
+      return false;
+    }
+  }
+
+  /// Gets the initial viewport based on settings.
+  /// If rememberViewport is ON, returns last viewport if available.
+  /// Otherwise returns the configured initial viewport.
+  static Future<ViewportPosition> getStartupViewport(
+    MapSettings settings,
+  ) async {
+    if (settings.rememberViewport) {
+      final last = await loadLastViewport();
+      if (last != null) return last;
+    }
+    return ViewportPosition(
+      lat: settings.initialLat,
+      lng: settings.initialLng,
+      zoom: settings.initialZoom,
+    );
   }
 
   /// Resets all settings to defaults.
@@ -297,24 +322,95 @@ class MapSettingsService {
       await prefs.remove(_keyUserPlacesColor);
       await prefs.remove(_keyLocalPlacesColor);
       await prefs.remove(_keyMapSource);
+      await prefs.remove(_keyRememberViewport);
+      await prefs.remove(_keyInitialLat);
+      await prefs.remove(_keyInitialLng);
+      await prefs.remove(_keyInitialZoom);
+      await prefs.remove(keyLastLat);
+      await prefs.remove(keyLastLng);
+      await prefs.remove(keyLastZoom);
+
+      // Write default settings to POD (not empty object)
+      final defaultSettings = MapSettings(
+        mapSource: MapSettings.getDefaultMapSource(),
+      );
+      unawaited(
+        writeSettingsToPod(_settingsToJson(defaultSettings)).then((success) {
+          debugPrint('resetToDefaults: POD sync ${success ? 'ok' : 'failed'}');
+        }),
+      );
+
       return true;
     } catch (_) {
       return false;
     }
   }
+
+  /// Sync settings from POD to local (background, non-blocking).
+  /// Call this after login to ensure local settings match POD.
+  /// Returns the synced settings if POD has data, null otherwise.
+  static Future<MapSettings?> syncFromPod() async {
+    try {
+      final podData = await readSettingsFromPod();
+      if (podData != null) {
+        debugPrint('syncFromPod: updating local with POD settings');
+        final settings = _settingsFromJson(podData);
+        await _saveToPrefs(settings);
+        return settings;
+      } else {
+        // POD has no settings, upload local settings to POD
+        debugPrint('syncFromPod: POD empty, uploading local settings');
+        final localSettings = await _loadFromPrefs();
+        unawaited(writeSettingsToPod(_settingsToJson(localSettings)));
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error syncing from POD: $e');
+      return null;
+    }
+  }
+
+  /// Start background sync from POD.
+  /// This is non-blocking and updates settings silently.
+  /// [onSettingsUpdated] is called if POD has newer settings.
+  static void startBackgroundSync({
+    void Function(MapSettings)? onSettingsUpdated,
+  }) {
+    unawaited(
+      syncFromPod().then((settings) {
+        if (settings != null && onSettingsUpdated != null) {
+          debugPrint('startBackgroundSync: settings updated from POD');
+          onSettingsUpdated(settings);
+        }
+      }),
+    );
+  }
 }
 
 /// Preloads map settings in the background to warm up cache.
 /// Call this on app startup to make settings instantly available.
-/// This is fire-and-forget - errors are silently ignored.
+/// Uses smart loading: if no local cache, loads from POD first.
 Future<void> preloadMapSettings() async {
   try {
-    // Fire preload without blocking caller
-    await MapSettingsService.loadSettings().catchError((_) {
+    // Smart load: if no local cache, try POD first
+    await MapSettingsService.loadSettingsSmart().catchError((_) {
       // Silently ignore preload errors - will use defaults
       return MapSettings(mapSource: MapSettings.getDefaultMapSource());
     });
   } catch (_) {
     // Silently ignore preload errors
+  }
+}
+
+/// Syncs settings from POD in background.
+/// Call this after preloadMapSettings() to keep settings in sync.
+/// Only needed when local cache exists (preloadMapSettings handles first login).
+Future<void> syncSettingsFromPod() async {
+  try {
+    // Small delay to let UI settle first
+    await Future.delayed(const Duration(seconds: 3));
+    await MapSettingsService.syncFromPod();
+  } catch (_) {
+    // Silently ignore sync errors
   }
 }

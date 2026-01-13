@@ -15,10 +15,16 @@ https://pods.dev.solidcommunity.au/.oidc/token
 # Example POD URLs that are protected resources
 
 https://pods.solidcommunity.au/my-moviestar/profile/card#me
+https://user.solidcommunity.net/
+https://pod.server/
 
 # POD server base URL - has temporary availability issues.
 
 https://pods.solidcommunity.au/
+
+# GitHub URLs - rate limited (429 Too Many Requests)
+
+https://github.com/gjwgit/geopod/commits/
 
 # ANU Software Innovation Institute website (frequent timeouts in CI)
 
@@ -50,3 +56,9 @@ https://opensource.org/license/gpl-3-0
 http://xmlns.com/foaf/0.1/
 http://purl.org/dc/terms/
 https://solidcommunity.au/predicates/*
+
+# Installer links (not yet deployed, placeholder for future releases)
+
+https://solidcommunity.au/installers/geopod-dev-linux.zip
+https://solidcommunity.au/installers/geopod-dev-windows.zip
+https://solidcommunity.au/installers/geopod-dev-windows-inno.exe

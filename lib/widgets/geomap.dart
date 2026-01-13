@@ -17,6 +17,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
@@ -26,13 +27,14 @@ import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesCacheManager, placesChangeNotifier;
-import 'package:geopod/widgets/map/delete_place_handler.dart';
 import 'package:geopod/widgets/map/geomap_core.dart';
+import 'package:geopod/widgets/map/geomap_news_mixin.dart';
+import 'package:geopod/widgets/map/geomap_place_handlers.dart';
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
+import 'package:geopod/widgets/map/geomap_viewport_logic.dart';
 import 'package:geopod/widgets/map/map_floating_buttons.dart';
 import 'package:geopod/widgets/map/map_overlay_buttons.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
-import 'package:geopod/widgets/map/news_operations.dart';
 import 'package:geopod/widgets/map/place_save_handler.dart';
 import 'package:geopod/widgets/map_settings_dialog.dart';
 
@@ -43,9 +45,13 @@ class GeoMapWidget extends StatefulWidget {
 }
 
 class GeoMapWidgetState extends State<GeoMapWidget>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  final MapController _mapController = MapController();
-  TileProvider _tileProvider = NetworkTileProvider();
+    with
+        SingleTickerProviderStateMixin,
+        WidgetsBindingObserver,
+        GeoMapNewsMixin {
+  @override
+  final MapController mapController = MapController();
+  TileProvider _tileProvider = CancellableNetworkTileProvider();
   List<Place> _allPlaces = [];
   final Set<String> _savingPlaceIds = {};
   bool _isLoadingPlaces = false;
@@ -57,10 +63,17 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   late Animation<double> _fadeAnimation;
   bool _initialAnimationComplete = false;
   bool _isPostLoginRefresh = false;
-  final GdeltNewsService _newsService = GdeltNewsService();
-  List<NewsMarker> _newsMarkers = [];
-  bool _showNewsMarkers = false;
-  bool _isLoadingNews = false;
+  @override
+  final GdeltNewsService newsService = GdeltNewsService();
+  @override
+  List<NewsMarker> newsMarkers = [];
+  @override
+  bool showNewsMarkers = false;
+  @override
+  bool isLoadingNews = false;
+  LatLng _initialCenter = const LatLng(defaultInitialLat, defaultInitialLng);
+  double _initialZoom = defaultInitialZoom;
+  bool _viewportInitialized = false;
 
   @override
   void initState() {
@@ -81,7 +94,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         });
       }
     });
-    _isLoggedIn = AuthDataManager.isLoggedInSync();
+    _isLoggedIn = authStateNotifier.value;
     authStateNotifier.addListener(_onAuthStateChanged);
     placesChangeNotifier.addListener(_onPlacesChanged);
     _loadSettingsSync();
@@ -94,12 +107,21 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
   @override
   void dispose() {
+    _saveCurrentViewport();
     _animationController.dispose();
-    _newsService.dispose();
+    newsService.dispose();
     authStateNotifier.removeListener(_onAuthStateChanged);
     placesChangeNotifier.removeListener(_onPlacesChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Saves current viewport position if rememberViewport is enabled.
+  void _saveCurrentViewport() {
+    saveCurrentViewport(
+      mapController: mapController,
+      mapSettings: _mapSettings,
+    );
   }
 
   void _onPlacesChanged() {
@@ -110,7 +132,10 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      setState(() => _tileProvider = NetworkTileProvider());
+      setState(() => _tileProvider = CancellableNetworkTileProvider());
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _saveCurrentViewport();
     }
   }
 
@@ -155,8 +180,22 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
   void _loadSettingsSync() {
     MapSettingsService.loadSettings()
-        .then((s) {
-          if (mounted) setState(() => _mapSettings = s);
+        .then((s) async {
+          if (!mounted) return;
+          setState(() => _mapSettings = s);
+          // Load startup viewport after settings are loaded
+          if (!_viewportInitialized) {
+            final viewport = await MapSettingsService.getStartupViewport(s);
+            if (mounted) {
+              setState(() {
+                _initialCenter = LatLng(viewport.lat, viewport.lng);
+                _initialZoom = viewport.zoom;
+                _viewportInitialized = true;
+              });
+              // Move map to the loaded viewport
+              mapController.move(_initialCenter, _initialZoom);
+            }
+          }
         })
         .catchError((_) {});
   }
@@ -186,7 +225,14 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           setState(() {
             final changed = _mapSettings.mapSource != ns.mapSource;
             _mapSettings = ns;
-            if (changed) _tileProvider = NetworkTileProvider();
+            if (changed) {
+              _tileProvider = CancellableNetworkTileProvider();
+              // Adjust zoom level if current zoom exceeds new map source's max
+              adjustZoomForMapSource(
+                mapController: mapController,
+                mapSettings: ns,
+              );
+            }
           });
         },
       ),
@@ -227,127 +273,40 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   void _handleOptimisticSave(Place p) {
-    setState(() {
-      _allPlaces.insert(0, p);
-      _savingPlaceIds.add(p.id);
-    });
-    showSavingSnackbar(context, p);
-    unawaited(_performBackgroundSave(p));
+    handleOptimisticPlaceSave(
+      place: p,
+      allPlaces: _allPlaces,
+      savingPlaceIds: _savingPlaceIds,
+      context: context,
+      setState: setState,
+      performBackgroundSave: _performBackgroundSave,
+    );
   }
 
   Future<void> _performBackgroundSave(Place op) async {
-    try {
-      final up = await performBackgroundSave(op, context);
-      if (!mounted) return;
-      if (up != null) {
-        setState(() {
-          final i = _allPlaces.indexWhere((x) => x.id == op.id);
-          if (i != -1) _allPlaces[i] = up;
-          _savingPlaceIds.remove(op.id);
-        });
-        PlacesCacheManager().cacheAllPlaces(_allPlaces);
-        showSaveSuccessSnackbar(context);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _allPlaces.removeWhere((x) => x.id == op.id);
-        _savingPlaceIds.remove(op.id);
-      });
-      showSaveErrorSnackbar(context, e);
-    }
+    await performPlaceBackgroundSave(
+      originalPlace: op,
+      context: context,
+      allPlaces: _allPlaces,
+      savingPlaceIds: _savingPlaceIds,
+      setState: setState,
+    );
   }
 
   void _onMapTap(TapPosition tp, LatLng ll) =>
       _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude);
 
-  void _toggleNewsMarkers() => _showNewsListDialogAsync();
-
-  Future<void> _showNewsListDialogAsync() async {
-    if (!mounted) return;
-    await showNewsListDialogAsync(
-      context: context,
-      mapController: _mapController,
-      newsService: _newsService,
-      getVisibleMarkers: _getVisibleNewsMarkers,
-      updateState: (m, l, s) {
-        if (mounted) {
-          setState(() {
-            _newsMarkers = m;
-            _isLoadingNews = l;
-            _showNewsMarkers = s;
-          });
-        }
-      },
-    );
-  }
-
   void _onMapPositionChanged(MapCamera pos, bool gesture) {
-    if (_showNewsMarkers && gesture) _updateNewsFromCache();
+    onMapPositionChangedForNews(pos, gesture);
   }
-
-  void _updateNewsFromCache() {
-    if (!mounted) return;
-    updateNewsFromCacheForBounds(
-      mapController: _mapController,
-      newsService: _newsService,
-      setMarkers: (m) => setState(() => _newsMarkers = m),
-      fetchForCurrentBounds: _fetchNewsForCurrentBounds,
-    );
-  }
-
-  Future<void> _fetchNewsForCurrentBounds() async {
-    if (!mounted) return;
-    await fetchNewsForBounds(
-      context: context,
-      mapController: _mapController,
-      newsService: _newsService,
-      updateState: (m, l) {
-        if (mounted) {
-          setState(() {
-            _newsMarkers = m;
-            _isLoadingNews = l;
-          });
-        }
-      },
-    );
-  }
-
-  List<NewsMarker> _getVisibleNewsMarkers() => getVisibleNewsInBounds(
-    mapController: _mapController,
-    newsMarkers: _newsMarkers,
-    showNews: _showNewsMarkers,
-  );
 
   Future<void> _confirmAndDeletePlace(MarkerData m) async {
-    final confirmed = await showDeleteConfirmationDialog(context, m);
-    if (!confirmed || !mounted) return;
-    final prep = prepareDeletePlace(marker: m, allPlaces: _allPlaces);
-    if (!prep.success) {
-      if (mounted) showPlaceNotFoundSnackbar(context);
-      return;
-    }
-    setState(() => _allPlaces.removeAt(prep.removedIndex!));
-    if (!mounted) return;
-    showDeletingSnackbar(context);
-    final success = await performDeleteOnServer(
-      placeId: m.id,
+    await confirmAndDeletePlace(
+      marker: m,
       context: context,
+      allPlaces: _allPlaces,
+      setState: setState,
     );
-    if (!mounted) return;
-    if (success) {
-      updateCacheAfterDelete(_allPlaces);
-      showDeleteSuccessSnackbar(context);
-    } else {
-      setState(
-        () => restorePlace(
-          allPlaces: _allPlaces,
-          originalIndex: prep.removedIndex!,
-          removedPlace: prep.removedPlace!,
-        ),
-      );
-      showDeleteErrorSnackbar(context);
-    }
   }
 
   @override
@@ -359,21 +318,23 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       body: Stack(
         children: [
           buildFlutterMapWidget(
-            mapController: _mapController,
+            mapController: mapController,
             fadeAnimation: _fadeAnimation,
             mapSettings: _mapSettings,
             tileProvider: _tileProvider,
             applyFilter: applyFilter,
             filteredMarkers: _filteredMarkers,
             shouldAnimate: !_initialAnimationComplete || _isPostLoginRefresh,
-            showNewsMarkers: _showNewsMarkers,
-            visibleNewsMarkers: _getVisibleNewsMarkers(),
+            showNewsMarkers: showNewsMarkers,
+            visibleNewsMarkers: getVisibleNewsMarkersImpl(),
             onTap: _onMapTap,
             onLongPress: (tp, ll) =>
                 _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude),
             onPositionChanged: _onMapPositionChanged,
             onDeletePlace: _confirmAndDeletePlace,
             context: context,
+            initialCenter: _initialCenter,
+            initialZoom: _initialZoom,
           ),
           buildLoadingIndicator(isLoading: _isLoadingPlaces),
           AddPlaceOverlayButton(
@@ -388,17 +349,17 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             },
           ),
           NewsOverlayButton(
-            isLoadingNews: _isLoadingNews,
-            showNewsMarkers: _showNewsMarkers,
-            visibleNewsCount: _getVisibleNewsMarkers().length,
-            onTap: _toggleNewsMarkers,
+            isLoadingNews: isLoadingNews,
+            showNewsMarkers: showNewsMarkers,
+            visibleNewsCount: getVisibleNewsMarkersImpl().length,
+            onTap: toggleNewsMarkers,
           ),
         ],
       ),
       floatingActionButton: MapFloatingButtons(
         isLoadingPlaces: _isLoadingPlaces,
-        onZoomIn: () => zoomIn(_mapController),
-        onZoomOut: () => zoomOut(_mapController),
+        onZoomIn: () => zoomIn(mapController),
+        onZoomOut: () => zoomOut(mapController),
         onRefresh: _loadAllPlaces,
       ),
     );

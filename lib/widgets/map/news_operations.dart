@@ -72,8 +72,18 @@ void updateNewsFromCacheForBounds({
 }) {
   final bounds = mapController.camera.visibleBounds;
   final cached = newsService.getMarkersInBounds(bounds);
-  if (cached.isNotEmpty) setMarkers(cached);
-  if (!newsService.isBoundsCovered(bounds)) fetchForCurrentBounds();
+
+  // Always update visible markers from cache
+  if (cached.isNotEmpty) {
+    setMarkers(cached);
+  }
+
+  // Only fetch new data if significantly outside cached bounds
+  // This prevents unnecessary fetches during small movements
+  if (!newsService.isBoundsCovered(bounds)) {
+    // Async fetch without blocking UI
+    fetchForCurrentBounds();
+  }
 }
 
 /// Fetches news for current map bounds.
@@ -83,9 +93,13 @@ Future<void> fetchNewsForBounds({
   required GdeltNewsService newsService,
   required void Function(List<NewsMarker> markers, bool loading) updateState,
 }) async {
-  updateState([], true);
+  // Don't clear existing markers, just set loading state
+  // Get current cached markers first
+  final bounds = mapController.camera.visibleBounds;
+  final currentMarkers = newsService.getMarkersInBounds(bounds);
+  updateState(currentMarkers, true);
+
   try {
-    final bounds = mapController.camera.visibleBounds;
     final nm = await newsService.fetchNews(
       bounds: bounds,
       query: 'news',

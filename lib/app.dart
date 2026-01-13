@@ -32,10 +32,10 @@ import 'package:flutter/material.dart';
 import 'package:solidpod/solidpod.dart' show registerLogoutCacheCallback;
 import 'package:solidui/solidui.dart';
 
-import 'app_scaffold.dart';
-import 'constants/app.dart';
-import 'services/map_settings_service.dart';
-import 'services/places_service.dart';
+import 'package:geopod/app_scaffold.dart';
+import 'package:geopod/constants/app.dart';
+import 'package:geopod/services/map_settings_service.dart';
+import 'package:geopod/services/places_service.dart';
 
 /// The root application widget.
 ///
@@ -90,10 +90,9 @@ class _StartupPreloaderState extends State<_StartupPreloader> {
   void initState() {
     super.initState();
 
-    // Preload all data on app startup (both guests and logged-in users)
-    // This makes the map page feel instant when user navigates to it
+    // Preload map settings on app startup (both guests and logged-in users)
+    // Places data is now loaded on-demand by the map page
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(preloadPlacesData());
       unawaited(preloadMapSettings());
     });
   }
@@ -121,11 +120,12 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
   void initState() {
     super.initState();
 
-    // Trigger preload when this widget is mounted
-    // This covers the case when user clicks Continue button
+    // Trigger preload when this widget is mounted (after login)
+    // Only preload local settings, network data will be loaded by pages themselves
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(preloadPlacesData());
       unawaited(preloadMapSettings());
+      // Sync settings from POD with delay to avoid network congestion
+      unawaited(syncSettingsFromPod());
     });
   }
 

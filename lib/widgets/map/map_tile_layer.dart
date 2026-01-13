@@ -57,12 +57,15 @@ Widget buildMapTileLayer({
       userAgentPackageName: 'com.togaware.geopod',
       tileProvider: tileProvider,
       evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
-      keepBuffer: 5,
+      keepBuffer: 1,
       panBuffer: 1,
       maxZoom: 19,
-      maxNativeZoom: 18,
-      tileSize: 256,
+      maxNativeZoom: mapSettings.mapSource.maxNativeZoom,
       retinaMode: false,
+      // Tile update behavior - prefer faster updates
+      tileUpdateTransformer: TileUpdateTransformers.throttle(
+        const Duration(milliseconds: 100),
+      ),
       errorImage: const AssetImage(
         'assets/images/tile_error.png',
         package: 'solidpod',

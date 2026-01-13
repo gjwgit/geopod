@@ -25,6 +25,8 @@
 
 library;
 
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -32,6 +34,8 @@ import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
 
 import 'package:geopod/services/map_settings_service.dart';
+import 'package:geopod/widgets/settings/color_picker_tile.dart';
+import 'package:geopod/widgets/settings/viewport_selector.dart';
 
 /// Dialog for configuring map display settings.
 ///
@@ -60,14 +64,38 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late Color _userPlacesColor;
   late Color _localPlacesColor;
   late MapSource _mapSource;
+  late bool _rememberViewport;
+  late double _initialLat;
+  late double _initialLng;
+  late double _initialZoom;
+
+  // Snapshot of initial settings to detect actual changes
+  late MapSettings _initialSnapshot;
 
   @override
   void initState() {
     super.initState();
+    _initialSnapshot = widget.currentSettings;
     _showLocalPlaces = widget.currentSettings.showLocalPlaces;
     _userPlacesColor = widget.currentSettings.userPlacesColor;
     _localPlacesColor = widget.currentSettings.localPlacesColor;
     _mapSource = widget.currentSettings.mapSource;
+    _rememberViewport = widget.currentSettings.rememberViewport;
+    _initialLat = widget.currentSettings.initialLat;
+    _initialLng = widget.currentSettings.initialLng;
+    _initialZoom = widget.currentSettings.initialZoom;
+  }
+
+  /// Check if current settings differ from initial snapshot.
+  bool _hasActualChanges() {
+    return _showLocalPlaces != _initialSnapshot.showLocalPlaces ||
+        _userPlacesColor != _initialSnapshot.userPlacesColor ||
+        _localPlacesColor != _initialSnapshot.localPlacesColor ||
+        _mapSource != _initialSnapshot.mapSource ||
+        _rememberViewport != _initialSnapshot.rememberViewport ||
+        _initialLat != _initialSnapshot.initialLat ||
+        _initialLng != _initialSnapshot.initialLng ||
+        _initialZoom != _initialSnapshot.initialZoom;
   }
 
   /// Saves current settings and notifies parent.
@@ -77,6 +105,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
       userPlacesColor: _userPlacesColor,
       localPlacesColor: _localPlacesColor,
       mapSource: _mapSource,
+      rememberViewport: _rememberViewport,
+      initialLat: _initialLat,
+      initialLng: _initialLng,
+      initialZoom: _initialZoom,
     );
 
     // Save to SharedPreferences.
@@ -151,12 +183,20 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
       _userPlacesColor = defaultUserColor;
       _localPlacesColor = defaultLocalColor;
       _mapSource = MapSettings.getDefaultMapSource();
+      _rememberViewport = true;
+      _initialLat = defaultInitialLat;
+      _initialLng = defaultInitialLng;
+      _initialZoom = defaultInitialZoom;
     });
     _saveAndNotify();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Use responsive width: larger on desktop/tablet, adapt on mobile
+    final screenWidth = MediaQuery.of(context).size.width;
+    final dialogWidth = screenWidth < 400 ? screenWidth * 0.9 : 380.0;
+
     return AlertDialog(
       title: const Row(
         children: [
@@ -165,271 +205,247 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
           Text('Map Settings'),
         ],
       ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Visibility toggle.
-            const Text(
-              'Visibility',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
+      content: SizedBox(
+        width: dialogWidth,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Visibility toggle.
+              const Text(
+                'Visibility',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              title: const Text('Show Example Locations'),
-              subtitle: const Text('Display canned examples on map'),
-              value: _showLocalPlaces,
-              onChanged: (value) {
-                setState(() => _showLocalPlaces = value);
-                _saveAndNotify();
-              },
-              secondary: Icon(
-                _showLocalPlaces ? Icons.visibility : Icons.visibility_off,
-                color: _showLocalPlaces ? Colors.green : Colors.grey,
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('Show Example Locations'),
+                subtitle: const Text('Display canned examples on map'),
+                value: _showLocalPlaces,
+                onChanged: (value) {
+                  setState(() => _showLocalPlaces = value);
+                  _saveAndNotify();
+                },
+                secondary: Icon(
+                  _showLocalPlaces ? Icons.visibility : Icons.visibility_off,
+                  color: _showLocalPlaces ? Colors.green : Colors.grey,
+                ),
               ),
-            ),
-            const Divider(height: 32),
+              const Divider(height: 24),
 
-            // Map Source Selection
-            const Text(
-              'Map Source',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
+              // Viewport Settings
+              const Text(
+                'Viewport',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('Remember Viewport'),
+                subtitle: const Text('Resume from last viewed position'),
+                value: _rememberViewport,
+                onChanged: (value) {
+                  setState(() => _rememberViewport = value);
+                  _saveAndNotify();
+                },
+                secondary: Icon(
+                  _rememberViewport ? Icons.restore : Icons.home,
+                  color: _rememberViewport ? Colors.blue : Colors.grey,
+                ),
               ),
-              child: DropdownButton<MapSource>(
-                value: _mapSource,
-                isExpanded: true,
-                underline: const SizedBox(),
-                icon: const Icon(Icons.arrow_drop_down),
-                items: MapSource.values.map((source) {
-                  return DropdownMenuItem<MapSource>(
-                    value: source,
-                    child: Row(
-                      children: [
-                        Icon(
-                          source.icon,
-                          size: 20,
-                          color: Colors.grey.shade700,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                source.displayName,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                source.description,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
+              if (!_rememberViewport) ...[
+                const SizedBox(height: 12),
+                InitialViewportSelector(
+                  lat: _initialLat,
+                  lng: _initialLng,
+                  zoom: _initialZoom,
+                  onChanged: (lat, lng, zoom) {
+                    setState(() {
+                      _initialLat = lat;
+                      _initialLng = lng;
+                      _initialZoom = zoom;
+                    });
+                    _saveAndNotify();
+                  },
+                ),
+              ],
+              const Divider(height: 24),
+
+              // Map Source Selection
+              const Text(
+                'Map Source',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButton<MapSource>(
+                  value: _mapSource,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  icon: const Icon(Icons.arrow_drop_down),
+                  items: MapSource.values.map((source) {
+                    return DropdownMenuItem<MapSource>(
+                      value: source,
+                      child: Row(
+                        children: [
+                          Icon(
+                            source.icon,
+                            size: 20,
+                            color: Colors.grey.shade700,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  source.displayName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  source.description,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (MapSource? newValue) {
+                    if (newValue != null) {
+                      setState(() => _mapSource = newValue);
+                      _saveAndNotify();
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 24),
+
+              // Color customization.
+              const Text(
+                'Marker Colors',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // User places color.
+              ColorPickerTile(
+                label: 'My Places',
+                subtitle: 'Your saved locations',
+                color: _userPlacesColor,
+                onTap: () => _showColorPicker(
+                  title: 'My Places Color',
+                  currentColor: _userPlacesColor,
+                  onColorChanged: (color) {
+                    setState(() => _userPlacesColor = color);
+                    _saveAndNotify();
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Local places color.
+              ColorPickerTile(
+                label: 'Example Places',
+                subtitle: 'Canned example locations',
+                color: _localPlacesColor,
+                onTap: () => _showColorPicker(
+                  title: 'Example Places Color',
+                  currentColor: _localPlacesColor,
+                  onColorChanged: (color) {
+                    setState(() => _localPlacesColor = color);
+                    _saveAndNotify();
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Reset button.
+              Center(
+                child: TextButton.icon(
+                  onPressed: _resetToDefaults,
+                  icon: const Icon(Icons.restore, size: 18),
+                  label: const Text('Reset to Defaults'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Logout button - only show if user is logged in
+              FutureBuilder<String?>(
+                future: getWebId(),
+                builder: (context, snapshot) {
+                  final isLoggedIn =
+                      snapshot.data != null && snapshot.data!.isNotEmpty;
+                  if (!isLoggedIn) return const SizedBox.shrink();
+
+                  return Center(
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        // Close settings dialog first
+                        Navigator.pop(context);
+                        // Then handle logout
+                        await SolidAuthHandler.instance.handleLogout(context);
+                      },
+                      icon: const Icon(Icons.logout, size: 18),
+                      label: const Text('Logout'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red.shade400,
+                      ),
                     ),
                   );
-                }).toList(),
-                onChanged: (MapSource? newValue) {
-                  if (newValue != null) {
-                    setState(() => _mapSource = newValue);
-                    _saveAndNotify();
-                  }
                 },
               ),
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 32),
-
-            // Color customization.
-            const Text(
-              'Marker Colors',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // User places color.
-            _ColorPickerTile(
-              label: 'My Places',
-              subtitle: 'Your saved locations',
-              color: _userPlacesColor,
-              onTap: () => _showColorPicker(
-                title: 'My Places Color',
-                currentColor: _userPlacesColor,
-                onColorChanged: (color) {
-                  setState(() => _userPlacesColor = color);
-                  _saveAndNotify();
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Local places color.
-            _ColorPickerTile(
-              label: 'Example Places',
-              subtitle: 'Canned example locations',
-              color: _localPlacesColor,
-              onTap: () => _showColorPicker(
-                title: 'Example Places Color',
-                currentColor: _localPlacesColor,
-                onColorChanged: (color) {
-                  setState(() => _localPlacesColor = color);
-                  _saveAndNotify();
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Reset button.
-            Center(
-              child: TextButton.icon(
-                onPressed: _resetToDefaults,
-                icon: const Icon(Icons.restore, size: 18),
-                label: const Text('Reset to Defaults'),
-                style: TextButton.styleFrom(foregroundColor: Colors.grey),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Logout button - only show if user is logged in
-            FutureBuilder<String?>(
-              future: getWebId(),
-              builder: (context, snapshot) {
-                final isLoggedIn =
-                    snapshot.data != null && snapshot.data!.isNotEmpty;
-                if (!isLoggedIn) return const SizedBox.shrink();
-
-                return Center(
-                  child: TextButton.icon(
-                    onPressed: () async {
-                      // Close settings dialog first
-                      Navigator.pop(context);
-                      // Then handle logout
-                      await SolidAuthHandler.instance.handleLogout(context);
-                    },
-                    icon: const Icon(Icons.logout, size: 18),
-                    label: const Text('Logout'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red.shade400,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [
         ElevatedButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pop(context);
+            // Only sync to POD if there were actual changes
+            if (_hasActualChanges()) {
+              unawaited(MapSettingsService.syncToPod());
+            }
+          },
           child: const Text('Done'),
         ),
       ],
-    );
-  }
-}
-
-/// A tile widget for displaying and selecting a color.
-class _ColorPickerTile extends StatelessWidget {
-  const _ColorPickerTile({
-    required this.label,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String label;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            // Color preview.
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.location_on,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            // Label and subtitle.
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            ),
-            // Edit icon.
-            Icon(Icons.edit, color: Colors.grey.shade400, size: 20),
-          ],
-        ),
-      ),
     );
   }
 }

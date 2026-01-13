@@ -260,14 +260,38 @@ class GdeltNewsService {
     final elapsed = DateTime.now().difference(_cacheTime!);
     if (elapsed > _cacheExpiry) return false;
 
-    // Check if requested bounds are within cached bounds (with 20% margin)
-    final latMargin = (_cachedBounds!.north - _cachedBounds!.south) * 0.2;
-    final lngMargin = (_cachedBounds!.east - _cachedBounds!.west) * 0.2;
+    // Calculate cache coverage percentage
+    // Only fetch new data if more than 40% of the view is outside cache
+    final viewLatRange = bounds.north - bounds.south;
+    final viewLngRange = bounds.east - bounds.west;
 
-    return bounds.south >= _cachedBounds!.south - latMargin &&
-        bounds.north <= _cachedBounds!.north + latMargin &&
-        bounds.west >= _cachedBounds!.west - lngMargin &&
-        bounds.east <= _cachedBounds!.east + lngMargin;
+    // Calculate overlap
+    final overlapSouth = bounds.south.clamp(
+      _cachedBounds!.south,
+      _cachedBounds!.north,
+    );
+    final overlapNorth = bounds.north.clamp(
+      _cachedBounds!.south,
+      _cachedBounds!.north,
+    );
+    final overlapWest = bounds.west.clamp(
+      _cachedBounds!.west,
+      _cachedBounds!.east,
+    );
+    final overlapEast = bounds.east.clamp(
+      _cachedBounds!.west,
+      _cachedBounds!.east,
+    );
+
+    final overlapLatRange = (overlapNorth - overlapSouth).abs();
+    final overlapLngRange = (overlapEast - overlapWest).abs();
+
+    final latCoverage = viewLatRange > 0 ? overlapLatRange / viewLatRange : 0.0;
+    final lngCoverage = viewLngRange > 0 ? overlapLngRange / viewLngRange : 0.0;
+    final coverage = (latCoverage + lngCoverage) / 2;
+
+    // Consider covered if at least 60% of view is in cache
+    return coverage >= 0.6;
   }
 
   /// Clear the cache manually.

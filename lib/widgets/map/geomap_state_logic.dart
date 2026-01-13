@@ -34,7 +34,7 @@ Future<List<Place>> handleLoginStateChange({
 Future<VerifyLoginResult> verifyLoginStateAndLoadData({
   required bool currentIsLoggedIn,
 }) async {
-  final actuallyLoggedIn = await checkLoggedIn();
+  final actuallyLoggedIn = await isUserLoggedIn();
   final loginStateChanged = currentIsLoggedIn != actuallyLoggedIn;
 
   if (loginStateChanged) {

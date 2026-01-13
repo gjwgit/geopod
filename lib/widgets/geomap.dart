@@ -94,7 +94,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         });
       }
     });
-    _isLoggedIn = AuthDataManager.isLoggedInSync();
+    _isLoggedIn = authStateNotifier.value;
     authStateNotifier.addListener(_onAuthStateChanged);
     placesChangeNotifier.addListener(_onPlacesChanged);
     _loadSettingsSync();

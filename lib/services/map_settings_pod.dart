@@ -40,7 +40,7 @@ Future<String> getSettingsFilePath() async {
 Future<Map<String, dynamic>?> readSettingsFromPod() async {
   try {
     // Quick sync check - avoid slow async checkLoggedIn()
-    if (!AuthDataManager.isLoggedInSync()) return null;
+    if (!authStateNotifier.value) return null;
 
     final fp = await getSettingsFilePath();
     final url = await getFileUrl(fp);

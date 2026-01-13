@@ -374,10 +374,7 @@ class EncryptedPlacesService {
         if (jsonList is List) {
           for (final item in jsonList) {
             if (item is Map<String, dynamic>) {
-              final place = Place.fromJson(
-                item,
-                isLocalSource: false,
-              );
+              final place = Place.fromJson(item, isLocalSource: false);
               places.add(place);
             }
           }

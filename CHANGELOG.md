@@ -14,10 +14,10 @@ The latest version of the app can be downloaded and installed from the
 
 + **GNU/Linux**
 [deb](https://solidcommunity.au/installers/geopod_amd64.deb) or
-[zip](https://solidcommunity.au/installers/geopod-dev-linux.zip);
+[zip](https://solidcommunity.au/installers/geopod-linux.zip);
 + **Windows**
-[zip](https://solidcommunity.au/installers/geopod-dev-windows.zip) or
-[inno](https://solidcommunity.au/installers/geopod-dev-windows-inno.exe).
+[zip](https://solidcommunity.au/installers/geopod-windows.zip) or
+[inno](https://solidcommunity.au/installers/geopod-windows-inno.exe).
 
 Contributions are welcome. Visit
 [github](https://github.com/gjwgit/geopod) to submit an issue or,
@@ -26,6 +26,7 @@ a Pull Request. Thanks.
 
 ## 0.1 First beta release
 
++ Re-enginer to split large file into function-based files [0.0.7 20260110 miduo]
 + FILES begins in app data folder [0.0.6 20251218 gjw]
 + Add zoom +/- buttons [0.0.5 20251210 miduo]
 + Read and write places of interest from Pods and files [0.0.4 20251208 miduo]

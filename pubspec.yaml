@@ -77,8 +77,4 @@ dependency_overrides:
   solidui:
     git:
       url: https://github.com/miduo666/solidui.git
-<<<<<<< HEAD
       ref: dev
-=======
-      ref: dev
->>>>>>> origin/dev

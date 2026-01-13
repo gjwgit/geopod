@@ -74,7 +74,7 @@ class PlacesCacheManager {
   void cacheAllPlaces(List<Place> places) {
     _allPlacesCache = List.from(places);
     _lastCacheTime = DateTime.now();
-    _wasLoggedInWhenCached = AuthDataManager.isLoggedInSync();
+    _wasLoggedInWhenCached = authStateNotifier.value;
   }
 
   /// Caches Pod places data

@@ -14,7 +14,7 @@
 library;
 
 import 'package:solid_auth/solid_auth.dart' show genDpopToken;
-import 'package:solidpod/solidpod.dart' show AuthDataManager;
+import 'package:solidpod/solidpod.dart' show AuthDataManager, authStateNotifier;
 
 /// Authentication token pair for POD requests.
 typedef TokenPair = ({String accessToken, String dPopToken});
@@ -61,7 +61,7 @@ class PodAuth {
 
   /// Check if user is logged in (synchronous, uses cached data).
   static bool isLoggedInSync() {
-    return AuthDataManager.isLoggedInSync();
+    return authStateNotifier.value;
   }
 
   /// Profile card path constant (same as solidpod).

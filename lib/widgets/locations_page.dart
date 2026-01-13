@@ -12,7 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:solidpod/solidpod.dart';
+import 'package:solidpod/solidpod.dart' show authStateNotifier, isUserLoggedIn;
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places_service.dart'
@@ -67,7 +67,7 @@ class _LocationsPageState extends State<LocationsPage> {
   }
 
   Future<void> _verifyLoginAndRefresh() async {
-    final loggedIn = await checkLoggedIn();
+    final loggedIn = await isUserLoggedIn();
     if (!mounted) return;
     if (loggedIn != _isLoggedIn) {
       setState(() => _isLoggedIn = loggedIn);

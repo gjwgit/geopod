@@ -345,7 +345,7 @@ class EncryptedPlacesService {
     final places = <Place>[];
 
     try {
-      if (!AuthDataManager.isLoggedInSync()) {
+      if (!authStateNotifier.value) {
         return places;
       }
 
@@ -430,20 +430,18 @@ class EncryptedPlacesService {
       // directory's key, not by a file-specific individual key. So we set
       // encrypted: false to avoid the "encryption status changed" dialog.
       // The file will still be encrypted via the inherited directory key.
-      final result = await writePod(
+      await writePod(
         filePath,
         jsonContent,
-        context,
-        child,
         encrypted: false,
         inheritKeyFrom: dirPath,
       );
 
-      if (result == SolidFunctionCallStatus.success) {
+      // writePod returns void in 0.9.x, assume success if no exception
+      {
         _cachedEncryptedPlaces = places;
         return true;
       }
-      return false;
     } catch (e) {
       debugPrint('Error writing encrypted places: $e');
       return false;

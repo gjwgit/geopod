@@ -107,12 +107,11 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         if (_isLoadingPlaces) setState(() {});
       }
     });
-    // Sync check - no setState needed
-    _isLoggedIn = AuthDataManager.isLoggedInSync();
-    // Show local places immediately (sync, no setState needed until build)
-    _allPlaces = PlacesService.getLocalPlacesSync();
-
-    // Defer listener setup and data loading to after first frame
+    _isLoggedIn = authStateNotifier.value;
+    authStateNotifier.addListener(_onAuthStateChanged);
+    placesChangeNotifier.addListener(_onPlacesChanged);
+    _loadSettingsSync();
+    _verifyLoginStateAndLoadData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       authStateNotifier.addListener(_onAuthStateChanged);

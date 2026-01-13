@@ -102,7 +102,7 @@ class PlacesService {
     bool forceRefresh = false,
   }) async {
     try {
-      if (!AuthDataManager.isLoggedInSync()) return [];
+      if (!authStateNotifier.value) return [];
       // Check if security key is available - don't try to load if not
       final hasKey = await EncryptedPlacesService.isSecurityKeyAvailable();
       if (!hasKey) {
@@ -126,7 +126,7 @@ class PlacesService {
     final places = <Place>[];
     final cm = PlacesCacheManager();
     try {
-      if (!AuthDataManager.isLoggedInSync()) return places;
+      if (!authStateNotifier.value) return places;
       if (!forceRefresh) {
         final mc = cm.podPlaces;
         if (mc != null) {
@@ -168,7 +168,7 @@ class PlacesService {
   static void _refreshPodPlacesInBackground() {
     Future(() async {
       try {
-        if (!AuthDataManager.isLoggedInSync()) return;
+        if (!authStateNotifier.value) return;
         final c = await readPlacesJsonFile();
         if (c != null && c.trim().isNotEmpty) {
           await PlacesCachePersistence.cachePodPlaces(c);
@@ -208,7 +208,7 @@ class PlacesService {
     Widget returnWidget,
   ) async {
     try {
-      if (!AuthDataManager.isLoggedInSync()) return false;
+      if (!authStateNotifier.value) return false;
       final cm = PlacesCacheManager();
       var existing = cm.podPlaces ?? await fetchPodPlaces();
       final updated = List<Place>.from(existing)..insert(0, place);
@@ -227,8 +227,8 @@ class PlacesService {
 
         await clearCache();
         placesChangeNotifier.value++;
-        // Invalidate directory cache and notify file browser
-        PodDirectoryService.invalidateCache('data/places');
+        // Clear directory cache completely to force refresh
+        PodDirectoryService.clearCache();
         PodDirectoryService.notifyChange();
       }
       return mainSuccess;
@@ -244,7 +244,7 @@ class PlacesService {
     Widget returnWidget,
   ) async {
     try {
-      if (!AuthDataManager.isLoggedInSync()) return false;
+      if (!authStateNotifier.value) return false;
       final cm = PlacesCacheManager();
       var existing = cm.podPlaces ?? await fetchPodPlaces();
       final updated = List<Place>.from(existing)
@@ -284,7 +284,7 @@ class PlacesService {
     void Function(int, int)? onProgress,
   }) async {
     try {
-      if (!AuthDataManager.isLoggedInSync()) return false;
+      if (!authStateNotifier.value) return false;
       final existing = await fetchPodPlaces();
       final ids = existing.map((p) => p.id).toSet();
       final newPlaces = imported.where((p) => !ids.contains(p.id)).toList();
@@ -333,7 +333,7 @@ class PlacesService {
     Widget returnWidget,
   ) async {
     try {
-      if (!AuthDataManager.isLoggedInSync()) return false;
+      if (!authStateNotifier.value) return false;
 
       // Get all existing place IDs before clearing
       final existing = await fetchPodPlaces();
@@ -362,7 +362,7 @@ class PlacesService {
     bool coordinatesChanged = false,
   }) async {
     try {
-      if (!AuthDataManager.isLoggedInSync()) return false;
+      if (!authStateNotifier.value) return false;
       final existing = await fetchPodPlaces();
       final list = List<Place>.from(existing);
       final i = list.indexWhere((p) => p.id == updated.id);

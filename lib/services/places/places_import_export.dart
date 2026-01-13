@@ -76,7 +76,6 @@ class PlacesImportExport {
       await FileSaver.instance.saveFile(
         name: 'places',
         bytes: bytes,
-        ext: 'json',
         mimeType: MimeType.json,
       );
 

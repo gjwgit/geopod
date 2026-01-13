@@ -32,6 +32,7 @@ import 'package:flutter/services.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart';
+import 'package:geopod/widgets/weather_dialog.dart';
 
 /// Result returned from AddPlaceForm containing the place data.
 /// Used for optimistic updates - the Place is returned immediately
@@ -239,11 +240,36 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.add_location_alt, color: Colors.green),
-          SizedBox(width: 12),
-          Text('Add New Place'),
+          const Icon(Icons.add_location_alt, color: Colors.green),
+          const SizedBox(width: 12),
+          const Text('Add New Place'),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.cloud_outlined),
+            onPressed: () {
+              final lat = double.tryParse(_latitudeController.text.trim());
+              final lng = double.tryParse(_longitudeController.text.trim());
+              if (lat != null && lng != null) {
+                showWeatherDialog(
+                  context: context,
+                  latitude: lat,
+                  longitude: lng,
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Please enter valid coordinates to view weather',
+                    ),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            tooltip: 'View Weather',
+          ),
         ],
       ),
       content: SizedBox(

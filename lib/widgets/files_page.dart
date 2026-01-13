@@ -50,7 +50,7 @@ class _FilesPageState extends State<FilesPage> {
   }
 
   Future<void> _checkLoginStatus() async {
-    final loggedIn = await checkLoggedIn();
+    final loggedIn = await isUserLoggedIn();
     if (mounted) {
       setState(() {
         _isLoggedIn = loggedIn;

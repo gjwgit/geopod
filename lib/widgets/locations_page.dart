@@ -67,7 +67,7 @@ class _LocationsPageState extends State<LocationsPage> {
   }
 
   Future<void> _verifyLoginAndRefresh() async {
-    final loggedIn = await checkLoggedIn();
+    final loggedIn = await isUserLoggedIn();
     if (!mounted) return;
     if (loggedIn != _isLoggedIn) {
       setState(() => _isLoggedIn = loggedIn);

@@ -16,21 +16,6 @@ import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, PlacesCacheManager;
 
-/// Handles login state change.
-Future<List<Place>> handleLoginStateChange({
-  required bool wasLoggedIn,
-  required bool isNowLoggedIn,
-}) async {
-  if (isNowLoggedIn && !wasLoggedIn) {
-    return await PlacesService.refreshPodDataOnly();
-  } else if (!isNowLoggedIn && wasLoggedIn) {
-    await PlacesService.clearPodCacheOnly();
-    // Local places are compiled into the app, no async loading needed
-    return PlacesService.getLocalPlacesSync();
-  }
-  return [];
-}
-
 /// Verifies login state and returns appropriate places.
 Future<VerifyLoginResult> verifyLoginStateAndLoadData({
   required bool currentIsLoggedIn,

@@ -16,11 +16,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/map/geomap_settings.dart';
-import 'package:latlong2/latlong.dart';
 
 /// Handles settings loading and validation.
 mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {

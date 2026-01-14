@@ -15,6 +15,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/utils/widget_utils.dart';

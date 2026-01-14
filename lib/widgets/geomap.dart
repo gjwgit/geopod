@@ -15,18 +15,17 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:solidpod/solidpod.dart' show authStateNotifier;
+import 'package:solidui/solidui.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart' show placesChangeNotifier;
 import 'package:geopod/utils/widget_utils.dart';
-import 'package:solidpod/solidpod.dart' show authStateNotifier;
-import 'package:solidui/solidui.dart';
 import 'package:geopod/widgets/map/fullscreen_toggle_button.dart';
 import 'package:geopod/widgets/map/geomap_action_handlers.dart';
 import 'package:geopod/widgets/map/geomap_builders.dart';

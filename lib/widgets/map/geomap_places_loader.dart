@@ -74,7 +74,7 @@ class LoadEncryptedPlacesResult {
 
 /// Load encrypted places on demand when user enables the setting.
 /// If [skipKeyVerification] is true, assumes security key is already verified.
-Future<LoadEncryptedPlacesResult> loadEncryptedPlaces({
+Future<LoadEncryptedPlacesResult> loadEncryptedPlacesData({
   required BuildContext context,
   required Widget widget,
   required bool isLoggedIn,

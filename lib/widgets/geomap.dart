@@ -31,12 +31,14 @@ import 'package:geopod/widgets/map/fullscreen_toggle_button.dart';
 import 'package:geopod/widgets/map/geomap_action_handlers.dart';
 import 'package:geopod/widgets/map/geomap_builders.dart';
 import 'package:geopod/widgets/map/geomap_core.dart' hide buildLoadingIndicator;
+import 'package:geopod/widgets/map/geomap_encrypted_places_loader.dart';
 import 'package:geopod/widgets/map/geomap_event_handlers.dart';
 import 'package:geopod/widgets/map/geomap_initialization.dart';
 import 'package:geopod/widgets/map/geomap_news_mixin.dart';
 import 'package:geopod/widgets/map/geomap_place_handlers.dart';
 import 'package:geopod/widgets/map/geomap_places_loader.dart';
 import 'package:geopod/widgets/map/geomap_settings.dart';
+import 'package:geopod/widgets/map/geomap_settings_loader.dart';
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
 import 'package:geopod/widgets/map/geomap_state_mixin.dart';
 import 'package:geopod/widgets/map/geomap_viewport_logic.dart';
@@ -60,6 +62,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         MarkerCacheMixin,
         GeoMapEventHandlers,
         GeoMapActionHandlers,
+        GeoMapSettingsLoader,
+        GeoMapEncryptedPlacesLoader,
         GeoMapNewsMixin {
   // State variables implementation for mixins
   @override
@@ -129,7 +133,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     initializeMapPostFrame(
       context: context,
       animationController: animationController,
-      loadSettingsSync: _loadSettingsSync,
+      loadSettingsSync: () =>
+          loadSettingsSync(() => unawaited(loadEncryptedPlaces())),
       verifyLoginStateAndLoadData: () async {
         final result = await verifyLoginStateAndLoadData(
           currentIsLoggedIn: isLoggedIn,
@@ -182,56 +187,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     );
   }
 
-  void _loadSettingsSync() {
-    loadMapSettingsSync(viewportInitialized: viewportInitialized)
-        .then((result) {
-          if (!mounted) return;
-
-          safeSetState(this, () {
-            mapSettings = result.settings;
-            if (result.initialCenter != null) {
-              initialCenter = result.initialCenter!;
-              initialZoom = result.initialZoom!;
-              viewportInitialized = result.viewportInitialized;
-            }
-          });
-
-          // Move map after state update if viewport was loaded
-          if (result.initialCenter != null) {
-            mapController.move(result.initialCenter!, result.initialZoom!);
-          }
-
-          // Validate encrypted setting if enabled
-          if (result.settings.showEncryptedPlaces) {
-            Future.delayed(const Duration(milliseconds: 200), () {
-              if (mounted) _validateSavedEncryptedSetting();
-            });
-          }
-        })
-        .catchError((_) {});
-  }
-
-  Future<void> _validateSavedEncryptedSetting() async {
-    final shouldLoad = await validateSavedEncryptedSetting(
-      mapSettings: mapSettings,
-      isLoggedIn: isLoggedIn,
-      allPlaces: allPlaces,
-    );
-
-    if (!shouldLoad) {
-      // Reset setting if validation failed
-      if (!isLoggedIn) {
-        safeSetState(this, () {
-          mapSettings = mapSettings.copyWith(showEncryptedPlaces: false);
-        });
-      }
-      return;
-    }
-
-    // Load encrypted places
-    unawaited(_loadEncryptedPlaces());
-  }
-
   void showSettingsDialog() {
     showDialog(
       context: context,
@@ -256,7 +211,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
           // Handle encrypted places toggle
           if (changes.encryptedToggled && changes.encryptedEnabled) {
-            unawaited(_loadEncryptedPlaces(skipKeyVerification: true));
+            unawaited(loadEncryptedPlaces(skipKeyVerification: true));
           } else if (changes.encryptedToggled && !changes.encryptedEnabled) {
             safeSetState(this, () {
               allPlaces = removeEncryptedPlaces(allPlaces: allPlaces);
@@ -265,58 +220,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         },
       ),
     );
-  }
-
-  Future<void> _loadAllPlaces({
-    bool forceRefresh = false,
-    bool? includeEncrypted,
-  }) async {
-    final result = await loadPlacesWithState(
-      currentPlaces: allPlaces,
-      forceRefresh: forceRefresh,
-      includeEncrypted: includeEncrypted ?? mapSettings.showEncryptedPlaces,
-    );
-
-    if (!mounted) return;
-
-    if (result.showLoading) {
-      safeSetState(this, () => isLoadingPlaces = true);
-    }
-
-    if (result.hasChanges || isLoadingPlaces) {
-      safeSetState(this, () {
-        allPlaces = List.from(result.places);
-        isLoadingPlaces = false;
-      });
-    }
-  }
-
-  Future<void> _loadEncryptedPlaces({bool skipKeyVerification = false}) async {
-    if (!isLoggedIn || !mounted) return;
-
-    final result = await loadEncryptedPlaces(
-      context: context,
-      widget: widget,
-      isLoggedIn: isLoggedIn,
-      skipKeyVerification: skipKeyVerification,
-    );
-
-    if (result.cancelled && mounted) {
-      safeSetState(this, () {
-        mapSettings = mapSettings.copyWith(showEncryptedPlaces: false);
-      });
-      MapSettingsService.saveSettings(mapSettings);
-      return;
-    }
-
-    if (mounted && result.encryptedPlaces.isNotEmpty) {
-      safeSetState(this, () {
-        allPlaces = mergeEncryptedPlaces(
-          allPlaces: allPlaces,
-          encryptedPlaces: result.encryptedPlaces,
-        );
-      });
-    }
   }
 
   /// Cached getter for filtered markers to avoid expensive rebuilds.
@@ -441,7 +344,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           isLoadingPlaces: isLoadingPlaces,
           onZoomIn: () => zoomIn(mapController),
           onZoomOut: () => zoomOut(mapController),
-          onRefresh: _loadAllPlaces,
+          onRefresh: () => loadAllPlaces(),
         ),
       ),
     );

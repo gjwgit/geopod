@@ -18,10 +18,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 
-import 'package:geopod/models/place.dart';
-import 'package:geopod/services/places_service.dart' show PlacesService;
-import 'package:geopod/widgets/map/geomap_state_logic.dart';
-
 /// Initializes animation controller and listeners for map widget.
 void initializeMapState({
   required AnimationController animationController,
@@ -78,29 +74,6 @@ void handleMapLifecycleChange({
       state == AppLifecycleState.inactive) {
     onPauseOrInactive();
   }
-}
-
-/// Handles login process with optimistic UI updates.
-Future<List<Place>> handleLogin({required BuildContext context}) async {
-  // Immediately show local places for better UX
-  final localPlaces = PlacesService.getLocalPlacesSync();
-
-  // Load pod data in background without blocking UI
-  try {
-    final podPlaces = await handleLoginStateChange(
-      wasLoggedIn: false,
-      isNowLoggedIn: true,
-    );
-    return podPlaces;
-  } catch (_) {
-    // Return local places if pod loading fails
-    return localPlaces;
-  }
-}
-
-/// Handles logout process.
-Future<List<Place>> handleLogout() async {
-  return await handleLoginStateChange(wasLoggedIn: true, isNowLoggedIn: false);
 }
 
 /// Creates tile provider for map tiles.

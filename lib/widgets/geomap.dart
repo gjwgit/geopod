@@ -40,11 +40,11 @@ import 'package:geopod/widgets/map/geomap_viewport_logic.dart';
 import 'package:geopod/widgets/map/map_floating_buttons.dart';
 import 'package:geopod/widgets/map/map_overlay_buttons.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
+import 'package:geopod/widgets/map/place_save_handler.dart';
+import 'package:geopod/widgets/map_settings_dialog.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart' show authStateNotifier;
 import 'package:solidui/solidui.dart';
-import 'package:geopod/widgets/map/place_save_handler.dart';
-import 'package:geopod/widgets/map_settings_dialog.dart';
 
 class GeoMapWidget extends StatefulWidget {
   const GeoMapWidget({super.key});

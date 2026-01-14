@@ -56,13 +56,13 @@ Widget buildMapTileLayer({
       subdomains: mapSettings.mapSource.subdomains,
       userAgentPackageName: 'com.togaware.geopod',
       tileProvider: tileProvider,
-      evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
+      // Keep retrying failed tiles in visible area, allow slow networks to load
+      evictErrorTileStrategy: EvictErrorTileStrategy.notVisibleRespectMargin,
       keepBuffer: 1,
       panBuffer: 1,
       maxZoom: 19,
       maxNativeZoom: mapSettings.mapSource.maxNativeZoom,
       retinaMode: false,
-      // Tile update behavior - prefer faster updates
       tileUpdateTransformer: TileUpdateTransformers.throttle(
         const Duration(milliseconds: 100),
       ),

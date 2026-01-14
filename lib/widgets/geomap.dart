@@ -17,6 +17,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:solidpod/solidpod.dart' show authStateNotifier;
+import 'package:solidui/solidui.dart';
+
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
@@ -42,9 +46,6 @@ import 'package:geopod/widgets/map/map_overlay_buttons.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 import 'package:geopod/widgets/map/place_save_handler.dart';
 import 'package:geopod/widgets/map_settings_dialog.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:solidpod/solidpod.dart' show authStateNotifier;
-import 'package:solidui/solidui.dart';
 
 class GeoMapWidget extends StatefulWidget {
   const GeoMapWidget({super.key});

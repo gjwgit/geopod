@@ -26,7 +26,6 @@
 library;
 
 import 'package:flutter/material.dart';
-
 import 'package:geopod/app.dart';
 import 'package:geopod/app_scaffold.dart';
 import 'package:geopod/constants/app.dart';

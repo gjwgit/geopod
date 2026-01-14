@@ -28,7 +28,6 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
 import 'package:geopod/app_scaffold.dart';
 import 'package:geopod/constants/app.dart';
 import 'package:geopod/services/map_settings_service.dart';

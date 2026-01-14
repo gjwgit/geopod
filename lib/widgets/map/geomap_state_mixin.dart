@@ -14,12 +14,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
+import 'package:latlong2/latlong.dart';
 
 /// Manages map state variables.
 mixin GeoMapStateMixin {

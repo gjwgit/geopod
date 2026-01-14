@@ -14,12 +14,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/map_settings_pod.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
+import 'package:latlong2/latlong.dart';
 
 /// Result of loading map settings.
 class LoadSettingsResult {

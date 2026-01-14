@@ -20,11 +20,3 @@ final ValueNotifier<bool> fullscreenModeNotifier = ValueNotifier<bool>(false);
 void toggleFullscreenMode() {
   fullscreenModeNotifier.value = !fullscreenModeNotifier.value;
 }
-
-/// Sets the fullscreen mode to a specific value.
-void setFullscreenMode(bool value) {
-  fullscreenModeNotifier.value = value;
-}
-
-/// Returns whether fullscreen mode is currently enabled.
-bool get isFullscreenMode => fullscreenModeNotifier.value;

@@ -26,14 +26,14 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:solidpod/solidpod.dart' show KeyManager, setAppDirName;
+import 'package:solidui/solidui.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'package:geopod/app.dart';
 import 'package:geopod/app_scaffold.dart';
 import 'package:geopod/constants/app.dart';
 import 'package:geopod/utils/is_desktop.dart';
-import 'package:solidpod/solidpod.dart' show KeyManager, setAppDirName;
-import 'package:solidui/solidui.dart';
-import 'package:window_manager/window_manager.dart';
 
 /// Main entry point for the application.
 

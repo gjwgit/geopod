@@ -80,22 +80,6 @@ void handleMapLifecycleChange({
   }
 }
 
-/// Handles authentication state changes.
-Future<void> handleAuthStateChange({
-  required bool wasLoggedIn,
-  required bool isNowLoggedIn,
-  required VoidCallback onLogin,
-  required VoidCallback onLogout,
-}) async {
-  if (isNowLoggedIn == wasLoggedIn) return;
-
-  if (isNowLoggedIn && !wasLoggedIn) {
-    onLogin();
-  } else if (!isNowLoggedIn && wasLoggedIn) {
-    onLogout();
-  }
-}
-
 /// Handles login process with optimistic UI updates.
 Future<List<Place>> handleLogin({required BuildContext context}) async {
   // Immediately show local places for better UX

@@ -132,12 +132,3 @@ List<Place> mergeEncryptedPlaces({
 List<Place> removeEncryptedPlaces({required List<Place> allPlaces}) {
   return allPlaces.where((p) => !p.isEncrypted).toList();
 }
-
-/// Checks if places list has any changes compared to current list.
-bool hasPlacesChanged({
-  required List<Place> currentPlaces,
-  required List<Place> newPlaces,
-}) {
-  return currentPlaces.length != newPlaces.length ||
-      !currentPlaces.every((p) => newPlaces.any((np) => np.id == p.id));
-}

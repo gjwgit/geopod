@@ -320,24 +320,21 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
     if (dailyAverages.isEmpty) return const SizedBox();
 
     final valueRange = maxValue - minValue;
-    // For precipitation, show 0 line even if all values are the same (e.g., all 0)
-    // For other data types, show "No variation" message
-    if (valueRange == 0) {
-      if (widget.dataType == 'precipitation') {
-        // Show a flat line at 0 for precipitation
-        return CustomPaint(
-          painter: _TemperatureChartPainter(
-            dailyAverages: dailyAverages,
-            minTemp: minValue,
-            maxTemp: maxValue == 0
-                ? 1.0
-                : maxValue, // Use 1.0 as max if all values are 0
-            color: Colors.blue,
-          ),
-          child: Container(),
-        );
-      }
-      return const Center(child: Text('No variation'));
+    // For precipitation or any data with no variation, still show chart
+    if (valueRange < 0.01) {
+      // Use a small range to make the flat line visible
+      final adjustedMax = minValue == 0 ? 1.0 : minValue * 1.1;
+      return CustomPaint(
+        painter: _TemperatureChartPainter(
+          dailyAverages: dailyAverages,
+          minTemp: 0, // Always start from 0 for flat lines
+          maxTemp: adjustedMax,
+          color: widget.dataType == 'precipitation'
+              ? Colors.blue
+              : Theme.of(context).colorScheme.primary,
+        ),
+        child: Container(),
+      );
     }
 
     return CustomPaint(
@@ -443,6 +440,15 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
             ),
             pw.SizedBox(height: 20),
 
+            // Chart visualization
+            pw.Text(
+              'Data Visualization',
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 10),
+            _buildPdfChart(dailyData, minValue, maxValue, unit),
+            pw.SizedBox(height: 20),
+
             // Daily data table
             pw.Text(
               'Daily Average Data',
@@ -523,6 +529,210 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         );
       }
     }
+  }
+
+  /// Build line chart for PDF using simple drawing
+  pw.Widget _buildPdfChart(
+    Map<DateTime, double> data,
+    double minValue,
+    double maxValue,
+    String unit,
+  ) {
+    if (data.isEmpty) return pw.SizedBox();
+
+    final entries = data.entries.toList();
+    final valueRange = maxValue - minValue;
+
+    // Handle flat lines (all same values)
+    final effectiveMin = minValue;
+    final effectiveMax = valueRange < 0.01
+        ? (minValue == 0 ? 1.0 : minValue * 1.1)
+        : maxValue;
+    final effectiveRange = effectiveMax - effectiveMin;
+
+    // Sample data for PDF if too many points
+    final sampledEntries = entries.length > 20
+        ? _sampleEntriesForPdf(entries, 20)
+        : entries;
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        // Chart area with grid and line
+        pw.Container(
+          height: 160,
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: PdfColors.grey400),
+          ),
+          child: pw.Stack(
+            children: [
+              // Y-axis labels
+              pw.Positioned(
+                left: 0,
+                top: 0,
+                bottom: 20,
+                child: pw.SizedBox(
+                  width: 40,
+                  child: pw.Column(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: List.generate(5, (i) {
+                      final value = effectiveMax - (effectiveRange * i / 4);
+                      return pw.Text(
+                        value.toStringAsFixed(1),
+                        style: const pw.TextStyle(fontSize: 7),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+              // Chart with grid and line
+              pw.Positioned(
+                left: 45,
+                top: 5,
+                right: 5,
+                bottom: 25,
+                child: pw.CustomPaint(
+                  painter: (canvas, size) {
+                    final chartWidth = size.x;
+                    final chartHeight = size.y;
+
+                    // Draw horizontal grid lines
+                    for (var i = 0; i <= 4; i++) {
+                      final y = chartHeight * i / 4;
+                      canvas
+                        ..setStrokeColor(PdfColors.grey300)
+                        ..setLineWidth(0.5)
+                        ..moveTo(0, y)
+                        ..lineTo(chartWidth, y)
+                        ..strokePath();
+                    }
+
+                    // Draw line chart
+                    if (sampledEntries.length >= 2) {
+                      final xStep = chartWidth / (sampledEntries.length - 1);
+
+                      canvas
+                        ..setStrokeColor(PdfColors.blue700)
+                        ..setLineWidth(2);
+
+                      // Calculate points
+                      final points = <PdfPoint>[];
+                      for (var i = 0; i < sampledEntries.length; i++) {
+                        final x = i * xStep;
+                        final normalizedY =
+                            (sampledEntries[i].value - effectiveMin) /
+                            effectiveRange;
+                        final y = chartHeight - (normalizedY * chartHeight);
+                        points.add(PdfPoint(x, y));
+                      }
+
+                      // Draw smooth curve with Catmull-Rom spline
+                      canvas.moveTo(points[0].x, points[0].y);
+
+                      if (points.length == 2) {
+                        canvas.lineTo(points[1].x, points[1].y);
+                      } else {
+                        for (var i = 0; i < points.length - 1; i++) {
+                          final p0 = i > 0 ? points[i - 1] : points[i];
+                          final p1 = points[i];
+                          final p2 = points[i + 1];
+                          final p3 = i < points.length - 2
+                              ? points[i + 2]
+                              : points[i + 1];
+
+                          final cp1x = p1.x + (p2.x - p0.x) / 6;
+                          final cp1y = p1.y + (p2.y - p0.y) / 6;
+                          final cp2x = p2.x - (p3.x - p1.x) / 6;
+                          final cp2y = p2.y - (p3.y - p1.y) / 6;
+
+                          canvas.curveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+                        }
+                      }
+
+                      canvas.strokePath();
+
+                      // Draw data points
+                      for (final point in points) {
+                        canvas
+                          ..setFillColor(PdfColors.blue700)
+                          ..drawEllipse(point.x, point.y, 2.5, 2.5)
+                          ..fillPath();
+                      }
+                    }
+                  },
+                ),
+              ),
+              // X-axis date labels
+              pw.Positioned(
+                left: 45,
+                right: 5,
+                bottom: 0,
+                child: pw.SizedBox(
+                  height: 20,
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: () {
+                      final labelStep = (sampledEntries.length / 6)
+                          .ceil()
+                          .clamp(1, 5);
+                      final labels = <pw.Widget>[];
+                      for (
+                        var i = 0;
+                        i < sampledEntries.length;
+                        i += labelStep
+                      ) {
+                        labels.add(
+                          pw.Text(
+                            DateFormat('MM/dd').format(sampledEntries[i].key),
+                            style: const pw.TextStyle(fontSize: 7),
+                          ),
+                        );
+                      }
+                      return labels;
+                    }(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        pw.SizedBox(height: 4),
+        // Info text
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+              'Curve: Catmull-Rom spline interpolation',
+              style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Sample entries for PDF to reduce clutter
+  List<MapEntry<DateTime, double>> _sampleEntriesForPdf(
+    List<MapEntry<DateTime, double>> entries,
+    int targetCount,
+  ) {
+    if (entries.length <= targetCount) return entries;
+
+    final step = entries.length / targetCount;
+    final sampled = <MapEntry<DateTime, double>>[];
+
+    for (var i = 0; i < targetCount; i++) {
+      final index = (i * step).floor().clamp(0, entries.length - 1);
+      sampled.add(entries[index]);
+    }
+
+    // Always include the last entry
+    if (sampled.last.key != entries.last.key) {
+      sampled.add(entries.last);
+    }
+
+    return sampled;
   }
 
   Color _getValueColor(double value, double min, double max) {

@@ -14,6 +14,8 @@ import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
 
+import '../../utils/ui_utils.dart';
+
 /// Build date range selector for historical weather.
 Widget buildDateRangeSelector({
   required BuildContext context,
@@ -82,12 +84,9 @@ Widget buildDateRangeSelector({
                       final daysDiff = selectedDate.difference(minDate).inDays;
                       if (daysDiff > 365) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Date range cannot exceed 365 days',
-                              ),
-                            ),
+                          SnackBarHelper.showWarning(
+                            context,
+                            'Date range cannot exceed 365 days',
                           );
                         }
                         return;

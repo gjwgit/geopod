@@ -7,6 +7,8 @@
 /// Licensed under the GNU General Public License, Version 3 (the "License").
 ///
 /// License: https://opensource.org/license/gpl-3-0.
+///
+/// Authors: Miduo
 
 library;
 
@@ -87,7 +89,8 @@ Widget buildPrecipitationDetail({
   required VoidCallback onToggle,
 }) {
   final precipValue = showDailyPrecipitation
-      ? weather.precipitation * 24 // Approximate daily total
+      ? weather.precipitation *
+            24 // Approximate daily total
       : weather.precipitation;
   final unit = showDailyPrecipitation ? 'mm/day' : 'mm/h';
 

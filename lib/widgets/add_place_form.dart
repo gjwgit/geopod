@@ -32,6 +32,8 @@ import 'package:flutter/services.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart';
+import 'package:geopod/utils/ui_utils.dart';
+import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/weather_dialog.dart';
 
 /// Result returned from AddPlaceForm containing the place data.
@@ -158,19 +160,15 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
       // Call geocoding API
       final address = await GeocodingService.getAddress(lat, lng);
 
-      if (mounted) {
-        setState(() {
-          _addressPreview = address;
-          _isLoadingAddress = false;
-        });
-      }
+      safeSetState(this, () {
+        _addressPreview = address;
+        _isLoadingAddress = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _addressPreview = 'Failed to load address';
-          _isLoadingAddress = false;
-        });
-      }
+      safeSetState(this, () {
+        _addressPreview = 'Failed to load address';
+        _isLoadingAddress = false;
+      });
     }
   }
 
@@ -258,13 +256,10 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                   longitude: lng,
                 );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Please enter valid coordinates to view weather',
-                    ),
-                    duration: Duration(seconds: 2),
-                  ),
+                SnackBarHelper.showWarning(
+                  context,
+                  'Please enter valid coordinates to view weather',
+                  duration: const Duration(seconds: 2),
                 );
               }
             },

@@ -7,6 +7,8 @@
 /// Licensed under the GNU General Public License, Version 3 (the "License").
 ///
 /// License: https://opensource.org/license/gpl-3-0.
+///
+/// Authors: Miduo
 
 library;
 
@@ -14,10 +16,7 @@ import 'dart:math';
 
 /// Sample data using Ramer-Douglas-Peucker algorithm to preserve curve characteristics.
 /// This algorithm keeps points that are important for maintaining the shape of the curve.
-Map<DateTime, double> sampleData(
-  Map<DateTime, double> data,
-  int targetCount,
-) {
+Map<DateTime, double> sampleData(Map<DateTime, double> data, int targetCount) {
   if (data.length <= targetCount) return data;
 
   final entries = data.entries.toList();

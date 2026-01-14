@@ -12,11 +12,12 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:solidpod/solidpod.dart' show authStateNotifier, isUserLoggedIn;
+import 'package:solidpod/solidpod.dart' show isUserLoggedIn;
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, PlacesCacheManager, placesChangeNotifier;
+import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/locations/edit_place_dialog.dart';
 import 'package:geopod/widgets/locations/import_operations.dart';
 import 'package:geopod/widgets/locations/locations_page_header.dart';
@@ -30,9 +31,9 @@ class LocationsPage extends StatefulWidget {
   State<LocationsPage> createState() => _LocationsPageState();
 }
 
-class _LocationsPageState extends State<LocationsPage> {
+class _LocationsPageState extends State<LocationsPage>
+    with AuthStateManagement {
   List<Place> _places = [];
-  bool _isLoggedIn = true;
   late bool _isLoading;
   String? _errorMessage;
   bool _hasLoadedOnce = false;
@@ -42,7 +43,8 @@ class _LocationsPageState extends State<LocationsPage> {
   @override
   void initState() {
     super.initState();
-    _isLoggedIn = authStateNotifier.value;
+    initAuthStateListener();
+
     final cm = PlacesCacheManager();
     final cached = cm.podPlaces;
     if (cached != null && cached.isNotEmpty) {
@@ -59,35 +61,32 @@ class _LocationsPageState extends State<LocationsPage> {
         _isLoading = true;
       }
     }
-    authStateNotifier.addListener(_onAuthStateChanged);
+
     placesChangeNotifier.addListener(_onPlacesChanged);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _verifyLoginAndRefresh(),
-    );
+    addPostFrameCallback(this, _verifyLoginAndRefresh);
   }
 
   Future<void> _verifyLoginAndRefresh() async {
     final loggedIn = await isUserLoggedIn();
     if (!mounted) return;
-    if (loggedIn != _isLoggedIn) {
-      setState(() => _isLoggedIn = loggedIn);
+
+    if (loggedIn != isLoggedIn) {
+      // Auth state changed - handled by mixin
       if (loggedIn) {
         final cm = PlacesCacheManager();
         final cached = cm.allPlaces;
         if (cached != null && cached.isNotEmpty) {
-          if (mounted) {
-            setState(() {
-              _places = cached.where((p) => !p.isLocal).toList();
-              _isLoading = false;
-              _hasLoadedOnce = true;
-            });
-          }
+          safeSetState(this, () {
+            _places = cached.where((p) => !p.isLocal).toList();
+            _isLoading = false;
+            _hasLoadedOnce = true;
+          });
         } else {
           _loadPlaces(forceRefresh: false);
         }
       } else {
         PlacesService.clearCache();
-        setState(() {
+        safeSetState(this, () {
           _places = [];
           _hasLoadedOnce = false;
         });
@@ -98,13 +97,11 @@ class _LocationsPageState extends State<LocationsPage> {
       final cached = cm.allPlaces;
       if (cached != null && cached.isNotEmpty) {
         final up = loggedIn ? cached.where((p) => !p.isLocal).toList() : cached;
-        if (mounted) {
-          setState(() {
-            _places = up;
-            _isLoading = false;
-            _hasLoadedOnce = true;
-          });
-        }
+        safeSetState(this, () {
+          _places = up;
+          _isLoading = false;
+          _hasLoadedOnce = true;
+        });
       } else {
         _loadPlaces(forceRefresh: false);
       }
@@ -113,62 +110,45 @@ class _LocationsPageState extends State<LocationsPage> {
 
   @override
   void dispose() {
-    authStateNotifier.removeListener(_onAuthStateChanged);
+    disposeAuthStateListener();
     placesChangeNotifier.removeListener(_onPlacesChanged);
     super.dispose();
   }
 
-  void _onPlacesChanged() {
-    if (mounted && _isLoggedIn) {
-      _loadPlaces(forceRefresh: false);
+  @override
+  void onAuthStateChanged(bool isLoggedIn) {
+    if (!isLoggedIn) {
+      _handleLogout();
     }
   }
 
-  void _onAuthStateChanged() {
-    final loggedIn = authStateNotifier.value;
-    if (loggedIn == _isLoggedIn) return;
-    if (!loggedIn && mounted) {
-      _handleLogout();
-    } else if (loggedIn && mounted) {
-      setState(() => _isLoggedIn = true);
+  void _onPlacesChanged() {
+    if (mounted && isLoggedIn) {
+      _loadPlaces(forceRefresh: false);
     }
   }
 
   Future<void> _handleLogout() async {
     await PlacesService.clearCache();
-    if (mounted) {
-      setState(() {
-        _isLoggedIn = false;
-        _places = [];
-        _hasLoadedOnce = false;
-      });
-    }
+    safeSetState(this, () {
+      _places = [];
+      _hasLoadedOnce = false;
+    });
   }
 
   Future<void> _loadPlaces({bool forceRefresh = false}) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      final places = await PlacesService.fetchPlaces(
-        forceRefresh: forceRefresh,
-      );
-      if (mounted) {
-        setState(() {
-          _places = places;
-          _isLoading = false;
-          _hasLoadedOnce = true;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
-          _isLoading = false;
-        });
-      }
-    }
+    await executeWithLoading(
+      state: this,
+      setLoading: (loading) => _isLoading = loading,
+      setError: (error) => _errorMessage = error,
+      operation: () async {
+        final places = await PlacesService.fetchPlaces(
+          forceRefresh: forceRefresh,
+        );
+        _places = places;
+        _hasLoadedOnce = true;
+      },
+    );
   }
 
   Future<void> _refresh() async => await _loadPlaces(forceRefresh: true);
@@ -195,29 +175,39 @@ class _LocationsPageState extends State<LocationsPage> {
   Future<void> _deletePlace(Place place) async {
     final confirmed = await showDeletePlaceConfirmation(context, place);
     if (!confirmed || !mounted) return;
+
     final removed = place;
     final ri = _places.indexOf(place);
-    setState(() => _places.remove(place));
+    safeSetState(this, () => _places.remove(place));
+
     final success = await deletePlaceWithFeedback(context, place);
     if (!mounted) return;
+
     if (!success) {
-      setState(() => _places.insert(ri.clamp(0, _places.length), removed));
+      safeSetState(
+        this,
+        () => _places.insert(ri.clamp(0, _places.length), removed),
+      );
     }
   }
 
   Future<void> _clearAllPlaces() async {
     if (_userPlaces.isEmpty) return;
+
     final confirmed = await showClearAllConfirmation(
       context,
       _userPlaces.length,
     );
     if (!confirmed || !mounted) return;
+
     final removed = _userPlaces.toList();
-    setState(() => _places.removeWhere((p) => !p.isLocal));
+    safeSetState(this, () => _places.removeWhere((p) => !p.isLocal));
+
     final success = await clearAllPlacesWithFeedback(context, removed.length);
     if (!mounted) return;
+
     if (!success) {
-      setState(() => _places.insertAll(0, removed));
+      safeSetState(this, () => _places.insertAll(0, removed));
     }
   }
 
@@ -227,22 +217,28 @@ class _LocationsPageState extends State<LocationsPage> {
       builder: (_) => EditPlaceDialog(place: place),
     );
     if (result == null || !mounted) return;
+
     final coordsChanged = result.lat != place.lat || result.lng != place.lng;
     final old = place;
     final i = _places.indexOf(place);
-    setState(() {
+
+    safeSetState(this, () {
       if (i != -1) {
         _places[i] = result;
       }
     });
+
     showUpdatingPlaceSnackbar(context, coordsChanged);
+
     final success = await PlacesService.updatePlace(
       result,
       context,
       const LocationsPage(),
       coordinatesChanged: coordsChanged,
     );
+
     if (!mounted) return;
+
     if (success) {
       if (coordsChanged) {
         await _loadPlaces();
@@ -250,7 +246,7 @@ class _LocationsPageState extends State<LocationsPage> {
       }
       showUpdateSuccessSnackbar(context);
     } else {
-      setState(() {
+      safeSetState(this, () {
         if (i != -1) {
           _places[i] = old;
         }
@@ -261,7 +257,7 @@ class _LocationsPageState extends State<LocationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isLoggedIn) return const NotLoggedInView();
+    if (!isLoggedIn) return const NotLoggedInView();
     if (_isLoading && !_hasLoadedOnce) return const LoadingView();
     if (_errorMessage != null) {
       return ErrorView(errorMessage: _errorMessage!, onRetry: _refresh);

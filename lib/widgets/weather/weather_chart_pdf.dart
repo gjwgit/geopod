@@ -22,6 +22,7 @@ import 'package:printing/printing.dart';
 import 'package:web/web.dart' as web;
 
 import '../../models/hourly_weather_data.dart';
+import '../../utils/ui_utils.dart';
 import 'weather_chart_sampling.dart';
 
 /// Export weather data to PDF.
@@ -50,10 +51,7 @@ Future<void> exportWeatherChartToPdf(
             level: 0,
             child: pw.Text(
               'Weather Data Report',
-              style: pw.TextStyle(
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-              ),
+              style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
             ),
           ),
           pw.SizedBox(height: 20),
@@ -138,9 +136,7 @@ Future<void> exportWeatherChartToPdf(
           pw.TableHelper.fromTextArray(
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
             cellStyle: const pw.TextStyle(fontSize: 10),
-            headerDecoration: const pw.BoxDecoration(
-              color: PdfColors.grey300,
-            ),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
             cellHeight: 25,
             cellAlignments: {
               0: pw.Alignment.centerLeft,
@@ -184,11 +180,10 @@ Future<void> exportWeatherChartToPdf(
       web.URL.revokeObjectURL(url);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PDF downloaded successfully'),
-            duration: Duration(seconds: 2),
-          ),
+        SnackBarHelper.showSuccess(
+          context,
+          'PDF downloaded successfully',
+          duration: const Duration(seconds: 2),
         );
       }
     } else {
@@ -198,11 +193,10 @@ Future<void> exportWeatherChartToPdf(
   } catch (e) {
     // Show error message if PDF export fails
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to export PDF: $e'),
-          duration: const Duration(seconds: 3),
-        ),
+      SnackBarHelper.showError(
+        context,
+        'Failed to export PDF: $e',
+        duration: const Duration(seconds: 3),
       );
     }
   }
@@ -350,15 +344,12 @@ pw.Widget buildPdfChart(
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: () {
-                    final labelStep = (sampledEntries.length / 6)
-                        .ceil()
-                        .clamp(1, 5);
+                    final labelStep = (sampledEntries.length / 6).ceil().clamp(
+                      1,
+                      5,
+                    );
                     final labels = <pw.Widget>[];
-                    for (
-                      var i = 0;
-                      i < sampledEntries.length;
-                      i += labelStep
-                    ) {
+                    for (var i = 0; i < sampledEntries.length; i += labelStep) {
                       labels.add(
                         pw.Text(
                           DateFormat('MM/dd').format(sampledEntries[i].key),

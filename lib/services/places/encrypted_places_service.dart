@@ -3,9 +3,9 @@
 /// Encrypted places are stored in the 'encryption data' directory
 /// using the solidpod encryption mechanisms.
 ///
-// Time-stamp: <2026-01-06>
+// Time-stamp: <2026-01-14>
 ///
-/// Copyright (C) 2025, Software Innovation Institute, ANU.
+/// Copyright (C) 2025-2026, Software Innovation Institute, ANU.
 ///
 /// Licensed under the GNU General Public License, Version 3 (the "License").
 ///
@@ -15,21 +15,14 @@
 
 library;
 
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart' show SecurityKeyStatusChangedNotification;
 
 import 'package:geopod/models/place.dart';
-
-/// Directory name for encrypted places data.
-/// Using underscore instead of space to avoid URL encoding issues.
-const String encryptedPlacesDirName = 'encrypted_data';
-
-/// File name for encrypted places.
-const String encryptedPlacesFileName = 'encrypted_places.ttl';
+import 'package:geopod/services/places/encrypted_places_io.dart';
+import 'package:geopod/widgets/encryption/security_key_dialog.dart';
 
 /// Service for managing encrypted places.
 class EncryptedPlacesService {
@@ -41,30 +34,8 @@ class EncryptedPlacesService {
   /// Flag to track if directory has been verified this session.
   static bool _directoryVerified = false;
 
-  /// Get the directory path for encrypted places (relative to data dir).
-  /// This is used with PathType.relativeToData, so just the subdirectory name.
-  static String getEncryptedPlacesDirPath() {
-    return encryptedPlacesDirName;
-  }
-
-  /// Get the file path for encrypted places (relative to data dir).
-  /// This is used with PathType.relativeToData.
-  static String getEncryptedPlacesFilePath() {
-    return '$encryptedPlacesDirName/$encryptedPlacesFileName';
-  }
-
-  /// Get the full file path for encrypted places (relative to POD root).
-  /// This is used with functions like getFileUrl that expect full path.
-  static Future<String> getFullEncryptedPlacesFilePath() async {
-    final dataPath = await getDataDirPath();
-    return '$dataPath/$encryptedPlacesDirName/$encryptedPlacesFileName';
-  }
-
-  /// Get the full directory path for encrypted places (relative to POD root).
-  static Future<String> getFullEncryptedPlacesDirPath() async {
-    final dataPath = await getDataDirPath();
-    return '$dataPath/$encryptedPlacesDirName';
-  }
+  /// Flag to track if security key has been verified this session.
+  static bool _securityKeyVerified = false;
 
   /// Reset session state (call on logout).
   static void resetSessionState() {
@@ -72,9 +43,6 @@ class EncryptedPlacesService {
     _directoryVerified = false;
     _securityKeyVerified = false;
   }
-
-  /// Flag to track if security key has been verified this session.
-  static bool _securityKeyVerified = false;
 
   /// Check if security key is available for encryption operations.
   static Future<bool> isSecurityKeyAvailable() async {
@@ -116,35 +84,14 @@ class EncryptedPlacesService {
     // Check if encryption has been set up
     if (!await hasEncryptionSetup()) {
       if (!context.mounted) return false;
-      await showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Encryption Not Set Up'),
-            ],
-          ),
-          content: const Text(
-            'Encryption has not been set up for your Pod. '
-            'Please set up encryption first through the initial setup process.',
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      await showEncryptionNotSetupDialog(context);
       return false;
     }
 
     // Prompt for security key using dialog mode (not full-screen)
     // This avoids navigation issues when user cancels
     if (!context.mounted) return false;
-    final result = await _showSecurityKeyDialog(context);
+    final result = await showSecurityKeyDialog(context);
     if (result) {
       _securityKeyVerified = true;
       // Notify the status bar that security key is now available
@@ -158,182 +105,6 @@ class EncryptedPlacesService {
     return result;
   }
 
-  /// Shows a dialog to prompt user for security key.
-  /// Returns true if key was successfully entered and verified.
-  static Future<bool> _showSecurityKeyDialog(BuildContext context) async {
-    final keyController = TextEditingController();
-    bool result = false;
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        bool isLoading = false;
-        bool obscureText = true;
-        String? errorText;
-
-        return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.key, color: Colors.blue),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Enter Security Key',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Please enter your security key to access encrypted data.',
-                  style: TextStyle(fontSize: 13),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: keyController,
-                  obscureText: obscureText,
-                  decoration: InputDecoration(
-                    labelText: 'Security Key',
-                    border: const OutlineInputBorder(),
-                    errorText: errorText,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscureText ? Icons.visibility_off : Icons.visibility,
-                      ),
-                      onPressed: () =>
-                          setState(() => obscureText = !obscureText),
-                    ),
-                  ),
-                  enabled: !isLoading,
-                  onSubmitted: (_) async {
-                    if (keyController.text.isNotEmpty && !isLoading) {
-                      setState(() {
-                        isLoading = true;
-                        errorText = null;
-                      });
-                      try {
-                        final verificationKey =
-                            await KeyManager.getVerificationKey();
-                        if (verifySecurityKey(
-                          keyController.text,
-                          verificationKey,
-                        )) {
-                          await KeyManager.setSecurityKey(keyController.text);
-                          result = true;
-                          if (ctx.mounted) Navigator.pop(ctx);
-                        } else {
-                          setState(() {
-                            errorText = 'Incorrect security key';
-                            isLoading = false;
-                          });
-                        }
-                      } catch (e) {
-                        setState(() {
-                          errorText = 'Error verifying key';
-                          isLoading = false;
-                        });
-                      }
-                    }
-                  },
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: isLoading ? null : () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: isLoading
-                    ? null
-                    : () async {
-                        if (keyController.text.isEmpty) {
-                          setState(() => errorText = 'Please enter a key');
-                          return;
-                        }
-                        setState(() {
-                          isLoading = true;
-                          errorText = null;
-                        });
-                        try {
-                          final verificationKey =
-                              await KeyManager.getVerificationKey();
-                          if (verifySecurityKey(
-                            keyController.text,
-                            verificationKey,
-                          )) {
-                            await KeyManager.setSecurityKey(keyController.text);
-                            result = true;
-                            if (ctx.mounted) Navigator.pop(ctx);
-                          } else {
-                            setState(() {
-                              errorText = 'Incorrect security key';
-                              isLoading = false;
-                            });
-                          }
-                        } catch (e) {
-                          setState(() {
-                            errorText = 'Error verifying key';
-                            isLoading = false;
-                          });
-                        }
-                      },
-                child: isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Confirm'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    keyController.dispose();
-    return result;
-  }
-
-  /// Ensure the encrypted places directory exists.
-  /// Uses session caching to avoid repeated server checks.
-  static Future<bool> ensureEncryptedPlacesDir() async {
-    // Skip if already verified this session
-    if (_directoryVerified) {
-      return true;
-    }
-
-    try {
-      // Use full path for getDirUrl (it expects path relative to POD root)
-      final fullDirPath = await getFullEncryptedPlacesDirPath();
-      final dirUrl = await getDirUrl(fullDirPath);
-
-      final status = await checkResourceStatus(dirUrl, isFile: false);
-      if (status == ResourceStatus.notExist) {
-        // Create the directory with encryption key inheritance
-        // setInheritKeyDir uses PathType.relativeToData by default
-        final dirPath = getEncryptedPlacesDirPath();
-        await setInheritKeyDir(dirPath);
-        debugPrint('Created encrypted places directory: $dirPath');
-      }
-      _directoryVerified = true;
-      return true;
-    } catch (e) {
-      debugPrint('Failed to ensure encrypted places directory: $e');
-      return false;
-    }
-  }
-
   /// Read encrypted places from Pod.
   static Future<List<Place>> fetchEncryptedPlaces({
     bool forceRefresh = false,
@@ -342,61 +113,8 @@ class EncryptedPlacesService {
       return _cachedEncryptedPlaces!;
     }
 
-    final places = <Place>[];
-
-    try {
-      if (!authStateNotifier.value) {
-        return places;
-      }
-
-      // Use full path for getFileUrl (it expects path relative to POD root)
-      final fullFilePath = await getFullEncryptedPlacesFilePath();
-      final fileUrl = await getFileUrl(fullFilePath);
-
-      // Check if file exists
-      final status = await checkResourceStatus(fileUrl);
-      if (status != ResourceStatus.exist) {
-        return places;
-      }
-
-      // Read encrypted content using relative path (readPod uses relativeToData)
-      final filePath = getEncryptedPlacesFilePath();
-      final content = await readPod(filePath);
-
-      if (content == SolidFunctionCallStatus.notLoggedIn.toString() ||
-          content == SolidFunctionCallStatus.fail.toString()) {
-        return places;
-      }
-
-      // Parse JSON content directly
-      try {
-        final jsonList = jsonDecode(content);
-        if (jsonList is List) {
-          for (final item in jsonList) {
-            if (item is Map<String, dynamic>) {
-              final place = Place.fromJson(
-                item,
-                isLocalSource: false,
-                isEncryptedSource: true,
-              );
-              debugPrint(
-                'Loaded encrypted place: ${place.id}, isEncrypted=${place.isEncrypted}',
-              );
-              places.add(place);
-            }
-          }
-        }
-        debugPrint('Total encrypted places loaded: ${places.length}');
-      } catch (e) {
-        debugPrint('Failed to parse encrypted places JSON: $e');
-      }
-
-      places.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      _cachedEncryptedPlaces = places;
-    } catch (e) {
-      debugPrint('Error fetching encrypted places: $e');
-    }
-
+    final places = await fetchEncryptedPlacesFromPod();
+    _cachedEncryptedPlaces = places;
     return places;
   }
 
@@ -406,46 +124,19 @@ class EncryptedPlacesService {
     BuildContext context,
     Widget child,
   ) async {
-    try {
-      // Ensure security key is available
-      if (!await ensureSecurityKey(context, child)) {
-        return false;
-      }
-
-      // Ensure directory exists
-      if (!await ensureEncryptedPlacesDir()) {
-        return false;
-      }
-
-      // Use relative paths (writePod uses PathType.relativeToData by default)
-      final filePath = getEncryptedPlacesFilePath();
-      final dirPath = getEncryptedPlacesDirPath();
-
-      // Convert places to JSON
-      final jsonList = places.map((p) => p.toJson()).toList();
-      final jsonContent = jsonEncode(jsonList);
-
-      // Write encrypted file with key inheritance from directory
-      // Note: When using inheritKeyFrom, the encryption is handled by the
-      // directory's key, not by a file-specific individual key. So we set
-      // encrypted: false to avoid the "encryption status changed" dialog.
-      // The file will still be encrypted via the inherited directory key.
-      await writePod(
-        filePath,
-        jsonContent,
-        encrypted: false,
-        inheritKeyFrom: dirPath,
-      );
-
-      // writePod returns void in 0.9.x, assume success if no exception
-      {
-        _cachedEncryptedPlaces = places;
-        return true;
-      }
-    } catch (e) {
-      debugPrint('Error writing encrypted places: $e');
+    // Ensure security key is available
+    if (!await ensureSecurityKey(context, child)) {
       return false;
     }
+
+    // Write to Pod using IO helper
+    final success = await writeEncryptedPlacesToPod(places, _directoryVerified);
+    if (success) {
+      // Update directory verification flag if write succeeded
+      _directoryVerified = true;
+      _cachedEncryptedPlaces = places;
+    }
+    return success;
   }
 
   /// Add a single encrypted place.

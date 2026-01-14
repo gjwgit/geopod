@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 import '../models/hourly_weather_data.dart';
 import '../models/weather_data.dart';
 import '../services/weather_service.dart';
+import '../utils/ui_utils.dart';
+import '../utils/widget_utils.dart';
 import 'weather/weather_date_selector.dart';
 import 'weather/weather_view_widgets.dart';
 
@@ -86,19 +88,15 @@ class _WeatherDialogState extends State<WeatherDialog>
         latitude: widget.latitude,
         longitude: widget.longitude,
       );
-      if (mounted) {
-        setState(() {
-          _weatherData = weather;
-          _isLoading = false;
-        });
-      }
+      safeSetState(this, () {
+        _weatherData = weather;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
-          _isLoading = false;
-        });
-      }
+      safeSetState(this, () {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -115,20 +113,16 @@ class _WeatherDialogState extends State<WeatherDialog>
         longitude: widget.longitude,
         days: 10,
       );
-      if (mounted) {
-        setState(() {
-          _pastWeatherData = pastWeather;
-          _isLoadingPast = false;
-        });
-      }
+      safeSetState(this, () {
+        _pastWeatherData = pastWeather;
+        _isLoadingPast = false;
+      });
     } catch (e) {
+      safeSetState(this, () {
+        _isLoadingPast = false;
+      });
       if (mounted) {
-        setState(() {
-          _isLoadingPast = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load past weather: $e')),
-        );
+        SnackBarHelper.showError(context, 'Failed to load past weather: $e');
       }
     }
   }
@@ -154,24 +148,21 @@ class _WeatherDialogState extends State<WeatherDialog>
         startDate: selectedStartDate,
         endDate: selectedEndDate,
       );
-      if (mounted) {
-        setState(() {
-          _historicalWeatherData = historicalWeather;
-          _historicalStartDate = selectedStartDate;
-          _historicalEndDate = selectedEndDate;
-          _isLoadingHistorical = false;
-        });
-      }
+      safeSetState(this, () {
+        _historicalWeatherData = historicalWeather;
+        _historicalStartDate = selectedStartDate;
+        _historicalEndDate = selectedEndDate;
+        _isLoadingHistorical = false;
+      });
     } catch (e) {
+      safeSetState(this, () {
+        _isLoadingHistorical = false;
+      });
       if (mounted) {
-        setState(() {
-          _isLoadingHistorical = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load historical weather: $e'),
-            duration: const Duration(seconds: 5),
-          ),
+        SnackBarHelper.showError(
+          context,
+          'Failed to load historical weather: $e',
+          duration: const Duration(seconds: 5),
         );
       }
     }

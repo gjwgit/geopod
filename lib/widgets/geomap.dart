@@ -34,15 +34,15 @@ import 'package:geopod/widgets/map/geomap_place_handlers.dart';
 import 'package:geopod/widgets/map/geomap_places_loader.dart';
 import 'package:geopod/widgets/map/geomap_settings.dart';
 import 'package:geopod/widgets/map/geomap_settings_loader.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:solidpod/solidpod.dart' show authStateNotifier;
-import 'package:solidui/solidui.dart';
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
 import 'package:geopod/widgets/map/geomap_state_mixin.dart';
 import 'package:geopod/widgets/map/geomap_viewport_logic.dart';
 import 'package:geopod/widgets/map/map_floating_buttons.dart';
 import 'package:geopod/widgets/map/map_overlay_buttons.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:solidpod/solidpod.dart' show authStateNotifier;
+import 'package:solidui/solidui.dart';
 import 'package:geopod/widgets/map/place_save_handler.dart';
 import 'package:geopod/widgets/map_settings_dialog.dart';
 

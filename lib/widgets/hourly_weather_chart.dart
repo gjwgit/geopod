@@ -491,11 +491,9 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       if (kIsWeb) {
         // For Web: Download PDF file directly
         final bytes = await pdf.save();
-        // Convert Uint8List to JSArray for web
-        final jsBytes = bytes.toJS;
-        final parts = <JSAny>[jsBytes].toJS;
+        // Convert Uint8List to JSUint8Array for web
         final blob = web.Blob(
-          parts,
+          [bytes.toJS].toJS,
           web.BlobPropertyBag(type: 'application/pdf'),
         );
         final url = web.URL.createObjectURL(blob);

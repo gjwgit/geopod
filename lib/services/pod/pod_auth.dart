@@ -3,7 +3,7 @@
 /// Provides access to authentication tokens and user information
 /// without depending on solidpod's complex encryption system.
 ///
-// Time-stamp: <2026-01-01 Miduo>
+// Time-stamp: <Thursday 2026-01-15 21:09:50 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -69,8 +69,8 @@ class PodAuth {
 
   /// Extract POD base URL from WebID.
   ///
-  /// Example: `https://user.solidcommunity.net/profile/card#me`
-  /// Returns: `https://user.solidcommunity.net/`
+  /// Example: `https://pods.solidcommunity.au/ profile/card#me`
+  /// Returns: `https://pods.solidcommunity.au/`
   ///
   /// Uses the same approach as solidpod to handle ports and custom paths.
   static Future<String?> getPodBaseUrl() async {

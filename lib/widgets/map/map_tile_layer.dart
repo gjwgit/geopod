@@ -56,8 +56,6 @@ Widget buildMapTileLayer({
       subdomains: mapSettings.mapSource.subdomains,
       userAgentPackageName: 'com.togaware.geopod',
       tileProvider: tileProvider,
-      // Keep retrying failed tiles in visible area, allow slow networks to load
-      evictErrorTileStrategy: EvictErrorTileStrategy.notVisibleRespectMargin,
       keepBuffer: 1,
       panBuffer: 1,
       maxZoom: 19,

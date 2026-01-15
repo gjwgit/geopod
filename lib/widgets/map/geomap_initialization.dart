@@ -17,7 +17,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 
 /// Initializes animation controller and listeners for map widget.
 void initializeMapState({
@@ -79,5 +78,5 @@ void handleMapLifecycleChange({
 
 /// Creates tile provider for map tiles.
 TileProvider createTileProvider() {
-  return CancellableNetworkTileProvider();
+  return NetworkTileProvider();
 }

@@ -353,7 +353,7 @@ jobs:
         run: flutter pub get
 
       - name: Enable macOS desktop
-        run: flutter create --platforms=macos .
+        run: flutter create --platforms=macos --org=com.togaware .
 
       - name: Remove Podfile and project.yaml
         # 20260102 gjw These cause the default basic build to fail as

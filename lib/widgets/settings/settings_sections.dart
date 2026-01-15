@@ -82,6 +82,7 @@ Widget buildVisibilitySection({
   required bool showLocalPlaces,
   required bool showEncryptedPlaces,
   required bool isLoadingEncrypted,
+  required bool isLoggedIn,
   required void Function(bool) onShowLocalChanged,
   required Function(bool) onShowEncryptedChanged, // Can be async
 }) {
@@ -107,27 +108,30 @@ Widget buildVisibilitySection({
           color: showLocalPlaces ? Colors.green : Colors.grey,
         ),
       ),
-      const SizedBox(height: 8),
-      SwitchListTile(
-        title: const Text('Show Encrypted Places'),
-        subtitle: Text(
-          isLoadingEncrypted
-              ? 'Loading encrypted data...'
-              : 'Display encrypted places (requires key)',
+      // Only show encrypted places option when logged in
+      if (isLoggedIn) ...[
+        const SizedBox(height: 8),
+        SwitchListTile(
+          title: const Text('Show Encrypted Places'),
+          subtitle: Text(
+            isLoadingEncrypted
+                ? 'Loading encrypted data...'
+                : 'Display encrypted places (requires key)',
+          ),
+          value: showEncryptedPlaces,
+          onChanged: isLoadingEncrypted ? null : onShowEncryptedChanged,
+          secondary: isLoadingEncrypted
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(
+                  showEncryptedPlaces ? Icons.lock_open : Icons.lock,
+                  color: showEncryptedPlaces ? Colors.purple : Colors.grey,
+                ),
         ),
-        value: showEncryptedPlaces,
-        onChanged: isLoadingEncrypted ? null : onShowEncryptedChanged,
-        secondary: isLoadingEncrypted
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Icon(
-                showEncryptedPlaces ? Icons.lock_open : Icons.lock,
-                color: showEncryptedPlaces ? Colors.purple : Colors.grey,
-              ),
-      ),
+      ],
     ],
   );
 }

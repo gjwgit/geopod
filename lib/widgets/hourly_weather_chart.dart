@@ -27,6 +27,7 @@ class HourlyWeatherChart extends StatefulWidget {
     this.dataType = 'temperature',
     this.latitude,
     this.longitude,
+    this.address,
     super.key,
   });
 
@@ -35,6 +36,7 @@ class HourlyWeatherChart extends StatefulWidget {
   dataType; // 'temperature', 'humidity', 'wind_speed', 'precipitation'
   final double? latitude;
   final double? longitude;
+  final String? address;
 
   @override
   State<HourlyWeatherChart> createState() => _HourlyWeatherChartState();
@@ -199,6 +201,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
               unit: unit,
               latitude: widget.latitude,
               longitude: widget.longitude,
+              address: widget.address,
             ),
             icon: const Icon(Icons.picture_as_pdf, size: 18),
             label: const Text('Export to PDF'),

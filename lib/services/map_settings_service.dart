@@ -30,6 +30,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:solidpod/solidpod.dart' show authStateNotifier;
 
 import 'package:geopod/services/map_settings_pod.dart';
 import 'package:geopod/services/map_source.dart';
@@ -267,7 +268,6 @@ class MapSettingsService {
   static Future<MapSettings> loadSettings() async {
     try {
       // Always load from SharedPreferences first (fast, no network)
-      debugPrint('loadSettings: loading from SharedPreferences');
       return await _loadFromPrefs();
     } catch (e) {
       debugPrint('Error loading settings: $e');
@@ -285,19 +285,23 @@ class MapSettingsService {
         return await _loadFromPrefs();
       }
 
-      // No local cache - try to load from POD first (first login scenario)
-      debugPrint('loadSettingsSmart: no local cache, trying POD...');
-      final podData = await readSettingsFromPod();
-      if (podData != null) {
-        debugPrint('loadSettingsSmart: loaded from POD');
-        final settings = _settingsFromJson(podData);
-        // Save to local cache
-        await _saveToPrefs(settings);
-        return settings;
+      // No local cache - only try POD if logged in
+      if (authStateNotifier.value) {
+        debugPrint('loadSettingsSmart: no local cache, trying POD...');
+        final podData = await readSettingsFromPod();
+        if (podData != null) {
+          debugPrint('loadSettingsSmart: loaded from POD');
+          final settings = _settingsFromJson(podData);
+          // Save to local cache
+          await _saveToPrefs(settings);
+          return settings;
+        }
+        debugPrint('loadSettingsSmart: POD empty, using defaults');
+      } else {
+        debugPrint('loadSettingsSmart: not logged in, using defaults');
       }
 
-      // POD also empty - use defaults
-      debugPrint('loadSettingsSmart: POD empty, using defaults');
+      // Use defaults
       return MapSettings(mapSource: MapSettings.getDefaultMapSource());
     } catch (e) {
       debugPrint('Error in loadSettingsSmart: $e');
@@ -383,6 +387,12 @@ class MapSettingsService {
   /// Call this after login to ensure local settings match POD.
   /// Returns the synced settings if POD has data, null otherwise.
   static Future<MapSettings?> syncFromPod() async {
+    // CRITICAL: Only sync if logged in
+    if (!authStateNotifier.value) {
+      debugPrint('syncFromPod: skipped (not logged in)');
+      return null;
+    }
+
     try {
       final podData = await readSettingsFromPod();
       if (podData != null) {

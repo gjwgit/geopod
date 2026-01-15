@@ -36,6 +36,7 @@ Future<void> exportWeatherChartToPdf(
   required String unit,
   double? latitude,
   double? longitude,
+  String? address,
 }) async {
   try {
     final pdf = pw.Document();
@@ -57,10 +58,17 @@ Future<void> exportWeatherChartToPdf(
           pw.SizedBox(height: 20),
 
           // Location info
+          if (address != null && address.isNotEmpty) ...[
+            pw.Text(
+              'Location: $address',
+              style: const pw.TextStyle(fontSize: 12),
+            ),
+            pw.SizedBox(height: 4),
+          ],
           if (latitude != null && longitude != null)
             pw.Text(
-              'Location: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
-              style: const pw.TextStyle(fontSize: 12),
+              'Coordinates: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
+              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
             ),
           pw.SizedBox(height: 10),
 
@@ -155,7 +163,7 @@ Future<void> exportWeatherChartToPdf(
 
           // Footer
           pw.Text(
-            'Generated: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}',
+            'Generated: ${DateFormat('yyyy-MM-dd HH:mm z').format(DateTime.now())}',
             style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
           ),
         ],

@@ -113,6 +113,7 @@ void showMarkerDetailsSheet(
                     context: sheetContext,
                     latitude: marker.position.latitude,
                     longitude: marker.position.longitude,
+                    address: marker.address,
                   );
                 },
                 tooltip: 'View Weather',

@@ -109,6 +109,7 @@ Future<bool> executeWithLoading({
   try {
     await operation();
     if (state.mounted) {
+      // CRITICAL: Execute setState to trigger rebuild after operation completes
       safeSetState(state, () => setLoading(false));
     }
     return true;

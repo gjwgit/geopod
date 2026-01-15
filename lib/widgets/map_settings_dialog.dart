@@ -29,6 +29,8 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 
+import 'package:solidpod/solidpod.dart' show authStateNotifier;
+
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/widgets/settings/settings_actions.dart';
@@ -169,6 +171,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 showLocalPlaces: _showLocalPlaces,
                 showEncryptedPlaces: _showEncryptedPlaces,
                 isLoadingEncrypted: _isLoadingEncrypted,
+                isLoggedIn: authStateNotifier.value,
                 onShowLocalChanged: (value) {
                   setState(() => _showLocalPlaces = value);
                   _saveAndNotify();

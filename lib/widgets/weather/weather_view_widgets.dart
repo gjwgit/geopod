@@ -46,6 +46,7 @@ Widget buildCurrentWeatherView({
   required WeatherData weatherData,
   required double latitude,
   required double longitude,
+  String? address,
   required bool showDailyPrecipitation,
   required VoidCallback onTogglePrecipitation,
 }) {
@@ -58,9 +59,17 @@ Widget buildCurrentWeatherView({
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Location
+        if (address != null && address.isNotEmpty) ...[
+          Text(address, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 4),
+        ],
         Text(
-          'Location: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
-          style: Theme.of(context).textTheme.bodySmall,
+          'Coordinates: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(
+              context,
+            ).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -127,6 +136,7 @@ Widget buildPastWeatherView({
   required HourlyWeatherData? pastWeatherData,
   required double latitude,
   required double longitude,
+  String? address,
   required String selectedDataType,
   required void Function(String) onDataTypeChanged,
 }) {
@@ -148,9 +158,17 @@ Widget buildPastWeatherView({
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
+        if (address != null && address.isNotEmpty) ...[
+          Text(address, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 4),
+        ],
         Text(
-          'Location: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
-          style: Theme.of(context).textTheme.bodySmall,
+          'Coordinates: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(
+              context,
+            ).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+          ),
         ),
         const SizedBox(height: 16),
         buildDataTypeSelector(
@@ -163,6 +181,7 @@ Widget buildPastWeatherView({
           dataType: selectedDataType,
           latitude: latitude,
           longitude: longitude,
+          address: address,
         ),
       ],
     ),
@@ -176,6 +195,7 @@ Widget buildHistoricalWeatherView({
   required HourlyWeatherData? historicalWeatherData,
   required double latitude,
   required double longitude,
+  String? address,
   required String selectedDataType,
   required Widget dateRangeSelector,
   required void Function(String) onDataTypeChanged,
@@ -231,9 +251,17 @@ Widget buildHistoricalWeatherView({
         const SizedBox(height: 12),
         dateRangeSelector,
         const SizedBox(height: 8),
+        if (address != null && address.isNotEmpty) ...[
+          Text(address, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 4),
+        ],
         Text(
-          'Location: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
-          style: Theme.of(context).textTheme.bodySmall,
+          'Coordinates: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(
+              context,
+            ).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+          ),
         ),
         const SizedBox(height: 16),
         buildDataTypeSelector(
@@ -246,6 +274,7 @@ Widget buildHistoricalWeatherView({
           dataType: selectedDataType,
           latitude: latitude,
           longitude: longitude,
+          address: address,
         ),
       ],
     ),

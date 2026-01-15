@@ -254,6 +254,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                   context: context,
                   latitude: lat,
                   longitude: lng,
+                  address: _addressPreview,
                 );
               } else {
                 SnackBarHelper.showWarning(

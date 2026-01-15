@@ -139,13 +139,29 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         final result = await verifyLoginStateAndLoadData(
           currentIsLoggedIn: isLoggedIn,
         );
-        if (mounted && result.loginStateChanged) {
+        if (!mounted) return;
+
+        // Update state if login changed
+        if (result.loginStateChanged) {
           setState(() {
             isLoggedIn = result.actuallyLoggedIn;
             if (result.places != null) {
               allPlaces = result.places!;
             }
           });
+        }
+
+        // Load fresh data if needed
+        if (result.needsRefresh) {
+          final places = await loadAllPlaces(forceRefresh: false);
+          if (mounted) {
+            setState(() => allPlaces = places);
+          }
+        } else if (result.places != null && !result.loginStateChanged) {
+          // Use cached places if no refresh needed and state didn't change
+          if (mounted) {
+            setState(() => allPlaces = result.places!);
+          }
         }
       },
     );

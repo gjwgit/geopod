@@ -37,13 +37,13 @@ class PlaceListTile extends StatelessWidget {
   const PlaceListTile({
     super.key,
     required this.place,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
   });
 
   final Place place;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -112,16 +112,18 @@ class PlaceListTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: Icon(Icons.edit_outlined, color: Colors.blue.shade600),
-              onPressed: onEdit,
-              tooltip: 'Edit',
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: onDelete,
-              tooltip: 'Delete',
-            ),
+            if (onEdit != null)
+              IconButton(
+                icon: Icon(Icons.edit_outlined, color: Colors.blue.shade600),
+                onPressed: onEdit,
+                tooltip: 'Edit',
+              ),
+            if (onDelete != null)
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                onPressed: onDelete,
+                tooltip: 'Delete',
+              ),
           ],
         ),
         isThreeLine: true,

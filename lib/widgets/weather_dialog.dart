@@ -25,11 +25,15 @@ Future<void> showWeatherDialog({
   required BuildContext context,
   required double latitude,
   required double longitude,
+  String? address,
 }) async {
   await showDialog<void>(
     context: context,
-    builder: (context) =>
-        WeatherDialog(latitude: latitude, longitude: longitude),
+    builder: (context) => WeatherDialog(
+      latitude: latitude,
+      longitude: longitude,
+      address: address,
+    ),
   );
 }
 
@@ -38,11 +42,13 @@ class WeatherDialog extends StatefulWidget {
   const WeatherDialog({
     required this.latitude,
     required this.longitude,
+    this.address,
     super.key,
   });
 
   final double latitude;
   final double longitude;
+  final String? address;
 
   @override
   State<WeatherDialog> createState() => _WeatherDialogState();
@@ -246,6 +252,7 @@ class _WeatherDialogState extends State<WeatherDialog>
       weatherData: _weatherData!,
       latitude: widget.latitude,
       longitude: widget.longitude,
+      address: widget.address,
       showDailyPrecipitation: _showDailyPrecipitation,
       onTogglePrecipitation: () {
         setState(() {
@@ -262,6 +269,7 @@ class _WeatherDialogState extends State<WeatherDialog>
       pastWeatherData: _pastWeatherData,
       latitude: widget.latitude,
       longitude: widget.longitude,
+      address: widget.address,
       selectedDataType: _selectedDataType,
       onDataTypeChanged: (newType) {
         setState(() {
@@ -278,6 +286,7 @@ class _WeatherDialogState extends State<WeatherDialog>
       historicalWeatherData: _historicalWeatherData,
       latitude: widget.latitude,
       longitude: widget.longitude,
+      address: widget.address,
       selectedDataType: _selectedDataType,
       dateRangeSelector: _buildDateRangeSelector(),
       onDataTypeChanged: (newType) {

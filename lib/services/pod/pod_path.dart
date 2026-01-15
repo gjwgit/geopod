@@ -2,7 +2,7 @@
 ///
 /// Manages file and directory paths within the POD structure.
 ///
-// Time-stamp: <2026-01-01 Miduo>
+// Time-stamp: <Thursday 2026-01-15 21:05:41 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -93,7 +93,7 @@ class PodPath {
   /// Get full URL for a file in the POD.
   ///
   /// [filePath] - Relative path to the file.
-  /// Returns full URL like: `https://pod.server/geopod/data/places/places.json`
+  /// Returns full URL like: `https://pod.solidcommunity.au/geopod/data/places/places.json`
   static Future<String> getFileUrl(String filePath) async {
     final fullPath = getFilePath(filePath);
     return await PodAuth.getResourceUrl(fullPath, isContainer: false);

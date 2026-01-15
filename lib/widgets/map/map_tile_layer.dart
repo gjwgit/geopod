@@ -56,7 +56,6 @@ Widget buildMapTileLayer({
       subdomains: mapSettings.mapSource.subdomains,
       userAgentPackageName: 'com.togaware.geopod',
       tileProvider: tileProvider,
-      evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
       keepBuffer: 1,
       panBuffer: 1,
       maxZoom: 19,

@@ -17,7 +17,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
@@ -53,7 +52,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         GeoMapNewsMixin {
   @override
   final MapController mapController = MapController();
-  TileProvider _tileProvider = CancellableNetworkTileProvider();
+  TileProvider _tileProvider = NetworkTileProvider();
   List<Place> _allPlaces = [];
   final Set<String> _savingPlaceIds = {};
   bool _isLoadingPlaces = false;
@@ -158,7 +157,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      setState(() => _tileProvider = CancellableNetworkTileProvider());
+      setState(() => _tileProvider = NetworkTileProvider());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _saveCurrentViewport();
@@ -336,7 +335,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             final changed = _mapSettings.mapSource != ns.mapSource;
             _mapSettings = ns;
             if (changed) {
-              _tileProvider = CancellableNetworkTileProvider();
+              _tileProvider = NetworkTileProvider();
               // Adjust zoom level if current zoom exceeds new map source's max
               adjustZoomForMapSource(
                 mapController: mapController,

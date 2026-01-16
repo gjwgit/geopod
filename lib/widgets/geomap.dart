@@ -402,7 +402,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             onDeletePlace: _confirmAndDeletePlace,
             context: context,
             initialCenter: initialCenter,
-            initialZoom: initialZoom,            userLocation: userLocation,          ),
+            initialZoom: initialZoom,
+            userLocation: userLocation,
+          ),
           // Loading indicator
           buildLoadingIndicator(isLoading: isLoadingPlaces),
           AddPlaceOverlayButton(

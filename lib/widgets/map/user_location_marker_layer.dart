@@ -19,9 +19,7 @@ import 'package:latlong2/latlong.dart';
 ///
 /// Displays a pulsing blue dot with a semi-transparent circle
 /// to indicate the user's current position on the map.
-MarkerLayer? buildUserLocationMarkerLayer({
-  required LatLng? userLocation,
-}) {
+MarkerLayer? buildUserLocationMarkerLayer({required LatLng? userLocation}) {
   if (userLocation == null) return null;
 
   return MarkerLayer(
@@ -64,22 +62,12 @@ class _UserLocationMarkerState extends State<_UserLocationMarker>
     _scaleAnimation = Tween<double>(
       begin: 0.8,
       end: 1.4,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _opacityAnimation = Tween<double>(
       begin: 0.6,
       end: 0.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
   @override
@@ -138,10 +126,7 @@ class _UserLocationMarkerState extends State<_UserLocationMarker>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.blue.shade600,
-            border: Border.all(
-              color: Colors.white,
-              width: 3,
-            ),
+            border: Border.all(color: Colors.white, width: 3),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.3),

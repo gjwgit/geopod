@@ -60,9 +60,11 @@ class _WeatherDialogState extends State<WeatherDialog>
   late TabController _tabController;
   WeatherData? _weatherData;
   HourlyWeatherData? _pastWeatherData;
+  HourlyWeatherData? _forecastWeatherData;
   HourlyWeatherData? _historicalWeatherData;
   bool _isLoading = true;
   bool _isLoadingPast = false;
+  bool _isLoadingForecast = false;
   bool _isLoadingHistorical = false;
   String? _errorMessage;
   bool _showDailyPrecipitation = false; // false = hourly, true = daily
@@ -73,7 +75,7 @@ class _WeatherDialogState extends State<WeatherDialog>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadWeather();
   }
 
@@ -129,6 +131,36 @@ class _WeatherDialogState extends State<WeatherDialog>
       });
       if (mounted) {
         SnackBarHelper.showError(context, 'Failed to load past weather: $e');
+      }
+    }
+  }
+
+  Future<void> _loadForecastWeather() async {
+    if (_forecastWeatherData != null) return; // Already loaded
+
+    setState(() {
+      _isLoadingForecast = true;
+    });
+
+    try {
+      final forecastWeather = await _weatherService.getForecastWeather(
+        latitude: widget.latitude,
+        longitude: widget.longitude,
+        days: 7,
+      );
+      safeSetState(this, () {
+        _forecastWeatherData = forecastWeather;
+        _isLoadingForecast = false;
+      });
+    } catch (e) {
+      safeSetState(this, () {
+        _isLoadingForecast = false;
+      });
+      if (mounted) {
+        SnackBarHelper.showError(
+          context,
+          'Failed to load forecast weather: $e',
+        );
       }
     }
   }
@@ -199,13 +231,16 @@ class _WeatherDialogState extends State<WeatherDialog>
               onTap: (index) {
                 if (index == 1 && _pastWeatherData == null) {
                   _loadPastWeather();
-                } else if (index == 2 && _historicalWeatherData == null) {
+                } else if (index == 2 && _forecastWeatherData == null) {
+                  _loadForecastWeather();
+                } else if (index == 3 && _historicalWeatherData == null) {
                   _loadHistoricalWeather();
                 }
               },
               tabs: const [
                 Tab(text: 'Current'),
                 Tab(text: 'Past 10 Days'),
+                Tab(text: 'Forecast (7 Days)'),
                 Tab(text: 'Historical (30d ago)'),
               ],
             ),
@@ -222,6 +257,9 @@ class _WeatherDialogState extends State<WeatherDialog>
 
                   // Past weather tab
                   _buildPastWeatherView(),
+
+                  // Forecast weather tab
+                  _buildForecastWeatherView(),
 
                   // Historical weather tab
                   _buildHistoricalWeatherView(),
@@ -267,6 +305,23 @@ class _WeatherDialogState extends State<WeatherDialog>
       context: context,
       isLoading: _isLoadingPast,
       pastWeatherData: _pastWeatherData,
+      latitude: widget.latitude,
+      longitude: widget.longitude,
+      address: widget.address,
+      selectedDataType: _selectedDataType,
+      onDataTypeChanged: (newType) {
+        setState(() {
+          _selectedDataType = newType;
+        });
+      },
+    );
+  }
+
+  Widget _buildForecastWeatherView() {
+    return buildForecastWeatherView(
+      context: context,
+      isLoading: _isLoadingForecast,
+      forecastWeatherData: _forecastWeatherData,
       latitude: widget.latitude,
       longitude: widget.longitude,
       address: widget.address,

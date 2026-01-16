@@ -41,10 +41,13 @@ mixin GeoMapEventHandlers<T extends StatefulWidget> on State<T> {
 
   /// Handle authentication state changes.
   Future<void> onAuthStateChanged() async {
+    if (!mounted) return;
+
     final wasLoggedIn = isLoggedIn;
     final nowLoggedIn = authStateNotifier.value;
 
     if (wasLoggedIn != nowLoggedIn) {
+      if (!mounted) return;
       setState(() => isLoggedIn = nowLoggedIn);
 
       if (nowLoggedIn) {
@@ -57,6 +60,7 @@ mixin GeoMapEventHandlers<T extends StatefulWidget> on State<T> {
 
   /// Handle login event.
   Future<void> handleLogin() async {
+    if (!mounted) return;
     setState(() {
       if (viewportInitialized && mapController.camera.center != initialCenter) {
         initialCenter = mapController.camera.center;
@@ -68,8 +72,10 @@ mixin GeoMapEventHandlers<T extends StatefulWidget> on State<T> {
 
   /// Handle logout event.
   Future<void> handleLogout() async {
+    // Force refresh to ensure we don't use any stale cache after logout
+    // This is critical for non-web platforms where SharedPreferences cleanup may be async
     final places = await PlacesService.fetchPlaces(
-      forceRefresh: false,
+      forceRefresh: true,
       includeEncrypted: false,
     );
     if (mounted) {
@@ -106,11 +112,12 @@ mixin GeoMapEventHandlers<T extends StatefulWidget> on State<T> {
 
   /// Verify login state and reload encrypted places if needed.
   Future<void> verifyLoginStateAndLoadData() async {
-    if (!isLoggedIn) return;
+    if (!mounted || !isLoggedIn) return;
 
     if (mapSettings.showEncryptedPlaces) {
       // Fetch encrypted places - this will reload from pod if needed
       await EncryptedPlacesService.fetchEncryptedPlaces(forceRefresh: true);
+      if (!mounted) return;
       await loadAllPlaces();
     }
   }

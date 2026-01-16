@@ -64,28 +64,41 @@ class WeatherService {
     }
   }
 
-  /// Fetch past weather data (last N days).
+  /// Fetch past weather data (last N days, actual historical data only).
   ///
   /// Returns [HourlyWeatherData] with hourly data for the past [days].
-  /// Maximum [days] is 92 (about 3 months).
+  /// Uses the archive API to get actual past weather, not forecasts.
+  /// Maximum [days] is 10 to ensure data is available (ERA5 has ~5-7 day delay).
   Future<HourlyWeatherData> getPastWeather({
     required double latitude,
     required double longitude,
     int days = 10,
   }) async {
-    if (days < 1 || days > 92) {
-      throw ArgumentError('days must be between 1 and 92');
+    if (days < 1 || days > 10) {
+      throw ArgumentError('days must be between 1 and 10');
     }
 
-    final uri = Uri.parse(_forecastUrl).replace(
+    // Calculate date range for past N days (excluding today)
+    final now = DateTime.now();
+    final endDate = now.subtract(const Duration(days: 1)); // Yesterday
+    final startDate = endDate.subtract(Duration(days: days - 1));
+
+    final startDateStr =
+        '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}';
+    final endDateStr =
+        '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}';
+
+    final uri = Uri.parse(_archiveUrl).replace(
       queryParameters: {
         'latitude': latitude.toString(),
         'longitude': longitude.toString(),
-        'past_days': days.toString(),
+        'start_date': startDateStr,
+        'end_date': endDateStr,
         'hourly': [
           'temperature_2m',
           'relative_humidity_2m',
           'wind_speed_10m',
+          'precipitation',
         ].join(','),
         'timezone': 'Australia/Sydney',
       },
@@ -104,6 +117,50 @@ class WeatherService {
       }
     } catch (e) {
       throw Exception('Failed to fetch past weather: $e');
+    }
+  }
+
+  /// Fetch forecast weather data (next N days).
+  ///
+  /// Returns [HourlyWeatherData] with hourly forecast data for the next [days].
+  /// Maximum [days] is 16 (Open-Meteo forecast limit).
+  Future<HourlyWeatherData> getForecastWeather({
+    required double latitude,
+    required double longitude,
+    int days = 7,
+  }) async {
+    if (days < 1 || days > 16) {
+      throw ArgumentError('days must be between 1 and 16');
+    }
+
+    final uri = Uri.parse(_forecastUrl).replace(
+      queryParameters: {
+        'latitude': latitude.toString(),
+        'longitude': longitude.toString(),
+        'forecast_days': days.toString(),
+        'hourly': [
+          'temperature_2m',
+          'relative_humidity_2m',
+          'wind_speed_10m',
+          'precipitation',
+        ].join(','),
+        'timezone': 'Australia/Sydney',
+      },
+    );
+
+    try {
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        return HourlyWeatherData.fromJson(json);
+      } else {
+        throw Exception(
+          'Failed to load forecast weather data: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch forecast weather: $e');
     }
   }
 

@@ -10,19 +10,20 @@
 
 library;
 
-import 'dart:js_interop';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:web/web.dart' as web;
 
 import '../../models/hourly_weather_data.dart';
 import '../../utils/ui_utils.dart';
+// Conditional import for platform-specific PDF download
+import 'pdf_download_stub.dart' if (dart.library.html) 'pdf_download_web.dart';
 import 'weather_chart_sampling.dart';
 
 /// Export weather data to PDF.
@@ -163,7 +164,7 @@ Future<void> exportWeatherChartToPdf(
 
           // Footer
           pw.Text(
-            'Generated: ${DateFormat('yyyy-MM-dd HH:mm z').format(DateTime.now())}',
+            'Generated: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())} UTC${_formatTimeZoneOffset(DateTime.now().timeZoneOffset)}',
             style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
           ),
         ],
@@ -174,18 +175,9 @@ Future<void> exportWeatherChartToPdf(
     if (kIsWeb) {
       // For Web: Download PDF file directly
       final bytes = await pdf.save();
-      // Convert Uint8List to JSUint8Array for web
-      final blob = web.Blob(
-        [bytes.toJS].toJS,
-        web.BlobPropertyBag(type: 'application/pdf'),
-      );
-      final url = web.URL.createObjectURL(blob);
-      final anchor = web.document.createElement('a') as web.HTMLAnchorElement
-        ..href = url
-        ..download =
-            'weather_report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf';
-      anchor.click();
-      web.URL.revokeObjectURL(url);
+      final filename =
+          'weather_report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf';
+      downloadPdfWeb(bytes, filename);
 
       if (context.mounted) {
         SnackBarHelper.showSuccess(
@@ -195,8 +187,41 @@ Future<void> exportWeatherChartToPdf(
         );
       }
     } else {
-      // For mobile/desktop: Show PDF preview and allow save/print
-      await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+      // For mobile/desktop: Let user choose save location
+      final bytes = await pdf.save();
+      final filename =
+          'weather_report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
+
+      // Ask user to choose save location
+      final outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save PDF Report',
+        fileName: '$filename.pdf',
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (outputPath != null) {
+        // Save the file to the chosen location
+        final file = File(outputPath);
+        await file.writeAsBytes(bytes);
+
+        if (context.mounted) {
+          SnackBarHelper.showSuccess(
+            context,
+            'PDF saved to: $outputPath',
+            duration: const Duration(seconds: 3),
+          );
+        }
+      } else {
+        // User cancelled the save dialog
+        if (context.mounted) {
+          SnackBarHelper.showInfo(
+            context,
+            'PDF export cancelled',
+            duration: const Duration(seconds: 2),
+          );
+        }
+      }
     }
   } catch (e) {
     // Show error message if PDF export fails
@@ -386,4 +411,12 @@ pw.Widget buildPdfChart(
       ),
     ],
   );
+}
+
+/// Format timezone offset for PDF display (e.g., "+1100", "-0500", "+0000")
+String _formatTimeZoneOffset(Duration offset) {
+  final hours = offset.inHours;
+  final minutes = offset.inMinutes.remainder(60).abs();
+  final sign = hours >= 0 ? '+' : '-';
+  return '$sign${hours.abs().toString().padLeft(2, '0')}${minutes.toString().padLeft(2, '0')}';
 }

@@ -183,8 +183,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     );
     animationController.dispose();
     newsService.dispose();
-    authStateNotifier.removeListener(() => onAuthStateChanged());
-    placesChangeNotifier.removeListener(() => onPlacesChanged());
+    authStateNotifier.removeListener(onAuthStateChanged);
+    placesChangeNotifier.removeListener(onPlacesChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

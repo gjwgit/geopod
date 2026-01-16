@@ -188,6 +188,65 @@ Widget buildPastWeatherView({
   );
 }
 
+/// Build forecast weather view.
+Widget buildForecastWeatherView({
+  required BuildContext context,
+  required bool isLoading,
+  required HourlyWeatherData? forecastWeatherData,
+  required double latitude,
+  required double longitude,
+  String? address,
+  required String selectedDataType,
+  required void Function(String) onDataTypeChanged,
+}) {
+  if (isLoading) {
+    return const Center(child: CircularProgressIndicator());
+  }
+
+  if (forecastWeatherData == null) {
+    return const Center(child: Text('Tap to load 7-day forecast weather data'));
+  }
+
+  return SingleChildScrollView(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Forecast Weather (Next 7 Days)',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        if (address != null && address.isNotEmpty) ...[
+          Text(address, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 4),
+        ],
+        Text(
+          'Coordinates: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(
+              context,
+            ).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 16),
+        buildDataTypeSelector(
+          selectedDataType: selectedDataType,
+          onSelectionChanged: onDataTypeChanged,
+        ),
+        const SizedBox(height: 16),
+        HourlyWeatherChart(
+          data: forecastWeatherData,
+          dataType: selectedDataType,
+          latitude: latitude,
+          longitude: longitude,
+          address: address,
+        ),
+      ],
+    ),
+  );
+}
+
 /// Build historical weather view.
 Widget buildHistoricalWeatherView({
   required BuildContext context,

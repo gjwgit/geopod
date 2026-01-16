@@ -33,11 +33,16 @@ import 'constants/app.dart';
 import 'home.dart';
 import 'services/fullscreen_service.dart';
 import 'widgets/files_page.dart';
+import 'widgets/geomap.dart';
 import 'widgets/locations_page.dart';
 
 /// App scaffold widget that responds to fullscreen mode changes.
 class AppScaffoldWidget extends StatelessWidget {
   const AppScaffoldWidget({super.key});
+
+  /// Global key to access the GeoMap state for settings dialog.
+  static final GlobalKey<GeoMapWidgetState> geoMapKey =
+      GlobalKey<GeoMapWidgetState>();
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +51,7 @@ class AppScaffoldWidget extends StatelessWidget {
       builder: (context, isFullscreen, child) {
         if (isFullscreen) {
           // Fullscreen mode: show only the Home content without navigation
-          return const Home(title: appTitle);
+          return Home(title: appTitle, geoMapKey: geoMapKey);
         }
         // Normal mode: show full scaffold with navigation
         return _buildFullScaffold();
@@ -58,7 +63,7 @@ class AppScaffoldWidget extends StatelessWidget {
     return SolidScaffold(
       // MENU
       menu: [
-        const SolidMenuItem(
+        SolidMenuItem(
           icon: Icons.home,
           title: 'Home',
           tooltip: '''
@@ -66,7 +71,7 @@ class AppScaffoldWidget extends StatelessWidget {
             **Home:** Tap here to return to the main map page for the app.
 
             ''',
-          child: Home(title: appTitle),
+          child: Home(title: appTitle, geoMapKey: geoMapKey),
         ),
         const SolidMenuItem(
           icon: Icons.location_on,
@@ -142,7 +147,7 @@ class AppScaffoldWidget extends StatelessWidget {
             icon: Icons.settings,
             onPressed: () {
               // Call the GeoMap's settings dialog
-              geoMapKey.currentState?.showSettingsDialog();
+              AppScaffoldWidget.geoMapKey.currentState?.showSettingsDialog();
             },
             tooltip: 'Settings',
           ),

@@ -24,6 +24,39 @@ mixin GeoMapActionHandlers<T extends StatefulWidget> on State<T> {
   set allPlaces(List<Place> value);
   bool get skipPlacesChangeNotification;
   set skipPlacesChangeNotification(bool value);
+  bool get isLoadingPlaces;
+
+  Future<void> loadAllPlaces();
+
+  /// Handle refresh button tap - reload places and show success message.
+  Future<void> handleRefreshPressed() async {
+    if (isLoadingPlaces) return;
+
+    try {
+      await loadAllPlaces();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Refreshed successfully! ${allPlaces.length} places loaded',
+            ),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Refresh failed: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
 
   /// Handle optimistic save of place.
   Future<void> handleOptimisticSave(Place place) async {

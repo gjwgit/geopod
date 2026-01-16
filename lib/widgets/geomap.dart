@@ -23,6 +23,7 @@ import 'package:solidui/solidui.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
+import 'package:geopod/services/location_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places_service.dart' show placesChangeNotifier;
 import 'package:geopod/utils/widget_utils.dart';
@@ -105,6 +106,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   bool viewportInitialized = false;
   @override
   bool skipPlacesChangeNotification = false;
+  @override
+  bool isLocating = false;
 
   @override
   void initState() {
@@ -249,6 +252,59 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     );
   }
 
+  /// Handle location button tap - get user location and move map to it.
+  Future<void> _onLocatePressed() async {
+    if (isLocating) return;
+
+    setState(() => isLocating = true);
+
+    try {
+      final result = await LocationService.getCurrentLocation();
+
+      if (!mounted) return;
+
+      if (result.success && result.location != null) {
+        // Move to user location with zoom level 15
+        mapController.move(result.location!, 15.0);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location found successfully'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // Show detailed error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result.errorMessage ?? 'Unable to get your location',
+              ),
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(label: 'OK', onPressed: () {}),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error getting location: $e'),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLocating = false);
+      }
+    }
+  }
+
   /// Cached getter for filtered markers to avoid expensive rebuilds.
   List<MarkerData> get _filteredMarkers {
     return getCachedFilteredMarkers(
@@ -371,7 +427,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           isLoadingPlaces: isLoadingPlaces,
           onZoomIn: () => zoomIn(mapController),
           onZoomOut: () => zoomOut(mapController),
-          onRefresh: () => loadAllPlaces(),
+          onRefresh: handleRefreshPressed,
+          onLocate: _onLocatePressed,
+          isLocating: isLocating,
         ),
       ),
     );

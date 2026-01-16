@@ -57,6 +57,8 @@ mixin GeoMapStateMixin {
   set viewportInitialized(bool value);
   bool get skipPlacesChangeNotification;
   set skipPlacesChangeNotification(bool value);
+  bool get isLocating;
+  set isLocating(bool value);
 }
 
 /// Manages marker cache for performance.

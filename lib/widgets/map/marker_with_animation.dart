@@ -28,7 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Maximum number of markers to animate simultaneously to prevent jank.
-const int _maxAnimatedMarkers = 10;
+const int _maxAnimatedMarkers = 20;
 
 /// Animated marker widget with delayed entrance animation.
 ///
@@ -59,6 +59,7 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
   Animation<double>? _scaleAnimation;
   Animation<double>? _fadeAnimation;
   bool _animationStarted = false;
+  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -71,13 +72,16 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
     if (shouldActuallyAnimate) {
       // Defer controller creation to avoid blocking initState
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
+        if (!mounted || _isDisposed) return;
         _setupAnimation();
       });
     }
   }
 
   void _setupAnimation() {
+    // Double-check that widget hasn't been disposed
+    if (_isDisposed || !mounted) return;
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 250), // Shorter duration
       vsync: this,
@@ -108,6 +112,7 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
 
   @override
   void dispose() {
+    _isDisposed = true;
     _controller?.dispose();
     super.dispose();
   }

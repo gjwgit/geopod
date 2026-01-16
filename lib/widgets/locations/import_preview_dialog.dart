@@ -59,7 +59,8 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
   late List<Place> _editablePlaces;
 
   /// Whether to encrypt imported places.
-  bool _encrypt = false;
+  /// Defaults to true for consistency with add place form.
+  bool _encrypt = true;
 
   @override
   void initState() {

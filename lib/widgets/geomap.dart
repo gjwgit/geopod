@@ -132,8 +132,13 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     initializeMapPostFrame(
       context: context,
       animationController: animationController,
-      loadSettingsSync: () =>
-          loadSettingsSync(() => unawaited(loadEncryptedPlaces())),
+      loadSettingsSync: () => loadSettingsSync(
+        () => unawaited(
+          loadEncryptedPlaces().catchError((error, stackTrace) {
+            debugPrint('Failed to load encrypted places: $error');
+          }),
+        ),
+      ),
       verifyLoginStateAndLoadData: () async {
         final result = await verifyLoginStateAndLoadData(
           currentIsLoggedIn: isLoggedIn,
@@ -226,7 +231,14 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
           // Handle encrypted places toggle
           if (changes.encryptedToggled && changes.encryptedEnabled) {
-            unawaited(loadEncryptedPlaces(skipKeyVerification: true));
+            unawaited(
+              loadEncryptedPlaces(skipKeyVerification: true).catchError((
+                error,
+                stackTrace,
+              ) {
+                debugPrint('Failed to load encrypted places: $error');
+              }),
+            );
           } else if (changes.encryptedToggled && !changes.encryptedEnabled) {
             safeSetState(this, () {
               allPlaces = removeEncryptedPlaces(allPlaces: allPlaces);

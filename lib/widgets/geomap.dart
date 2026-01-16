@@ -108,6 +108,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   bool skipPlacesChangeNotification = false;
   @override
   bool isLocating = false;
+  @override
+  LatLng? userLocation;
 
   @override
   void initState() {
@@ -264,7 +266,10 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       if (!mounted) return;
 
       if (result.success && result.location != null) {
-        // Move to user location with zoom level 15
+        // Save user location and move map to it
+        setState(() {
+          userLocation = result.location;
+        });
         mapController.move(result.location!, 15.0);
 
         // Show success message
@@ -397,8 +402,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             onDeletePlace: _confirmAndDeletePlace,
             context: context,
             initialCenter: initialCenter,
-            initialZoom: initialZoom,
-          ),
+            initialZoom: initialZoom,            userLocation: userLocation,          ),
           // Loading indicator
           buildLoadingIndicator(isLoading: isLoadingPlaces),
           AddPlaceOverlayButton(

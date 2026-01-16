@@ -21,6 +21,7 @@ import 'package:geopod/widgets/map/map_tile_layer.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 import 'package:geopod/widgets/map/news_marker_layer.dart';
 import 'package:geopod/widgets/map/places_marker_layer.dart';
+import 'package:geopod/widgets/map/user_location_marker_layer.dart';
 
 /// Builds the core FlutterMap widget with all layers.
 ///
@@ -44,6 +45,7 @@ Widget buildFlutterMapWidget({
   required BuildContext context,
   required LatLng initialCenter,
   required double initialZoom,
+  required LatLng? userLocation,
   double? maxZoom,
 }) {
   return RepaintBoundary(
@@ -83,6 +85,11 @@ Widget buildFlutterMapWidget({
                 context: context,
                 newsMarkers: visibleNewsMarkers,
               ),
+            ),
+          // User location marker layer (always on top)
+          if (buildUserLocationMarkerLayer(userLocation: userLocation) != null)
+            RepaintBoundary(
+              child: buildUserLocationMarkerLayer(userLocation: userLocation)!,
             ),
         ],
       ),

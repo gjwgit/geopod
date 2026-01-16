@@ -57,7 +57,7 @@ const double defaultInitialZoom = 11.0;
 
 /// Default colors for map markers.
 const Color defaultUserColor = Colors.blue;
-const Color defaultLocalColor = Colors.orange;
+const Color defaultLocalColor = Colors.red;
 const Color defaultEncryptedColor = Colors.purple;
 
 /// Data class holding all map display settings.

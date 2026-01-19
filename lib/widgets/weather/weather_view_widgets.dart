@@ -118,7 +118,7 @@ Widget buildCurrentWeatherView({
         const SizedBox(height: 12),
         Center(
           child: Text(
-            'Updated: ${timeFormat.format(weatherData.time)} (Sydney)',
+            'Updated: ${timeFormat.format(weatherData.time)} UTC',
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: Colors.grey),

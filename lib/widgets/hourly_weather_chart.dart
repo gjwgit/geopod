@@ -20,6 +20,9 @@ import 'weather/weather_chart_painter.dart';
 import 'weather/weather_chart_pdf.dart';
 import 'weather/weather_chart_sampling.dart';
 
+/// Maximum number of data points to display in the chart for better performance.
+const int maxChartDataPoints = 30;
+
 /// Displays hourly weather data as a simple line chart.
 class HourlyWeatherChart extends StatefulWidget {
   const HourlyWeatherChart({
@@ -92,9 +95,9 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       );
     }
 
-    // Sample data if too many points (keep max 30 points for better performance)
-    if (dailyData.length > 30) {
-      dailyData = sampleData(dailyData, 30);
+    // Sample data if too many points for better performance
+    if (dailyData.length > maxChartDataPoints) {
+      dailyData = sampleData(dailyData, maxChartDataPoints);
     }
 
     final dateFormat = DateFormat('MMM dd');
@@ -160,7 +163,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         const SizedBox(height: 4),
 
         // Chart info with tooltip
-        if (widget.data.getDailyAverages().length > 30)
+        if (widget.data.getDailyAverages().length > maxChartDataPoints)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(

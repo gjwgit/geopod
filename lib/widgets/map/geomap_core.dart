@@ -23,6 +23,9 @@ import 'package:geopod/widgets/map/news_marker_layer.dart';
 import 'package:geopod/widgets/map/places_marker_layer.dart';
 import 'package:geopod/widgets/map/user_location_marker_layer.dart';
 
+/// Unrestricted longitude bounds for map wrapping
+const double _unrestrictedLongitudeBound = 999999.0;
+
 /// Builds the core FlutterMap widget with all layers.
 ///
 /// Performance optimizations:
@@ -64,8 +67,14 @@ Widget buildFlutterMapWidget({
           // Longitude is unrestricted to allow horizontal wrapping
           cameraConstraint: CameraConstraint.contain(
             bounds: LatLngBounds(
-              const LatLng(-85.051, -999999.0), // Southwest corner
-              const LatLng(85.051, 999999.0), // Northeast corner
+              const LatLng(
+                -85.051,
+                -_unrestrictedLongitudeBound,
+              ), // Southwest corner
+              const LatLng(
+                85.051,
+                _unrestrictedLongitudeBound,
+              ), // Northeast corner
             ),
           ),
           onTap: onTap,
@@ -95,10 +104,13 @@ Widget buildFlutterMapWidget({
               ),
             ),
           // User location marker layer (always on top)
-          if (buildUserLocationMarkerLayer(userLocation: userLocation) != null)
-            RepaintBoundary(
-              child: buildUserLocationMarkerLayer(userLocation: userLocation)!,
-            ),
+          ...() {
+            final userLocationLayer = buildUserLocationMarkerLayer(
+              userLocation: userLocation,
+            );
+            if (userLocationLayer == null) return const <Widget>[];
+            return [RepaintBoundary(child: userLocationLayer)];
+          }(),
         ],
       ),
     ),

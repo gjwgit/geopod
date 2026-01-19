@@ -1,8 +1,8 @@
 /// The primary map widget.
 ///
-// Time-stamp: <Monday 2025-12-08 08:22:27 +1100 Graham Williams>
+// Time-stamp: <Tuesday 2026-01-14 +1100>
 ///
-/// Copyright (C) 2025, Software Innovation Institute, ANU.
+/// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
 /// Licensed under the GNU General Public License, Version 3 (the "License").
 ///
@@ -17,20 +17,30 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:solidpod/solidpod.dart';
+import 'package:solidpod/solidpod.dart' show authStateNotifier;
 import 'package:solidui/solidui.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
+import 'package:geopod/services/location_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
-import 'package:geopod/services/places_service.dart'
-    show PlacesCacheManager, placesChangeNotifier;
-import 'package:geopod/widgets/map/geomap_core.dart';
+import 'package:geopod/services/places_service.dart' show placesChangeNotifier;
+import 'package:geopod/utils/widget_utils.dart';
+import 'package:geopod/widgets/map/fullscreen_toggle_button.dart';
+import 'package:geopod/widgets/map/geomap_action_handlers.dart';
+import 'package:geopod/widgets/map/geomap_builders.dart';
+import 'package:geopod/widgets/map/geomap_core.dart' hide buildLoadingIndicator;
+import 'package:geopod/widgets/map/geomap_encrypted_places_loader.dart';
+import 'package:geopod/widgets/map/geomap_event_handlers.dart';
+import 'package:geopod/widgets/map/geomap_initialization.dart';
 import 'package:geopod/widgets/map/geomap_news_mixin.dart';
 import 'package:geopod/widgets/map/geomap_place_handlers.dart';
+import 'package:geopod/widgets/map/geomap_places_loader.dart';
+import 'package:geopod/widgets/map/geomap_settings.dart';
+import 'package:geopod/widgets/map/geomap_settings_loader.dart';
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
+import 'package:geopod/widgets/map/geomap_state_mixin.dart';
 import 'package:geopod/widgets/map/geomap_viewport_logic.dart';
 import 'package:geopod/widgets/map/map_floating_buttons.dart';
 import 'package:geopod/widgets/map/map_overlay_buttons.dart';
@@ -48,21 +58,38 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     with
         SingleTickerProviderStateMixin,
         WidgetsBindingObserver,
+        GeoMapStateMixin,
+        MarkerCacheMixin,
+        GeoMapEventHandlers,
+        GeoMapActionHandlers,
+        GeoMapSettingsLoader,
+        GeoMapEncryptedPlacesLoader,
         GeoMapNewsMixin {
+  // State variables implementation for mixins
   @override
   final MapController mapController = MapController();
-  TileProvider _tileProvider = CancellableNetworkTileProvider();
-  List<Place> _allPlaces = [];
-  final Set<String> _savingPlaceIds = {};
-  bool _isLoadingPlaces = false;
-  MapSettings _mapSettings = MapSettings(
+  @override
+  TileProvider tileProvider = NetworkTileProvider();
+  @override
+  List<Place> allPlaces = [];
+  @override
+  final Set<String> savingPlaceIds = {};
+  @override
+  bool isLoadingPlaces = false;
+  @override
+  MapSettings mapSettings = MapSettings(
     mapSource: MapSettings.getDefaultMapSource(),
   );
-  bool _isLoggedIn = false;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  bool _initialAnimationComplete = false;
-  bool _isPostLoginRefresh = false;
+  @override
+  bool isLoggedIn = false;
+  @override
+  late AnimationController animationController;
+  @override
+  late Animation<double> fadeAnimation;
+  @override
+  bool initialAnimationComplete = false;
+  @override
+  bool isPostLoginRefresh = false;
   @override
   final GdeltNewsService newsService = GdeltNewsService();
   @override
@@ -71,277 +98,314 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   bool showNewsMarkers = false;
   @override
   bool isLoadingNews = false;
-  LatLng _initialCenter = const LatLng(defaultInitialLat, defaultInitialLng);
-  double _initialZoom = defaultInitialZoom;
-  bool _viewportInitialized = false;
+  @override
+  LatLng initialCenter = const LatLng(defaultInitialLat, defaultInitialLng);
+  @override
+  double initialZoom = defaultInitialZoom;
+  @override
+  bool viewportInitialized = false;
+  @override
+  bool skipPlacesChangeNotification = false;
+  @override
+  bool isLocating = false;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
+    fadeAnimation = CurvedAnimation(
+      parent: animationController,
       curve: Curves.easeOut,
     );
-    _animationController.addStatusListener((s) {
-      if (s == AnimationStatus.completed) {
-        setState(() {
-          _initialAnimationComplete = true;
-          _isPostLoginRefresh = false;
-        });
-      }
-    });
-    _isLoggedIn = authStateNotifier.value;
-    authStateNotifier.addListener(_onAuthStateChanged);
-    placesChangeNotifier.addListener(_onPlacesChanged);
-    _loadSettingsSync();
-    _verifyLoginStateAndLoadData();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _animationController.forward();
-    });
+
+    initializeMapState(
+      animationController: animationController,
+      fadeAnimation: fadeAnimation,
+      onAnimationComplete: _onAnimationComplete,
+      onAuthStateChanged: () => onAuthStateChanged(),
+      onPlacesChanged: () => onPlacesChanged(),
+      authStateNotifier: authStateNotifier,
+      placesChangeNotifier: placesChangeNotifier,
+    );
+
+    isLoggedIn = authStateNotifier.value;
+    initializeMapPostFrame(
+      context: context,
+      animationController: animationController,
+      loadSettingsSync: () => loadSettingsSync(
+        () => unawaited(
+          loadEncryptedPlaces().catchError((error, stackTrace) {
+            debugPrint('Failed to load encrypted places: $error');
+          }),
+        ),
+      ),
+      verifyLoginStateAndLoadData: () async {
+        final result = await verifyLoginStateAndLoadData(
+          currentIsLoggedIn: isLoggedIn,
+        );
+        if (!mounted) return;
+
+        // Update state if login changed
+        if (result.loginStateChanged) {
+          setState(() {
+            isLoggedIn = result.actuallyLoggedIn;
+            if (result.places != null) {
+              allPlaces = result.places!;
+            }
+          });
+        }
+
+        // Load fresh data if needed
+        if (result.needsRefresh) {
+          final places = await loadAllPlaces(forceRefresh: false);
+          if (mounted) {
+            setState(() => allPlaces = places);
+          }
+        } else if (result.places != null && !result.loginStateChanged) {
+          // Use cached places if no refresh needed and state didn't change
+          if (mounted) {
+            setState(() => allPlaces = result.places!);
+          }
+        }
+      },
+    );
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  void _onAnimationComplete() {
+    if (mounted) {
+      initialAnimationComplete = true;
+      isPostLoginRefresh = false;
+      if (isLoadingPlaces) setState(() {});
+    }
   }
 
   @override
   void dispose() {
-    _saveCurrentViewport();
-    _animationController.dispose();
+    saveViewportIfEnabled(
+      mapController: mapController,
+      mapSettings: mapSettings,
+    );
+    animationController.dispose();
     newsService.dispose();
-    authStateNotifier.removeListener(_onAuthStateChanged);
-    placesChangeNotifier.removeListener(_onPlacesChanged);
+    authStateNotifier.removeListener(onAuthStateChanged);
+    placesChangeNotifier.removeListener(onPlacesChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  /// Saves current viewport position if rememberViewport is enabled.
-  void _saveCurrentViewport() {
-    saveCurrentViewport(
-      mapController: mapController,
-      mapSettings: _mapSettings,
-    );
-  }
-
-  void _onPlacesChanged() {
-    if (mounted && _isLoggedIn) _loadAllPlaces(forceRefresh: false);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed) {
-      setState(() => _tileProvider = CancellableNetworkTileProvider());
-    } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      _saveCurrentViewport();
-    }
-  }
-
-  void _onAuthStateChanged() {
-    if (!mounted) return;
-    final wasLoggedIn = _isLoggedIn;
-    final isNowLoggedIn = authStateNotifier.value;
-    if (isNowLoggedIn == wasLoggedIn) return;
-    setState(() => _isLoggedIn = isNowLoggedIn);
-    if (isNowLoggedIn && !wasLoggedIn) {
-      _handleLogin();
-    } else if (!isNowLoggedIn && wasLoggedIn) {
-      _handleLogout();
-    }
-  }
-
-  Future<void> _handleLogin() async {
-    if (!mounted) return;
-    _isPostLoginRefresh = true;
-    _initialAnimationComplete = false;
-    setState(() => _isLoggedIn = true);
-    final places = await handleLoginStateChange(
-      wasLoggedIn: false,
-      isNowLoggedIn: true,
+    handleMapLifecycleChange(
+      state: state,
+      onResume: () => setState(() => tileProvider = createTileProvider()),
+      onPauseOrInactive: () => saveViewportIfEnabled(
+        mapController: mapController,
+        mapSettings: mapSettings,
+      ),
     );
-    if (mounted) setState(() => _allPlaces = places);
   }
 
-  Future<void> _handleLogout() async {
-    final places = await handleLoginStateChange(
-      wasLoggedIn: true,
-      isNowLoggedIn: false,
-    );
-    if (!mounted) return;
-    _isPostLoginRefresh = false;
-    _initialAnimationComplete = false;
-    setState(() {
-      _isLoggedIn = false;
-      _allPlaces = places;
-    });
-  }
-
-  void _loadSettingsSync() {
-    MapSettingsService.loadSettings()
-        .then((s) async {
-          if (!mounted) return;
-          setState(() => _mapSettings = s);
-          // Load startup viewport after settings are loaded
-          if (!_viewportInitialized) {
-            final viewport = await MapSettingsService.getStartupViewport(s);
-            if (mounted) {
-              setState(() {
-                _initialCenter = LatLng(viewport.lat, viewport.lng);
-                _initialZoom = viewport.zoom;
-                _viewportInitialized = true;
-              });
-              // Move map to the loaded viewport
-              mapController.move(_initialCenter, _initialZoom);
-            }
-          }
-        })
-        .catchError((_) {});
-  }
-
-  Future<void> _verifyLoginStateAndLoadData() async {
-    final result = await verifyLoginStateAndLoadData(
-      currentIsLoggedIn: _isLoggedIn,
-    );
-    if (!mounted) return;
-    if (result.loginStateChanged) {
-      setState(() => _isLoggedIn = result.actuallyLoggedIn);
-    }
-    if (result.places != null) {
-      setState(() => _allPlaces = result.places!);
-    }
-    if (result.needsRefresh) {
-      await _loadAllPlaces(forceRefresh: true);
-    }
-  }
-
-  void _showSettingsDialog() {
+  void showSettingsDialog() {
     showDialog(
       context: context,
       builder: (_) => MapSettingsDialog(
-        currentSettings: _mapSettings,
-        onSettingsChanged: (ns) {
-          setState(() {
-            final changed = _mapSettings.mapSource != ns.mapSource;
-            _mapSettings = ns;
-            if (changed) {
-              _tileProvider = CancellableNetworkTileProvider();
-              // Adjust zoom level if current zoom exceeds new map source's max
+        currentSettings: mapSettings,
+        onSettingsChanged: (newSettings) {
+          final changes = computeSettingsChanges(
+            oldSettings: mapSettings,
+            newSettings: newSettings,
+          );
+
+          safeSetState(this, () {
+            mapSettings = newSettings;
+            if (changes.mapSourceChanged) {
+              tileProvider = createTileProvider();
               adjustZoomForMapSource(
                 mapController: mapController,
-                mapSettings: ns,
+                mapSettings: newSettings,
               );
             }
           });
+
+          // Handle encrypted places toggle
+          if (changes.encryptedToggled && changes.encryptedEnabled) {
+            unawaited(
+              loadEncryptedPlaces(skipKeyVerification: true).catchError((
+                error,
+                stackTrace,
+              ) {
+                debugPrint('Failed to load encrypted places: $error');
+              }),
+            );
+          } else if (changes.encryptedToggled && !changes.encryptedEnabled) {
+            safeSetState(this, () {
+              allPlaces = removeEncryptedPlaces(allPlaces: allPlaces);
+            });
+          }
         },
       ),
     );
   }
 
-  void showSettingsDialog() => _showSettingsDialog();
+  /// Handle location button tap - get user location and move map to it.
+  Future<void> _onLocatePressed() async {
+    if (isLocating) return;
 
-  Future<void> _loadAllPlaces({bool forceRefresh = false}) async {
-    final cm = PlacesCacheManager();
-    if (cm.allPlaces == null) setState(() => _isLoadingPlaces = true);
+    setState(() => isLocating = true);
+
     try {
-      final places = await loadAllPlaces(forceRefresh: forceRefresh);
-      if (mounted) {
-        setState(() {
-          _allPlaces = List.from(places);
-          _isLoadingPlaces = false;
-        });
+      final result = await LocationService.getCurrentLocation();
+
+      if (!mounted) return;
+
+      if (result.success && result.location != null) {
+        // Move to user location with zoom level 15
+        mapController.move(result.location!, 15.0);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location found successfully'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // Show detailed error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result.errorMessage ?? 'Unable to get your location',
+              ),
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(label: 'OK', onPressed: () {}),
+            ),
+          );
+        }
       }
-    } catch (_) {
-      if (mounted) setState(() => _isLoadingPlaces = false);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error getting location: $e'),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLocating = false);
+      }
     }
   }
 
-  List<MarkerData> get _filteredMarkers => buildFilteredMarkers(
-    allPlaces: _allPlaces,
-    mapSettings: _mapSettings,
-    savingPlaceIds: _savingPlaceIds,
-  );
+  /// Cached getter for filtered markers to avoid expensive rebuilds.
+  List<MarkerData> get _filteredMarkers {
+    return getCachedFilteredMarkers(
+      allPlaces: allPlaces,
+      mapSettings: mapSettings,
+      savingPlaceIds: savingPlaceIds,
+      builder: () => buildFilteredMarkers(
+        allPlaces: allPlaces,
+        mapSettings: mapSettings,
+        savingPlaceIds: savingPlaceIds,
+      ),
+    );
+  }
 
   Future<void> _showAddPlaceDialog({double? lat, double? lng}) async {
-    final place = await showAddPlaceDialogIfLoggedIn(
+    final result = await showAddPlaceDialogIfLoggedIn(
       context: context,
       latitude: lat,
       longitude: lng,
     );
-    if (place != null && mounted) _handleOptimisticSave(place);
+    if (result != null && mounted) {
+      // If adding encrypted place, auto-enable showEncryptedPlaces so user can see it
+      if (result.encrypted && !mapSettings.showEncryptedPlaces) {
+        safeSetState(this, () {
+          mapSettings = mapSettings.copyWith(showEncryptedPlaces: true);
+        });
+        MapSettingsService.saveSettings(mapSettings);
+      }
+      _handleOptimisticSave(result.place, encrypted: result.encrypted);
+    }
   }
 
-  void _handleOptimisticSave(Place p) {
+  void _handleOptimisticSave(Place p, {bool encrypted = false}) {
     handleOptimisticPlaceSave(
       place: p,
-      allPlaces: _allPlaces,
-      savingPlaceIds: _savingPlaceIds,
+      allPlaces: allPlaces,
+      savingPlaceIds: savingPlaceIds,
       context: context,
       setState: setState,
-      performBackgroundSave: _performBackgroundSave,
+      performBackgroundSave: (place) => performPlaceBackgroundSave(
+        originalPlace: place,
+        context: context,
+        allPlaces: allPlaces,
+        savingPlaceIds: savingPlaceIds,
+        setState: setState,
+        encrypted: encrypted,
+      ),
+      encrypted: encrypted,
     );
-  }
-
-  Future<void> _performBackgroundSave(Place op) async {
-    await performPlaceBackgroundSave(
-      originalPlace: op,
-      context: context,
-      allPlaces: _allPlaces,
-      savingPlaceIds: _savingPlaceIds,
-      setState: setState,
-    );
-  }
-
-  void _onMapTap(TapPosition tp, LatLng ll) =>
-      _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude);
-
-  void _onMapPositionChanged(MapCamera pos, bool gesture) {
-    onMapPositionChangedForNews(pos, gesture);
   }
 
   Future<void> _confirmAndDeletePlace(MarkerData m) async {
-    await confirmAndDeletePlace(
-      marker: m,
-      context: context,
-      allPlaces: _allPlaces,
-      setState: setState,
-    );
+    // Set flag to skip placesChangeNotifier during our delete operation
+    skipPlacesChangeNotification = true;
+    try {
+      await confirmAndDeletePlace(
+        marker: m,
+        context: context,
+        allPlaces: allPlaces,
+        setState: setState,
+      );
+    } finally {
+      skipPlacesChangeNotification = false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isMapDark = _mapSettings.mapSource.isDarkSource;
+    final isMapDark = mapSettings.mapSource.isDarkSource;
     final applyFilter = isDark && !isMapDark;
     return Scaffold(
       body: Stack(
         children: [
           buildFlutterMapWidget(
             mapController: mapController,
-            fadeAnimation: _fadeAnimation,
-            mapSettings: _mapSettings,
-            tileProvider: _tileProvider,
+            fadeAnimation: fadeAnimation,
+            mapSettings: mapSettings,
+            tileProvider: tileProvider,
             applyFilter: applyFilter,
             filteredMarkers: _filteredMarkers,
-            shouldAnimate: !_initialAnimationComplete || _isPostLoginRefresh,
+            shouldAnimate: !initialAnimationComplete || isPostLoginRefresh,
             showNewsMarkers: showNewsMarkers,
             visibleNewsMarkers: getVisibleNewsMarkersImpl(),
-            onTap: _onMapTap,
+            onTap: (tp, ll) =>
+                _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude),
             onLongPress: (tp, ll) =>
                 _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude),
-            onPositionChanged: _onMapPositionChanged,
+            onPositionChanged: onMapPositionChangedForNews,
             onDeletePlace: _confirmAndDeletePlace,
             context: context,
-            initialCenter: _initialCenter,
-            initialZoom: _initialZoom,
+            initialCenter: initialCenter,
+            initialZoom: initialZoom,
           ),
-          buildLoadingIndicator(isLoading: _isLoadingPlaces),
+          // Loading indicator
+          buildLoadingIndicator(isLoading: isLoadingPlaces),
           AddPlaceOverlayButton(
-            isLoading: _isLoadingPlaces,
-            isLoggedIn: _isLoggedIn,
+            isLoading: isLoadingPlaces,
+            isLoggedIn: isLoggedIn,
             onTap: () {
-              if (_isLoggedIn) {
+              if (isLoggedIn) {
                 _showAddPlaceDialog();
               } else {
                 SolidAuthHandler.instance.handleLogin(context);
@@ -354,13 +418,19 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             visibleNewsCount: getVisibleNewsMarkersImpl().length,
             onTap: toggleNewsMarkers,
           ),
+          // Fullscreen toggle button
+          const FullscreenToggleButton(),
         ],
       ),
-      floatingActionButton: MapFloatingButtons(
-        isLoadingPlaces: _isLoadingPlaces,
-        onZoomIn: () => zoomIn(mapController),
-        onZoomOut: () => zoomOut(mapController),
-        onRefresh: _loadAllPlaces,
+      floatingActionButton: RepaintBoundary(
+        child: MapFloatingButtons(
+          isLoadingPlaces: isLoadingPlaces,
+          onZoomIn: () => zoomIn(mapController),
+          onZoomOut: () => zoomOut(mapController),
+          onRefresh: handleRefreshPressed,
+          onLocate: _onLocatePressed,
+          isLocating: isLocating,
+        ),
       ),
     );
   }

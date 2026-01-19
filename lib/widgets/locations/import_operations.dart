@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places_service.dart';
 import 'package:geopod/widgets/locations/import_format_dialog.dart';
 import 'package:geopod/widgets/locations/import_preview_dialog.dart';
@@ -179,7 +180,7 @@ Future<bool> performImportFlow(
 
   if (!context.mounted) return false;
 
-  final edited = await showDialog<List<Place>>(
+  final previewResult = await showDialog<ImportPreviewResult>(
     context: context,
     builder: (_) => ImportPreviewDialog(
       places: result.places,
@@ -187,22 +188,58 @@ Future<bool> performImportFlow(
       skippedCount: result.skippedCount,
     ),
   );
-  if (edited == null || edited.isEmpty) return false;
+  if (previewResult == null || previewResult.places.isEmpty) return false;
+
+  final edited = previewResult.places;
+  final encrypted = previewResult.encrypted;
+
+  if (!context.mounted) return false;
+
+  // If encrypted, check security key first
+  if (encrypted) {
+    final hasKey = await EncryptedPlacesService.ensureSecurityKey(
+      context,
+      const LocationsPage(),
+    );
+    if (!hasKey) {
+      if (!context.mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Security key required for encrypted import'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return false;
+    }
+  }
 
   if (!context.mounted) return false;
 
   final progress = ValueNotifier<String>(
-    'Importing ${edited.length} places...\nFetching addresses (0/${edited.length})...',
+    'Importing ${edited.length} places${encrypted ? ' (encrypted)' : ''}...\nFetching addresses (0/${edited.length})...',
   );
   showImportingProgressDialog(context, progress);
 
-  final success = await PlacesService.mergeImportedPlaces(
-    edited,
-    context,
-    const LocationsPage(),
-    onProgress: (c, t) => progress.value =
-        'Importing ${edited.length} places...\nFetching addresses ($c/$t)...',
-  );
+  bool success;
+  if (encrypted) {
+    // Import to encrypted storage
+    success = await EncryptedPlacesService.mergeImportedEncryptedPlaces(
+      edited,
+      context,
+      const LocationsPage(),
+      onProgress: (c, t) => progress.value =
+          'Importing ${edited.length} places (encrypted)...\nFetching addresses ($c/$t)...',
+    );
+  } else {
+    // Import to regular storage
+    success = await PlacesService.mergeImportedPlaces(
+      edited,
+      context,
+      const LocationsPage(),
+      onProgress: (c, t) => progress.value =
+          'Importing ${edited.length} places...\nFetching addresses ($c/$t)...',
+    );
+  }
 
   if (!context.mounted) return success;
 

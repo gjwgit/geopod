@@ -1,6 +1,6 @@
 /// Dialog for configuring map display settings.
 ///
-// Time-stamp: <2025-12-05 Miduo>
+// Time-stamp: <2026-01-07 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -29,19 +29,20 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:solidpod/solidpod.dart';
-import 'package:solidui/solidui.dart';
+import 'package:solidpod/solidpod.dart' show authStateNotifier;
 
 import 'package:geopod/services/map_settings_service.dart';
-import 'package:geopod/widgets/settings/color_picker_tile.dart';
-import 'package:geopod/widgets/settings/viewport_selector.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
+import 'package:geopod/widgets/settings/settings_actions.dart';
+import 'package:geopod/widgets/settings/settings_sections.dart';
 
 /// Dialog for configuring map display settings.
 ///
 /// Allows users to:
 /// - Toggle visibility of local (canned) example places
 /// - Customize colors for user places and example places
+/// - Select map source
+/// - Configure viewport settings
 class MapSettingsDialog extends StatefulWidget {
   const MapSettingsDialog({
     super.key,
@@ -61,13 +62,16 @@ class MapSettingsDialog extends StatefulWidget {
 
 class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late bool _showLocalPlaces;
+  late bool _showEncryptedPlaces;
   late Color _userPlacesColor;
   late Color _localPlacesColor;
+  late Color _encryptedPlacesColor;
   late MapSource _mapSource;
   late bool _rememberViewport;
   late double _initialLat;
   late double _initialLng;
   late double _initialZoom;
+  bool _isLoadingEncrypted = false;
 
   // Snapshot of initial settings to detect actual changes
   late MapSettings _initialSnapshot;
@@ -77,8 +81,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     super.initState();
     _initialSnapshot = widget.currentSettings;
     _showLocalPlaces = widget.currentSettings.showLocalPlaces;
+    _showEncryptedPlaces = widget.currentSettings.showEncryptedPlaces;
     _userPlacesColor = widget.currentSettings.userPlacesColor;
     _localPlacesColor = widget.currentSettings.localPlacesColor;
+    _encryptedPlacesColor = widget.currentSettings.encryptedPlacesColor;
     _mapSource = widget.currentSettings.mapSource;
     _rememberViewport = widget.currentSettings.rememberViewport;
     _initialLat = widget.currentSettings.initialLat;
@@ -89,8 +95,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   /// Check if current settings differ from initial snapshot.
   bool _hasActualChanges() {
     return _showLocalPlaces != _initialSnapshot.showLocalPlaces ||
+        _showEncryptedPlaces != _initialSnapshot.showEncryptedPlaces ||
         _userPlacesColor != _initialSnapshot.userPlacesColor ||
         _localPlacesColor != _initialSnapshot.localPlacesColor ||
+        _encryptedPlacesColor != _initialSnapshot.encryptedPlacesColor ||
         _mapSource != _initialSnapshot.mapSource ||
         _rememberViewport != _initialSnapshot.rememberViewport ||
         _initialLat != _initialSnapshot.initialLat ||
@@ -102,8 +110,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   void _saveAndNotify() {
     final newSettings = MapSettings(
       showLocalPlaces: _showLocalPlaces,
+      showEncryptedPlaces: _showEncryptedPlaces,
       userPlacesColor: _userPlacesColor,
       localPlacesColor: _localPlacesColor,
+      encryptedPlacesColor: _encryptedPlacesColor,
       mapSource: _mapSource,
       rememberViewport: _rememberViewport,
       initialLat: _initialLat,
@@ -118,70 +128,14 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     widget.onSettingsChanged(newSettings);
   }
 
-  /// Shows color picker dialog for selecting a color.
-  Future<void> _showColorPicker({
-    required String title,
-    required Color currentColor,
-    required void Function(Color) onColorChanged,
-  }) async {
-    Color selectedColor = currentColor;
-
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: SingleChildScrollView(
-          child: BlockPicker(
-            pickerColor: currentColor,
-            onColorChanged: (color) {
-              selectedColor = color;
-            },
-            availableColors: const [
-              Colors.red,
-              Colors.pink,
-              Colors.purple,
-              Colors.deepPurple,
-              Colors.indigo,
-              Colors.blue,
-              Colors.lightBlue,
-              Colors.cyan,
-              Colors.teal,
-              Colors.green,
-              Colors.lightGreen,
-              Colors.lime,
-              Colors.yellow,
-              Colors.amber,
-              Colors.orange,
-              Colors.deepOrange,
-              Colors.brown,
-              Colors.grey,
-              Colors.blueGrey,
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onColorChanged(selectedColor);
-              Navigator.pop(context);
-            },
-            child: const Text('Select'),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Resets all settings to defaults.
   void _resetToDefaults() {
     setState(() {
       _showLocalPlaces = true;
+      _showEncryptedPlaces = false;
       _userPlacesColor = defaultUserColor;
       _localPlacesColor = defaultLocalColor;
+      _encryptedPlacesColor = defaultEncryptedColor;
       _mapSource = MapSettings.getDefaultMapSource();
       _rememberViewport = true;
       _initialLat = defaultInitialLat;
@@ -212,224 +166,105 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Visibility toggle.
-              const Text(
-                'Visibility',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                title: const Text('Show Example Locations'),
-                subtitle: const Text('Display canned examples on map'),
-                value: _showLocalPlaces,
-                onChanged: (value) {
+              // Visibility section
+              buildVisibilitySection(
+                showLocalPlaces: _showLocalPlaces,
+                showEncryptedPlaces: _showEncryptedPlaces,
+                isLoadingEncrypted: _isLoadingEncrypted,
+                isLoggedIn: authStateNotifier.value,
+                onShowLocalChanged: (value) {
                   setState(() => _showLocalPlaces = value);
                   _saveAndNotify();
                 },
-                secondary: Icon(
-                  _showLocalPlaces ? Icons.visibility : Icons.visibility_off,
-                  color: _showLocalPlaces ? Colors.green : Colors.grey,
-                ),
+                onShowEncryptedChanged: (value) async {
+                  if (value) {
+                    // Enabling encrypted places - verify security key first
+                    setState(() => _isLoadingEncrypted = true);
+
+                    // Check if security key is available, prompt if not
+                    final hasKey =
+                        await EncryptedPlacesService.ensureSecurityKey(
+                          context,
+                          widget,
+                        );
+
+                    if (!mounted) return;
+
+                    if (hasKey) {
+                      // Security key verified, enable the setting
+                      setState(() {
+                        _showEncryptedPlaces = true;
+                        _isLoadingEncrypted = false;
+                      });
+                      _saveAndNotify();
+                    } else {
+                      // User cancelled or key verification failed
+                      setState(() => _isLoadingEncrypted = false);
+                      // Don't change _showEncryptedPlaces - it stays false
+                    }
+                  } else {
+                    // Disabling encrypted places - no verification needed
+                    setState(() => _showEncryptedPlaces = false);
+                    _saveAndNotify();
+                  }
+                },
               ),
               const Divider(height: 24),
 
-              // Viewport Settings
-              const Text(
-                'Viewport',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                title: const Text('Remember Viewport'),
-                subtitle: const Text('Resume from last viewed position'),
-                value: _rememberViewport,
-                onChanged: (value) {
+              // Viewport section
+              buildViewportSection(
+                rememberViewport: _rememberViewport,
+                initialLat: _initialLat,
+                initialLng: _initialLng,
+                initialZoom: _initialZoom,
+                onRememberViewportChanged: (value) {
                   setState(() => _rememberViewport = value);
                   _saveAndNotify();
                 },
-                secondary: Icon(
-                  _rememberViewport ? Icons.restore : Icons.home,
-                  color: _rememberViewport ? Colors.blue : Colors.grey,
-                ),
+                onViewportChanged: (lat, lng, zoom) {
+                  setState(() {
+                    _initialLat = lat;
+                    _initialLng = lng;
+                    _initialZoom = zoom;
+                  });
+                  _saveAndNotify();
+                },
               ),
-              if (!_rememberViewport) ...[
-                const SizedBox(height: 12),
-                InitialViewportSelector(
-                  lat: _initialLat,
-                  lng: _initialLng,
-                  zoom: _initialZoom,
-                  onChanged: (lat, lng, zoom) {
-                    setState(() {
-                      _initialLat = lat;
-                      _initialLng = lng;
-                      _initialZoom = zoom;
-                    });
-                    _saveAndNotify();
-                  },
-                ),
-              ],
               const Divider(height: 24),
 
-              // Map Source Selection
-              const Text(
-                'Map Source',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButton<MapSource>(
-                  value: _mapSource,
-                  isExpanded: true,
-                  underline: const SizedBox(),
-                  icon: const Icon(Icons.arrow_drop_down),
-                  items: MapSource.values.map((source) {
-                    return DropdownMenuItem<MapSource>(
-                      value: source,
-                      child: Row(
-                        children: [
-                          Icon(
-                            source.icon,
-                            size: 20,
-                            color: Colors.grey.shade700,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  source.displayName,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Text(
-                                  source.description,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (MapSource? newValue) {
-                    if (newValue != null) {
-                      setState(() => _mapSource = newValue);
-                      _saveAndNotify();
-                    }
-                  },
-                ),
+              // Map source section
+              buildMapSourceSection(
+                mapSource: _mapSource,
+                onMapSourceChanged: (source) {
+                  setState(() => _mapSource = source);
+                  _saveAndNotify();
+                },
               ),
               const SizedBox(height: 12),
               const Divider(height: 24),
 
-              // Color customization.
-              const Text(
-                'Marker Colors',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // User places color.
-              ColorPickerTile(
-                label: 'My Places',
-                subtitle: 'Your saved locations',
-                color: _userPlacesColor,
-                onTap: () => _showColorPicker(
-                  title: 'My Places Color',
-                  currentColor: _userPlacesColor,
-                  onColorChanged: (color) {
-                    setState(() => _userPlacesColor = color);
-                    _saveAndNotify();
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Local places color.
-              ColorPickerTile(
-                label: 'Example Places',
-                subtitle: 'Canned example locations',
-                color: _localPlacesColor,
-                onTap: () => _showColorPicker(
-                  title: 'Example Places Color',
-                  currentColor: _localPlacesColor,
-                  onColorChanged: (color) {
-                    setState(() => _localPlacesColor = color);
-                    _saveAndNotify();
-                  },
-                ),
+              // Marker colors section
+              buildMarkerColorsSection(
+                context: context,
+                userPlacesColor: _userPlacesColor,
+                localPlacesColor: _localPlacesColor,
+                onUserColorChanged: (color) {
+                  setState(() => _userPlacesColor = color);
+                  _saveAndNotify();
+                },
+                onLocalColorChanged: (color) {
+                  setState(() => _localPlacesColor = color);
+                  _saveAndNotify();
+                },
               ),
               const SizedBox(height: 20),
 
-              // Reset button.
-              Center(
-                child: TextButton.icon(
-                  onPressed: _resetToDefaults,
-                  icon: const Icon(Icons.restore, size: 18),
-                  label: const Text('Reset to Defaults'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                ),
-              ),
-
+              // Reset button
+              buildResetButton(onReset: _resetToDefaults),
               const SizedBox(height: 12),
 
-              // Logout button - only show if user is logged in
-              FutureBuilder<String?>(
-                future: getWebId(),
-                builder: (context, snapshot) {
-                  final isLoggedIn =
-                      snapshot.data != null && snapshot.data!.isNotEmpty;
-                  if (!isLoggedIn) return const SizedBox.shrink();
-
-                  return Center(
-                    child: TextButton.icon(
-                      onPressed: () async {
-                        // Close settings dialog first
-                        Navigator.pop(context);
-                        // Then handle logout
-                        await SolidAuthHandler.instance.handleLogout(context);
-                      },
-                      icon: const Icon(Icons.logout, size: 18),
-                      label: const Text('Logout'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.red.shade400,
-                      ),
-                    ),
-                  );
-                },
-              ),
+              // User actions (logout, debug buttons)
+              buildUserActionsSection(context),
             ],
           ),
         ),

@@ -32,6 +32,9 @@ import 'package:flutter/services.dart';
 
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/places_service.dart';
+import 'package:geopod/utils/ui_utils.dart';
+import 'package:geopod/utils/widget_utils.dart';
+import 'package:geopod/widgets/weather_dialog.dart';
 
 /// Result returned from AddPlaceForm containing the place data.
 /// Used for optimistic updates - the Place is returned immediately
@@ -39,7 +42,10 @@ import 'package:geopod/services/places_service.dart';
 class AddPlaceResult {
   final Place place;
 
-  AddPlaceResult({required this.place});
+  /// Whether the place should be encrypted.
+  final bool encrypted;
+
+  AddPlaceResult({required this.place, this.encrypted = false});
 }
 
 /// A form widget that allows users to add a new place with coordinates and
@@ -74,6 +80,9 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   String? _addressPreview;
   bool _isLoadingAddress = false;
   Timer? _debounceTimer;
+
+  /// Whether to encrypt this place.
+  bool _encrypt = true;
 
   @override
   void initState() {
@@ -151,19 +160,15 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
       // Call geocoding API
       final address = await GeocodingService.getAddress(lat, lng);
 
-      if (mounted) {
-        setState(() {
-          _addressPreview = address;
-          _isLoadingAddress = false;
-        });
-      }
+      safeSetState(this, () {
+        _addressPreview = address;
+        _isLoadingAddress = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _addressPreview = 'Failed to load address';
-          _isLoadingAddress = false;
-        });
-      }
+      safeSetState(this, () {
+        _addressPreview = 'Failed to load address';
+        _isLoadingAddress = false;
+      });
     }
   }
 
@@ -227,17 +232,40 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
     );
 
     // INSTANT: Close dialog and return Place for optimistic update.
-    Navigator.pop(context, AddPlaceResult(place: place));
+    Navigator.pop(context, AddPlaceResult(place: place, encrypted: _encrypt));
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.add_location_alt, color: Colors.green),
-          SizedBox(width: 12),
-          Text('Add New Place'),
+          const Icon(Icons.add_location_alt, color: Colors.green),
+          const SizedBox(width: 12),
+          const Text('Add New Place'),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.cloud_outlined),
+            onPressed: () {
+              final lat = double.tryParse(_latitudeController.text.trim());
+              final lng = double.tryParse(_longitudeController.text.trim());
+              if (lat != null && lng != null) {
+                showWeatherDialog(
+                  context: context,
+                  latitude: lat,
+                  longitude: lng,
+                  address: _addressPreview,
+                );
+              } else {
+                SnackBarHelper.showWarning(
+                  context,
+                  'Please enter valid coordinates to view weather',
+                  duration: const Duration(seconds: 2),
+                );
+              }
+            },
+            tooltip: 'View Weather',
+          ),
         ],
       ),
       content: SizedBox(
@@ -364,6 +392,72 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                   ),
                   maxLines: 4,
                   validator: _validateNote,
+                ),
+                const SizedBox(height: 16),
+
+                // Encryption checkbox.
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _encrypt
+                        ? Colors.green.shade50
+                        : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _encrypt
+                          ? Colors.green.shade300
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: _encrypt,
+                        onChanged: (value) {
+                          setState(() {
+                            _encrypt = value ?? false;
+                          });
+                        },
+                        activeColor: Colors.green,
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  _encrypt ? Icons.lock : Icons.lock_open,
+                                  size: 18,
+                                  color: _encrypt ? Colors.green : Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Encrypt this place',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: _encrypt
+                                        ? Colors.green.shade700
+                                        : Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _encrypt
+                                  ? 'This place will be stored securely with encryption'
+                                  : 'Enable to store this place with encryption',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

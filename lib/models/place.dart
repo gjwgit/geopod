@@ -38,6 +38,10 @@ class Place {
   /// Local places are read-only and cannot be deleted.
   final bool isLocal;
 
+  /// Whether this place is stored encrypted.
+  /// Encrypted places are stored in a separate encrypted file.
+  final bool isEncrypted;
+
   Place({
     required this.id,
     required this.lat,
@@ -46,6 +50,7 @@ class Place {
     required this.timestamp,
     this.address,
     this.isLocal = false,
+    this.isEncrypted = false,
   });
 
   /// Creates a Place from JSON map.
@@ -54,6 +59,7 @@ class Place {
   factory Place.fromJson(
     Map<String, dynamic> json, {
     bool isLocalSource = false,
+    bool isEncryptedSource = false,
   }) {
     return Place(
       id:
@@ -65,6 +71,7 @@ class Place {
       timestamp: json['timestamp'] as String? ?? '',
       address: json['address'] as String?,
       isLocal: isLocalSource,
+      isEncrypted: isEncryptedSource,
     );
   }
 
@@ -114,5 +121,28 @@ class Place {
     } catch (_) {
       return timestamp;
     }
+  }
+
+  /// Creates a copy of this Place with optional field overrides.
+  Place copyWith({
+    String? id,
+    double? lat,
+    double? lng,
+    String? note,
+    String? timestamp,
+    String? address,
+    bool? isLocal,
+    bool? isEncrypted,
+  }) {
+    return Place(
+      id: id ?? this.id,
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
+      note: note ?? this.note,
+      timestamp: timestamp ?? this.timestamp,
+      address: address ?? this.address,
+      isLocal: isLocal ?? this.isLocal,
+      isEncrypted: isEncrypted ?? this.isEncrypted,
+    );
   }
 }

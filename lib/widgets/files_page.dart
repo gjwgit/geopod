@@ -1,8 +1,8 @@
 /// Widget for files page with login check.
 ///
-// Time-stamp: <2026-01-01 Miduo>
+// Time-stamp: <Tuesday 2026-01-14 +1100>
 ///
-/// Copyright (C) 2025, Software Innovation Institute, ANU.
+/// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
 /// Licensed under the GNU General Public License, Version 3 (the "License").
 ///
@@ -12,10 +12,10 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:solidpod/solidpod.dart' show authStateNotifier;
 import 'package:solidui/solidui.dart' show SolidAuthHandler;
 
 import 'package:geopod/services/pod/pod.dart';
+import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/pod/pod_file_browser.dart';
 
 /// A widget that wraps PodFileBrowser with login state checking.
@@ -27,39 +27,30 @@ class FilesPage extends StatefulWidget {
   State<FilesPage> createState() => _FilesPageState();
 }
 
-class _FilesPageState extends State<FilesPage> {
-  bool _isLoggedIn = true;
+class _FilesPageState extends State<FilesPage> with AuthStateManagement {
   bool _isChecking = true;
 
   @override
   void initState() {
     super.initState();
-    _isLoggedIn = authStateNotifier.value;
-    authStateNotifier.addListener(_onAuthStateChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkLoginStatus());
+    initAuthStateListener();
+    addPostFrameCallback(this, _checkLoginStatus);
   }
 
   @override
   void dispose() {
-    authStateNotifier.removeListener(_onAuthStateChanged);
+    disposeAuthStateListener();
     super.dispose();
   }
 
-  void _onAuthStateChanged() {
-    final loggedIn = authStateNotifier.value;
-    if (loggedIn != _isLoggedIn && mounted) {
-      setState(() => _isLoggedIn = loggedIn);
-    }
+  @override
+  void onAuthStateChanged(bool isLoggedIn) {
+    // State is already updated by mixin
   }
 
   Future<void> _checkLoginStatus() async {
-    final loggedIn = await PodAuth.isLoggedIn();
-    if (mounted) {
-      setState(() {
-        _isLoggedIn = loggedIn;
-        _isChecking = false;
-      });
-    }
+    await PodAuth.isLoggedIn(); // Verify login state
+    safeSetState(this, () => _isChecking = false);
   }
 
   @override
@@ -68,7 +59,7 @@ class _FilesPageState extends State<FilesPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (!_isLoggedIn) {
+    if (!isLoggedIn) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

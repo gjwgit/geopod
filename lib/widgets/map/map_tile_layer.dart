@@ -61,13 +61,8 @@ Widget buildMapTileLayer({
       maxZoom: 19,
       maxNativeZoom: mapSettings.mapSource.maxNativeZoom,
       retinaMode: false,
-      // Tile update behavior - prefer faster updates
       tileUpdateTransformer: TileUpdateTransformers.throttle(
         const Duration(milliseconds: 100),
-      ),
-      errorImage: const AssetImage(
-        'assets/images/tile_error.png',
-        package: 'solidpod',
       ),
     ),
   );

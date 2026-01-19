@@ -1,6 +1,6 @@
 /// Service for managing places data in the user's Solid Pod.
 ///
-// Time-stamp: <2025-12-04 Miduo>
+// Time-stamp: <2026-01-07 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -29,13 +29,14 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/constants/example_places_data.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places/places_cache_manager.dart';
+import 'package:geopod/services/places/places_cache_persistence.dart';
 import 'package:geopod/services/places/places_import_export.dart';
 import 'package:geopod/services/places/places_pod_file.dart';
 import 'package:geopod/services/pod/pod_directory_service.dart';
@@ -45,10 +46,6 @@ export 'package:geopod/services/places/places_cache_manager.dart';
 export 'package:geopod/services/places/places_import_export.dart';
 
 final placesChangeNotifier = ValueNotifier<int>(0);
-
-const String _keyPodPlacesCache = 'pod_places_cache';
-const String _keyPodPlacesCacheTimestamp = 'pod_places_cache_timestamp';
-const Duration _cacheExpiry = Duration(minutes: 5);
 
 class PlacesService {
   /// Cached local places (lazily initialized from compiled constants).
@@ -62,22 +59,67 @@ class PlacesService {
     return _cachedLocalPlaces!;
   }
 
-  /// Load local example places (async for API compatibility).
+  /// Load local example places (async wrapper for API compatibility).
+  /// NOTE: Prefer using getLocalPlacesSync() directly as local places
+  /// are now compiled into the app and don't require async loading.
+  @Deprecated('Use getLocalPlacesSync() instead - local data is compiled in')
   static Future<List<Place>> loadLocalPlaces() async => getLocalPlacesSync();
 
-  static Future<List<Place>> fetchPlaces({bool forceRefresh = false}) async {
+  static Future<List<Place>> fetchPlaces({
+    bool forceRefresh = false,
+    bool includeEncrypted = false,
+  }) async {
     final cm = PlacesCacheManager();
     if (!forceRefresh) {
       final c = cm.allPlaces;
-      if (c != null) return c;
+      if (c != null) {
+        // If cached but need encrypted, check if encrypted is included
+        if (includeEncrypted && !c.any((p) => p.isEncrypted)) {
+          // Need to fetch encrypted separately
+        } else {
+          return c;
+        }
+      }
     }
     // Local places are synchronous (compiled into binary) - get them immediately
     final localPlaces = getLocalPlacesSync();
     // Only await network data
     final podPlaces = await fetchPodPlaces(forceRefresh: forceRefresh);
-    final all = <Place>[...podPlaces, ...localPlaces];
+    // Only fetch encrypted if explicitly requested
+    final encryptedPlaces = includeEncrypted
+        ? await fetchEncryptedPlaces(forceRefresh: forceRefresh)
+        : <Place>[];
+    final all = <Place>[...podPlaces, ...encryptedPlaces, ...localPlaces];
     cm.cacheAllPlaces(all);
     return all;
+  }
+
+  /// Fetch encrypted places from Pod.
+  /// Returns empty list if not logged in or no security key available.
+  /// NOTE: Will not prompt for security key - use EncryptedPlacesService
+  /// directly if you need to prompt the user.
+  static Future<List<Place>> fetchEncryptedPlaces({
+    bool forceRefresh = false,
+  }) async {
+    try {
+      if (!authStateNotifier.value) return [];
+      // Check if security key is available - don't try to load if not
+      final hasKey = await EncryptedPlacesService.isSecurityKeyAvailable();
+      if (!hasKey) {
+        debugPrint(
+          'PlacesService.fetchEncryptedPlaces: no security key, skipping',
+        );
+        return [];
+      }
+      // Import and use EncryptedPlacesService
+      final encPlaces = await EncryptedPlacesService.fetchEncryptedPlaces(
+        forceRefresh: forceRefresh,
+      );
+      return encPlaces;
+    } catch (e) {
+      debugPrint('PlacesService.fetchEncryptedPlaces error: $e');
+      return [];
+    }
   }
 
   static Future<List<Place>> fetchPodPlaces({bool forceRefresh = false}) async {
@@ -93,7 +135,7 @@ class PlacesService {
         }
       }
       if (!forceRefresh) {
-        final c = await _getCachedPodPlaces();
+        final c = await PlacesCachePersistence.getCachedPodPlaces();
         if (c != null) {
           cm.cachePodPlaces(c);
           _refreshPodPlacesInBackground();
@@ -117,49 +159,10 @@ class PlacesService {
         } catch (_) {}
       }
       places.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      await _cachePodPlaces(content);
+      await PlacesCachePersistence.cachePodPlaces(content);
       cm.cachePodPlaces(places);
     } catch (_) {}
     return places;
-  }
-
-  static Future<List<Place>?> _getCachedPodPlaces() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final json = prefs.getString(_keyPodPlacesCache);
-      final ts = prefs.getInt(_keyPodPlacesCacheTimestamp);
-      if (json == null || ts == null) return null;
-      if (DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(ts)) >
-          _cacheExpiry) {
-        return null;
-      }
-      final places = <Place>[];
-      final decoded = jsonDecode(json);
-      if (decoded is List) {
-        for (final i in decoded) {
-          if (i is Map<String, dynamic>) {
-            try {
-              places.add(Place.fromJson(i, isLocalSource: false));
-            } catch (_) {}
-          }
-        }
-      }
-      places.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      return places;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static Future<void> _cachePodPlaces(String json) async {
-    try {
-      final p = await SharedPreferences.getInstance();
-      await p.setString(_keyPodPlacesCache, json);
-      await p.setInt(
-        _keyPodPlacesCacheTimestamp,
-        DateTime.now().millisecondsSinceEpoch,
-      );
-    } catch (_) {}
   }
 
   static void _refreshPodPlacesInBackground() {
@@ -167,7 +170,9 @@ class PlacesService {
       try {
         if (!authStateNotifier.value) return;
         final c = await readPlacesJsonFile();
-        if (c != null && c.trim().isNotEmpty) await _cachePodPlaces(c);
+        if (c != null && c.trim().isNotEmpty) {
+          await PlacesCachePersistence.cachePodPlaces(c);
+        }
       } catch (_) {}
     });
   }
@@ -175,18 +180,15 @@ class PlacesService {
   static Future<void> clearCache() async {
     try {
       PlacesCacheManager().clearCache();
-      final p = await SharedPreferences.getInstance();
-      await p.remove(_keyPodPlacesCache);
-      await p.remove(_keyPodPlacesCacheTimestamp);
+      await PlacesCachePersistence.clearPodPlacesCache();
+      EncryptedPlacesService.resetSessionState();
     } catch (_) {}
   }
 
   static Future<void> clearPodCacheOnly() async {
     try {
       PlacesCacheManager().clearPodCacheOnly();
-      final p = await SharedPreferences.getInstance();
-      await p.remove(_keyPodPlacesCache);
-      await p.remove(_keyPodPlacesCacheTimestamp);
+      await PlacesCachePersistence.clearPodPlacesCache();
     } catch (_) {}
   }
 

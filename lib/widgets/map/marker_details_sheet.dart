@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:geopod/widgets/map/marker_data.dart';
+import 'package:geopod/widgets/weather_dialog.dart';
 
 /// Shows detailed information about a marker in a bottom sheet.
 void showMarkerDetailsSheet(
@@ -104,6 +105,18 @@ void showMarkerDetailsSheet(
                       ),
                   ],
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.cloud_outlined),
+                onPressed: () {
+                  showWeatherDialog(
+                    context: sheetContext,
+                    latitude: marker.position.latitude,
+                    longitude: marker.position.longitude,
+                    address: marker.address,
+                  );
+                },
+                tooltip: 'View Weather',
               ),
               IconButton(
                 icon: const Icon(Icons.close),

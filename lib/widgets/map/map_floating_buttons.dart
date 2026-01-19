@@ -33,6 +33,8 @@ class MapFloatingButtons extends StatelessWidget {
   final VoidCallback onZoomIn;
   final VoidCallback onZoomOut;
   final VoidCallback onRefresh;
+  final VoidCallback onLocate;
+  final bool isLocating;
 
   const MapFloatingButtons({
     super.key,
@@ -40,6 +42,8 @@ class MapFloatingButtons extends StatelessWidget {
     required this.onZoomIn,
     required this.onZoomOut,
     required this.onRefresh,
+    required this.onLocate,
+    this.isLocating = false,
   });
 
   @override
@@ -81,6 +85,24 @@ class MapFloatingButtons extends StatelessWidget {
                   ),
                 )
               : const Icon(Icons.refresh),
+        ),
+        const SizedBox(height: 16),
+        FloatingActionButton.small(
+          heroTag: 'locate',
+          onPressed: isLocating ? null : onLocate,
+          tooltip: 'My Location',
+          backgroundColor: isLocating ? Colors.grey : Colors.green,
+          foregroundColor: Colors.white,
+          child: isLocating
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.my_location, size: 20),
         ),
       ],
     );

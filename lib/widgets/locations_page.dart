@@ -12,11 +12,12 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:solidpod/solidpod.dart' show authStateNotifier, isUserLoggedIn;
+import 'package:solidpod/solidpod.dart' show isUserLoggedIn;
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, PlacesCacheManager, placesChangeNotifier;
+import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/locations/edit_place_dialog.dart';
 import 'package:geopod/widgets/locations/import_operations.dart';
 import 'package:geopod/widgets/locations/locations_page_header.dart';
@@ -30,9 +31,9 @@ class LocationsPage extends StatefulWidget {
   State<LocationsPage> createState() => _LocationsPageState();
 }
 
-class _LocationsPageState extends State<LocationsPage> {
+class _LocationsPageState extends State<LocationsPage>
+    with AuthStateManagement {
   List<Place> _places = [];
-  bool _isLoggedIn = true;
   late bool _isLoading;
   String? _errorMessage;
   bool _hasLoadedOnce = false;
@@ -42,133 +43,85 @@ class _LocationsPageState extends State<LocationsPage> {
   @override
   void initState() {
     super.initState();
-    _isLoggedIn = authStateNotifier.value;
+    // CRITICAL: Initialize auth listener FIRST to get current state
+    initAuthStateListener();
+
+    // Try to load from cache for instant display
     final cm = PlacesCacheManager();
-    final cached = cm.podPlaces;
-    if (cached != null && cached.isNotEmpty) {
-      _places = cached;
+    final cached = cm.allPlaces;
+    final cacheState = cm.wasLoggedInWhenCached;
+
+    // Only use cache if it matches current login state
+    if (cached != null && cached.isNotEmpty && cacheState == isLoggedIn) {
+      // Show POD places if logged in, local places if not
+      _places = isLoggedIn
+          ? cached
+                .where((p) => !p.isLocal)
+                .toList() // Logged in: POD places
+          : cached
+                .where((p) => p.isLocal)
+                .toList(); // Not logged in: local examples
       _isLoading = false;
-      _hasLoadedOnce = true;
+      // Don't set _hasLoadedOnce yet - let _verifyLoginAndRefresh handle it
     } else {
-      final all = cm.allPlaces;
-      if (all != null && all.isNotEmpty) {
-        _places = all.where((p) => !p.isLocal).toList();
-        _isLoading = _places.isEmpty;
-        _hasLoadedOnce = _places.isNotEmpty;
-      } else {
-        _isLoading = true;
-      }
+      // No cache available or cache state doesn't match - need to load
+      _isLoading = true;
     }
-    authStateNotifier.addListener(_onAuthStateChanged);
+
     placesChangeNotifier.addListener(_onPlacesChanged);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _verifyLoginAndRefresh(),
-    );
+    addPostFrameCallback(this, _verifyLoginAndRefresh);
   }
 
   Future<void> _verifyLoginAndRefresh() async {
+    // Always check current login state from server
     final loggedIn = await isUserLoggedIn();
     if (!mounted) return;
-    if (loggedIn != _isLoggedIn) {
-      setState(() => _isLoggedIn = loggedIn);
-      if (loggedIn) {
-        final cm = PlacesCacheManager();
-        final cached = cm.allPlaces;
-        if (cached != null && cached.isNotEmpty) {
-          if (mounted) {
-            setState(() {
-              _places = cached.where((p) => !p.isLocal).toList();
-              _isLoading = false;
-              _hasLoadedOnce = true;
-            });
-          }
-        } else {
-          _loadPlaces(forceRefresh: false);
-        }
-      } else {
-        PlacesService.clearCache();
-        setState(() {
-          _places = [];
-          _hasLoadedOnce = false;
-        });
-        _loadPlaces();
-      }
-    } else if (!_hasLoadedOnce) {
-      final cm = PlacesCacheManager();
-      final cached = cm.allPlaces;
-      if (cached != null && cached.isNotEmpty) {
-        final up = loggedIn ? cached.where((p) => !p.isLocal).toList() : cached;
-        if (mounted) {
-          setState(() {
-            _places = up;
-            _isLoading = false;
-            _hasLoadedOnce = true;
-          });
-        }
-      } else {
-        _loadPlaces(forceRefresh: false);
-      }
+
+    // If auth state differs from mixin state, it means state changed but mixin hasn't updated yet
+    // Force reload in this case
+    if (loggedIn != isLoggedIn || !_hasLoadedOnce) {
+      await _loadPlaces(forceRefresh: false);
     }
   }
 
   @override
   void dispose() {
-    authStateNotifier.removeListener(_onAuthStateChanged);
+    disposeAuthStateListener();
     placesChangeNotifier.removeListener(_onPlacesChanged);
     super.dispose();
   }
 
+  @override
+  void onAuthStateChanged(bool isLoggedIn) {
+    // Reload places when auth state changes, force refresh to get latest data
+    _loadPlaces(forceRefresh: true);
+  }
+
   void _onPlacesChanged() {
-    if (mounted && _isLoggedIn) {
+    // Load places regardless of login state to ensure local places are visible
+    if (mounted) {
       _loadPlaces(forceRefresh: false);
     }
   }
 
-  void _onAuthStateChanged() {
-    final loggedIn = authStateNotifier.value;
-    if (loggedIn == _isLoggedIn) return;
-    if (!loggedIn && mounted) {
-      _handleLogout();
-    } else if (loggedIn && mounted) {
-      setState(() => _isLoggedIn = true);
-    }
-  }
-
-  Future<void> _handleLogout() async {
-    await PlacesService.clearCache();
-    if (mounted) {
-      setState(() {
-        _isLoggedIn = false;
-        _places = [];
-        _hasLoadedOnce = false;
-      });
-    }
-  }
-
   Future<void> _loadPlaces({bool forceRefresh = false}) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      final places = await PlacesService.fetchPlaces(
-        forceRefresh: forceRefresh,
-      );
-      if (mounted) {
-        setState(() {
-          _places = places;
-          _isLoading = false;
-          _hasLoadedOnce = true;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
-          _isLoading = false;
-        });
-      }
-    }
+    await executeWithLoading(
+      state: this,
+      setLoading: (loading) => _isLoading = loading,
+      setError: (error) => _errorMessage = error,
+      operation: () async {
+        final places = await PlacesService.fetchPlaces(
+          forceRefresh: forceRefresh,
+        );
+        // Filter based on login state:
+        // - Logged in: show POD places (user's own places)
+        // - Not logged in: show local example places
+        _places = isLoggedIn
+            ? places.where((p) => !p.isLocal).toList()
+            : places.where((p) => p.isLocal).toList();
+        _hasLoadedOnce = true;
+      },
+    );
   }
 
   Future<void> _refresh() async => await _loadPlaces(forceRefresh: true);
@@ -195,29 +148,39 @@ class _LocationsPageState extends State<LocationsPage> {
   Future<void> _deletePlace(Place place) async {
     final confirmed = await showDeletePlaceConfirmation(context, place);
     if (!confirmed || !mounted) return;
+
     final removed = place;
     final ri = _places.indexOf(place);
-    setState(() => _places.remove(place));
+    safeSetState(this, () => _places.remove(place));
+
     final success = await deletePlaceWithFeedback(context, place);
     if (!mounted) return;
+
     if (!success) {
-      setState(() => _places.insert(ri.clamp(0, _places.length), removed));
+      safeSetState(
+        this,
+        () => _places.insert(ri.clamp(0, _places.length), removed),
+      );
     }
   }
 
   Future<void> _clearAllPlaces() async {
     if (_userPlaces.isEmpty) return;
+
     final confirmed = await showClearAllConfirmation(
       context,
       _userPlaces.length,
     );
     if (!confirmed || !mounted) return;
+
     final removed = _userPlaces.toList();
-    setState(() => _places.removeWhere((p) => !p.isLocal));
+    safeSetState(this, () => _places.removeWhere((p) => !p.isLocal));
+
     final success = await clearAllPlacesWithFeedback(context, removed.length);
     if (!mounted) return;
+
     if (!success) {
-      setState(() => _places.insertAll(0, removed));
+      safeSetState(this, () => _places.insertAll(0, removed));
     }
   }
 
@@ -227,22 +190,28 @@ class _LocationsPageState extends State<LocationsPage> {
       builder: (_) => EditPlaceDialog(place: place),
     );
     if (result == null || !mounted) return;
+
     final coordsChanged = result.lat != place.lat || result.lng != place.lng;
     final old = place;
     final i = _places.indexOf(place);
-    setState(() {
+
+    safeSetState(this, () {
       if (i != -1) {
         _places[i] = result;
       }
     });
+
     showUpdatingPlaceSnackbar(context, coordsChanged);
+
     final success = await PlacesService.updatePlace(
       result,
       context,
       const LocationsPage(),
       coordinatesChanged: coordsChanged,
     );
+
     if (!mounted) return;
+
     if (success) {
       if (coordsChanged) {
         await _loadPlaces();
@@ -250,7 +219,7 @@ class _LocationsPageState extends State<LocationsPage> {
       }
       showUpdateSuccessSnackbar(context);
     } else {
-      setState(() {
+      safeSetState(this, () {
         if (i != -1) {
           _places[i] = old;
         }
@@ -261,41 +230,70 @@ class _LocationsPageState extends State<LocationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isLoggedIn) return const NotLoggedInView();
+    // Show loading view only on first load
     if (_isLoading && !_hasLoadedOnce) return const LoadingView();
+
+    // Show error view if there's an error
     if (_errorMessage != null) {
       return ErrorView(errorMessage: _errorMessage!, onRetry: _refresh);
     }
-    final up = _userPlaces;
-    if (up.isEmpty) {
-      return EmptyPlacesView(onRefresh: _refresh, onImport: _importPlaces);
+
+    // Get the appropriate places list based on login state
+    // For logged in users: use _userPlaces (excludes local examples)
+    // For not logged in: use _places directly (which contains local examples)
+    final displayPlaces = isLoggedIn ? _userPlaces : _places;
+
+    // Show empty view if no places
+    if (displayPlaces.isEmpty) {
+      // Show NotLoggedInView for logged-in users with no places
+      // Show different message for not-logged-in users
+      if (isLoggedIn) {
+        return EmptyPlacesView(onRefresh: _refresh, onImport: _importPlaces);
+      } else {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Text(
+              'No local example places available.\nPlease log in to manage your own places.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16),
+            ),
+          ),
+        );
+      }
     }
+
     return RefreshIndicator(
       onRefresh: _refresh,
       child: Column(
         children: [
           LocationsPageHeader(
-            placeCount: up.length,
+            placeCount: displayPlaces.length,
             isLoading: _isLoading,
             onRefresh: _refresh,
           ),
-          LocationsActionButtons(
-            isLoading: _isLoading,
-            onExport: _exportPlaces,
-            onImport: _importPlaces,
-            onClearAll: _clearAllPlaces,
-          ),
+          // Only show action buttons when logged in
+          if (isLoggedIn)
+            LocationsActionButtons(
+              isLoading: _isLoading,
+              onExport: _exportPlaces,
+              onImport: _importPlaces,
+              onClearAll: _clearAllPlaces,
+            ),
           const SizedBox(height: 8),
           const Divider(height: 1),
           Expanded(
             child: ListView.builder(
-              itemCount: up.length,
+              itemCount: displayPlaces.length,
               itemBuilder: (_, i) {
-                final p = up[i];
+                final p = displayPlaces[i];
                 return PlaceListTile(
                   place: p,
-                  onEdit: () => _editPlace(p),
-                  onDelete: () => _deletePlace(p),
+                  // Only allow edit/delete when logged in and place is not local
+                  onEdit: isLoggedIn && !p.isLocal ? () => _editPlace(p) : null,
+                  onDelete: isLoggedIn && !p.isLocal
+                      ? () => _deletePlace(p)
+                      : null,
                 );
               },
             ),

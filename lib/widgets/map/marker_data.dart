@@ -51,6 +51,9 @@ class MarkerData {
   /// Custom color for this marker (from settings).
   final Color color;
 
+  /// Whether this marker is from encrypted storage.
+  final bool isEncrypted;
+
   MarkerData({
     required this.position,
     required this.title,
@@ -60,6 +63,7 @@ class MarkerData {
     this.isLocal = false,
     this.isSaving = false,
     this.color = Colors.blue,
+    this.isEncrypted = false,
   });
 
   String get coordinates =>
@@ -72,9 +76,14 @@ List<MarkerData> buildFilteredMarkers({
   required MapSettings mapSettings,
   required Set<String> savingPlaceIds,
 }) {
-  final visible = mapSettings.showLocalPlaces
-      ? allPlaces
-      : allPlaces.where((p) => !p.isLocal).toList();
+  final visible = allPlaces.where((p) {
+    // Filter out local places if disabled
+    if (p.isLocal && !mapSettings.showLocalPlaces) return false;
+    // Filter out encrypted places if disabled
+    if (p.isEncrypted && !mapSettings.showEncryptedPlaces) return false;
+    return true;
+  }).toList();
+
   return visible
       .map(
         (p) => MarkerData(
@@ -85,9 +94,12 @@ List<MarkerData> buildFilteredMarkers({
           address: p.address,
           isLocal: p.isLocal,
           isSaving: savingPlaceIds.contains(p.id),
-          color: p.isLocal
+          color: p.isEncrypted
+              ? mapSettings.encryptedPlacesColor
+              : p.isLocal
               ? mapSettings.localPlacesColor
               : mapSettings.userPlacesColor,
+          isEncrypted: p.isEncrypted,
         ),
       )
       .toList();

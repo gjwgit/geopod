@@ -60,6 +60,14 @@ Widget buildFlutterMapWidget({
           initialZoom: initialZoom,
           minZoom: 3.0,
           maxZoom: maxZoom ?? mapSettings.mapSource.maxNativeZoom.toDouble(),
+          // Limit latitude only to prevent scrolling beyond poles
+          // Longitude is unrestricted to allow horizontal wrapping
+          cameraConstraint: CameraConstraint.contain(
+            bounds: LatLngBounds(
+              const LatLng(-85.051, -999999.0), // Southwest corner
+              const LatLng(85.051, 999999.0), // Northeast corner
+            ),
+          ),
           onTap: onTap,
           onLongPress: onLongPress,
           onPositionChanged: onPositionChanged,

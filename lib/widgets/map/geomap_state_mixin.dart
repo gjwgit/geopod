@@ -59,6 +59,8 @@ mixin GeoMapStateMixin {
   set skipPlacesChangeNotification(bool value);
   bool get isLocating;
   set isLocating(bool value);
+  LatLng? get userLocation;
+  set userLocation(LatLng? value);
 }
 
 /// Manages marker cache for performance.

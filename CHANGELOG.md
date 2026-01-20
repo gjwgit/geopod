@@ -26,6 +26,7 @@ a Pull Request. Thanks.
 
 ## 0.1 First beta release
 
++ Add LOCATE ME button [0.0.8 20260121 miduo]
 + Re-enginer to split large file into function-based files [0.0.7 20260110 miduo]
 + FILES begins in app data folder [0.0.6 20251218 gjw]
 + Add zoom +/- buttons [0.0.5 20251210 miduo]

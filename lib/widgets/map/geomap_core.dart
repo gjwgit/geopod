@@ -23,9 +23,6 @@ import 'package:geopod/widgets/map/news_marker_layer.dart';
 import 'package:geopod/widgets/map/places_marker_layer.dart';
 import 'package:geopod/widgets/map/user_location_marker_layer.dart';
 
-/// Unrestricted longitude bounds for map wrapping
-const double _unrestrictedLongitudeBound = 999999.0;
-
 /// Builds the core FlutterMap widget with all layers.
 ///
 /// Performance optimizations:
@@ -63,20 +60,9 @@ Widget buildFlutterMapWidget({
           initialZoom: initialZoom,
           minZoom: 3.0,
           maxZoom: maxZoom ?? mapSettings.mapSource.maxNativeZoom.toDouble(),
-          // Limit latitude only to prevent scrolling beyond poles
-          // Longitude is unrestricted to allow horizontal wrapping
-          cameraConstraint: CameraConstraint.contain(
-            bounds: LatLngBounds(
-              const LatLng(
-                -85.051,
-                -_unrestrictedLongitudeBound,
-              ), // Southwest corner
-              const LatLng(
-                85.051,
-                _unrestrictedLongitudeBound,
-              ), // Northeast corner
-            ),
-          ),
+          // Constrain latitude to ±85.11° (Web Mercator projection limits)
+          // Longitude is unrestricted to allow horizontal map wrapping
+          cameraConstraint: const CameraConstraint.containLatitude(85.051129, -85.051129),
           onTap: onTap,
           onLongPress: onLongPress,
           onPositionChanged: onPositionChanged,

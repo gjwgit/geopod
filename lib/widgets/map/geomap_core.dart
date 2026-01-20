@@ -62,7 +62,10 @@ Widget buildFlutterMapWidget({
           maxZoom: maxZoom ?? mapSettings.mapSource.maxNativeZoom.toDouble(),
           // Constrain latitude to ±85.11° (Web Mercator projection limits)
           // Longitude is unrestricted to allow horizontal map wrapping
-          cameraConstraint: const CameraConstraint.containLatitude(85.051129, -85.051129),
+          cameraConstraint: const CameraConstraint.containLatitude(
+            85.051129,
+            -85.051129,
+          ),
           onTap: onTap,
           onLongPress: onLongPress,
           onPositionChanged: onPositionChanged,

@@ -272,10 +272,22 @@ jobs:
       - name: Clone Repository
         uses: actions/checkout@v4
 
-      - name: Update system packages
+      - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -y
           sudo apt-get upgrade -y
+          printf '#%.0s' {1..72}; printf '\nninja-build\n'
+          sudo apt-get install -y ninja-build
+          printf '#%.0s' {1..72}; printf '\nlibgtk-3-dev\n'
+          sudo apt-get install -y libgtk-3-dev
+          printf '#%.0s' {1..72}; printf '\nclang cmake\n'
+          sudo apt-get install -y clang cmake
+
+      - name: Install extra Linux packages
+        if: env.LINUX_PKGS != ''
+        run: |
+          printf '#%.0s' {1..72}; printf '\n${{env.LINUX_PKGS}}\n'
+          sudo apt-get install -y ${{env.LINUX_PKGS}}
 
       - name: Build snap
         if: hashFiles('snap/**') != ''

@@ -281,7 +281,7 @@ jobs:
           printf '#%.0s' {1..72}; printf '\nlibgtk-3-dev\n'
           sudo apt-get install -y libgtk-3-dev
           printf '#%.0s' {1..72}; printf '\nclang cmake\n'
-          sudo apt-get install -y clang cmake
+          sudo apt-get install -y clang cmake llvm
 
       - name: Install extra Linux packages
         if: env.LINUX_PKGS != ''

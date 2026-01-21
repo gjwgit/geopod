@@ -45,7 +45,7 @@ env:
   APP: geopod
   RELEASE: dev
   LINUX_PKGS: libsecret-1-dev
-  FLUTTER_VERSION: "3.38.5"
+  FLUTTER_VERSION: "3.38.7"
   MACOS_APP_RELEASE_UNSIGNED_PATH: build/macos/Build/Products/Release-unsigned
   MACOS_APP_RELEASE_STAGING_PATH: build/macos/Build/Products/Release-staging
   MACOS_APP_RELEASE_DEV_PATH: build/macos/Build/Products/Release-dev
@@ -286,7 +286,11 @@ jobs:
           #printf '#%.0s' {1..72}; printf '\nclang cmake\n'
           #sudo apt-get install -y clang cmake
           #
-          # 20260121 gjw Seems like a flutter 3.38 bug
+          # 20260121 gjw Seems like a flutter 3.38.7 bug. I've tried
+          # setting FLUTTER_VERSION above to 3.38.5 but it does not
+          # take in the snap build. Tried adding flutter-version to
+          # the snapcraft file but failed. Give up for now until
+          # flutter fix the bug!
           #
           # https://github.com/simolus3/sqlite3.dart/issues/332
           # https://github.com/flutter/flutter/issues/178659

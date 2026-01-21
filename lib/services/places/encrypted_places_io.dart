@@ -1,6 +1,6 @@
 /// I/O operations for encrypted places data.
 ///
-// Time-stamp: <Tuesday 2026-01-14 +1100>
+// Time-stamp: <Thursday 2026-01-22 08:50:55 +1100 Graham Williams>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -23,21 +23,25 @@ import 'package:geopod/services/places/encrypted_places_paths.dart';
 
 /// Ensure the encrypted places directory exists.
 /// Uses session caching flag to avoid repeated server checks.
+
 Future<bool> ensureEncryptedPlacesDir(bool directoryVerified) async {
-  // Skip if already verified this session
+  // Skip if already verified this session.
+
   if (directoryVerified) {
     return true;
   }
 
   try {
-    // Use full path for getDirUrl (it expects path relative to POD root)
+    // Use full path for getDirUrl (it expects path relative to POD root).
+
     final fullDirPath = await getFullEncryptedPlacesDirPath();
     final dirUrl = await getDirUrl(fullDirPath);
 
     final status = await checkResourceStatus(dirUrl, isFile: false);
     if (status == ResourceStatus.notExist) {
-      // Create the directory with encryption key inheritance
-      // setInheritKeyDir uses PathType.relativeToData by default
+      // Create the directory with encryption key inheritance setInheritKeyDir
+      // uses PathType.relativeToData by default.
+
       final dirPath = getEncryptedPlacesDirPath();
       await setInheritKeyDir(dirPath);
       debugPrint('Created encrypted places directory: $dirPath');
@@ -77,7 +81,8 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
       return places;
     }
 
-    // Parse JSON content directly
+    // Parse JSON content directly.
+
     try {
       final jsonList = jsonDecode(content);
       if (jsonList is List) {
@@ -109,22 +114,26 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
 }
 
 /// Write encrypted places to Pod.
+
 Future<bool> writeEncryptedPlacesToPod(
   List<Place> places,
   bool directoryVerified,
 ) async {
   try {
     // Ensure directory exists
+
     final dirExists = await ensureEncryptedPlacesDir(directoryVerified);
     if (!dirExists) {
       return false;
     }
 
     // Use relative paths (writePod uses PathType.relativeToData by default)
+
     final filePath = getEncryptedPlacesFilePath();
     final dirPath = getEncryptedPlacesDirPath();
 
     // Convert places to JSON
+
     final jsonList = places.map((p) => p.toJson()).toList();
     final jsonContent = jsonEncode(jsonList);
 
@@ -133,6 +142,7 @@ Future<bool> writeEncryptedPlacesToPod(
     // directory's key, not by a file-specific individual key. So we set
     // encrypted: false to avoid the "encryption status changed" dialog.
     // The file will still be encrypted via the inherited directory key.
+
     await writePod(
       filePath,
       jsonContent,
@@ -142,6 +152,7 @@ Future<bool> writeEncryptedPlacesToPod(
     );
 
     // writePod returns void in 0.9.x, assume success if no exception
+
     return true;
   } catch (e) {
     debugPrint('Error writing encrypted places: $e');

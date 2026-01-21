@@ -303,8 +303,8 @@ jobs:
           # Target dart_build failed: Error: Failed to find any of
           # [ld.lld, ld] in LocalDirectory: '/usr/lib/llvm-14/bin'
           #
-          #printf '#%.0s' {1..72}; printf '\llvm-14 lld-14 FLUTTER 3.38 BUG\n'
-          #sudo apt-get install -y llvm-14 lld-14
+          printf '#%.0s' {1..72}; printf '\nllvm lld FLUTTER 3.38.7 BUG\n'
+          sudo apt-get install -y llvm lld
           #sudo cp /usr/lib/llvm-14/bin/lld /usr/lib/llvm-14/bin/ld
           #sudo rm /usr/lib/llvm-14/bin/ld.lld
           #sudo cp /usr/lib/llvm-14/bin/lld /usr/lib/llvm-14/bin/ld.lld

@@ -83,12 +83,18 @@ class PlacesService {
     }
     // Local places are synchronous (compiled into binary) - get them immediately
     final localPlaces = getLocalPlacesSync();
-    // Only await network data
-    final podPlaces = await fetchPodPlaces(forceRefresh: forceRefresh);
-    // Only fetch encrypted if explicitly requested
-    final encryptedPlaces = includeEncrypted
-        ? await fetchEncryptedPlaces(forceRefresh: forceRefresh)
-        : <Place>[];
+
+    // Fetch network data in parallel for better performance
+    final results = await Future.wait([
+      fetchPodPlaces(forceRefresh: forceRefresh),
+      includeEncrypted
+          ? fetchEncryptedPlaces(forceRefresh: forceRefresh)
+          : Future.value(<Place>[]),
+    ]);
+
+    final podPlaces = results[0];
+    final encryptedPlaces = results[1];
+
     final all = <Place>[...podPlaces, ...encryptedPlaces, ...localPlaces];
     cm.cacheAllPlaces(all);
     return all;

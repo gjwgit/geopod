@@ -65,6 +65,11 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
     final (min, max) = getDataRange(widget.dataType, widget.data);
     var dailyData = getDailyData(widget.dataType, widget.data);
 
+    // Reverse the data to show newest first (from new to old)
+    final sortedEntries = dailyData.entries.toList()
+      ..sort((a, b) => b.key.compareTo(a.key)); // Sort descending by date
+    dailyData = Map.fromEntries(sortedEntries);
+
     // Check if we have any data
     if (dailyData.isEmpty) {
       return Center(

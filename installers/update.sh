@@ -66,7 +66,13 @@ version=$(grep version ../pubspec.yaml | head -1 | cut -d ':' -f 2 | sed 's/ //g
 # to current date/time in my timezone for consistency as the release
 # time, using `touch`.
 
-if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
+if [[ "${status}" == "completed" ]]; then
+
+    # 20260122 gjw Even if we failed there may be some installer
+    # builds that succeeded, so let's continue once the builds have
+    # completed. This requires handling missing artefacts below.
+    #
+    # && "${conclusion}" == "success" ]]; then
 
     echo "App name: ${APP}"
     echo "App version: ${version}"

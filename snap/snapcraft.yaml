@@ -69,6 +69,7 @@ parts:
     source: .
     plugin: flutter
     flutter-target: lib/main.dart
+    flutter-version: "3.38.5"
     build-packages:
       - clang
       - cmake

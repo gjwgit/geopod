@@ -136,7 +136,7 @@ Future<bool> writeEncryptedPlacesToPod(
     await writePod(
       filePath,
       jsonContent,
-      encrypted: false,
+      encrypted: true,
       inheritKeyFrom: dirPath,
     );
 

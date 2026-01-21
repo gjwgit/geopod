@@ -284,7 +284,7 @@ jobs:
           #sudo apt-get install -y clang cmake
           printf '#%.0s' {1..72}; printf '\llvm-14 lld-14 FLUTTER 3.38 BUG\n'
           sudo apt-get install -y llvm-14 lld-14
-          #ls -lr /usr/lib/llvm-14/bin
+          ls -lr /usr/lib/llvm-14/bin
 
       - name: Install extra Linux packages
         if: env.LINUX_PKGS != ''

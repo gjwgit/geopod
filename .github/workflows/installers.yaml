@@ -285,7 +285,7 @@ jobs:
           printf '#%.0s' {1..72}; printf '\llvm-14 lld-14 FLUTTER 3.38 BUG\n'
           sudo apt-get install -y llvm-14 lld-14
           ls -lr /usr/lib/llvm-14/bin
-          cp /usr/lib/llvm-14/bin/lld /usr/lib/llvm-14/bin/ld
+          sudo cp /usr/lib/llvm-14/bin/lld /usr/lib/llvm-14/bin/ld
 
       - name: Install extra Linux packages
         if: env.LINUX_PKGS != ''

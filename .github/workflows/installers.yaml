@@ -282,9 +282,9 @@ jobs:
           #sudo apt-get install -y libgtk-3-dev
           #printf '#%.0s' {1..72}; printf '\nclang cmake\n'
           #sudo apt-get install -y clang cmake
-          printf '#%.0s' {1..72}; printf '\nllvm-14 BUT WHY NEEDED\n'
-          sudo apt-get install -y llvm-14
-          ls -lr /usr/lib/llvm-14/bin
+          printf '#%.0s' {1..72}; printf '\nlld llvm FLUTTER 3.38 BUG\n'
+          sudo apt-get install -y lld llvm
+          #ls -lr /usr/lib/llvm-14/bin
 
       - name: Install extra Linux packages
         if: env.LINUX_PKGS != ''

@@ -209,6 +209,7 @@ class EncryptedPlacesService {
       // If new keys were created, notify UI and clear key cache
       if (keysCreated) {
         clearSecurityKeyCache(); // Clear cache as new keys created
+        _securityKeyAvailableCache = true; // Keys are now known to be available
         if (context.mounted) {
           const SecurityKeyStatusChangedNotification(
             isKeySaved: true,
@@ -217,6 +218,14 @@ class EncryptedPlacesService {
             'Keys created, security key status notification dispatched',
           );
         }
+      }
+    } else {
+      // If write failed while assuming directory was verified,
+      // clear the persisted flag so next attempt will re-verify and
+      // recreate the directory if needed.
+      if (_directoryVerified) {
+        await _saveDirVerifiedFlag(false);
+        debugPrint('Write failed, cleared directory verified flag for retry');
       }
     }
     return success;

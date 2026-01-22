@@ -25,7 +25,8 @@ import 'package:geopod/services/places/encrypted_places_paths.dart';
 /// Uses persistent caching flag to avoid repeated server checks.
 /// Returns (success, keysCreated) tuple.
 /// - success: true if directory exists or was created successfully
-/// - keysCreated: true if new encryption keys were created
+/// - keysCreated: true if directory was newly created with encryption
+///   inheritance setup (not necessarily creating new keys, may inherit existing)
 ///
 /// Optimization: If directoryVerified is true (from persistent storage),
 /// skips all network checks - the directory is assumed to exist.

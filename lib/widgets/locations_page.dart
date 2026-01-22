@@ -62,9 +62,11 @@ class _LocationsPageState extends State<LocationsPage>
                 .where((p) => p.isLocal)
                 .toList(); // Not logged in: local examples
       _isLoading = false;
-      // Don't set _hasLoadedOnce yet - let _verifyLoginAndRefresh handle it
+      _hasLoadedOnce = true; // Cache is valid, mark as loaded
     } else {
-      // No cache available or cache state doesn't match - need to load
+      // Cache state doesn't match current login state or no cache
+      // This happens when: guest cache exists but now logged in, or vice versa
+      // _verifyLoginAndRefresh will handle the refresh
       _isLoading = true;
     }
 
@@ -75,12 +77,30 @@ class _LocationsPageState extends State<LocationsPage>
   Future<void> _verifyLoginAndRefresh() async {
     // Always check current login state from server
     final loggedIn = await isUserLoggedIn();
+
+    // Check if cache matches current login state
+    final cm = PlacesCacheManager();
+    final cacheState = cm.wasLoggedInWhenCached;
+    final cacheMatchesLoginState = cacheState == isLoggedIn;
+
     if (!mounted) return;
 
-    // If auth state differs from mixin state OR we haven't loaded once yet
-    // Force reload to ensure we have the correct data
-    if (loggedIn != isLoggedIn || !_hasLoadedOnce) {
-      await _loadPlaces(forceRefresh: true); // Force refresh to get fresh data
+    // If auth state differs from mixin state, force reload
+    // (onAuthStateChanged will also be triggered, but that's okay - double check ensures consistency)
+    // If we haven't loaded once yet, check if cache matches login state
+    if (loggedIn != isLoggedIn) {
+      // Auth state mismatch - force refresh to get correct data
+      await _loadPlaces(forceRefresh: true);
+    } else if (!_hasLoadedOnce) {
+      // First load but auth state matches
+      // Check if cache is from the correct login state
+      if (!cacheMatchesLoginState) {
+        // Cache is from different login state (e.g., guest cache when now logged in)
+        await _loadPlaces(forceRefresh: true);
+      } else {
+        // Cache matches current login state - safe to use
+        await _loadPlaces(forceRefresh: false);
+      }
     }
   }
 
@@ -93,7 +113,10 @@ class _LocationsPageState extends State<LocationsPage>
 
   @override
   void onAuthStateChanged(bool isLoggedIn) {
-    // Reload places when auth state changes, force refresh to get latest data
+    // MUST force refresh on auth state change:
+    // - Guest -> Login: need to fetch Pod data
+    // - Login -> Logout: need to show local examples
+    // - Cache from previous state is invalid
     _loadPlaces(forceRefresh: true);
   }
 

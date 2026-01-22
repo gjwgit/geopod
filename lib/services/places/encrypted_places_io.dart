@@ -33,7 +33,7 @@ import 'package:geopod/services/places/encrypted_places_paths.dart';
 /// IMPORTANT: API parameter types in solidpod:
 /// - checkResourceStatus() expects a full Pod URL
 /// - setInheritKeyDir() expects a full Pod URL
-/// - readPod/writePod expect relative paths (e.g., "encryption_data/places")
+/// - readPod/writePod expect relative paths (e.g., "encrypted_data/places")
 ///
 /// Network calls breakdown (only when directoryVerified=false):
 /// 1. checkResourceStatus(dirUrl) - check if directory exists [URL-based]
@@ -132,7 +132,7 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
 /// Returns (success, dirCreated) tuple.
 ///
 /// Note: This function uses relative paths for writePod() which expects
-/// paths relative to the data directory (e.g., "encryption_data/places.json").
+/// paths relative to the data directory (e.g., "encrypted_data/places.json").
 /// The inheritKeyFrom parameter also uses a relative directory path.
 /// This differs from ensureEncryptedPlacesDir() which uses full URLs.
 Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(

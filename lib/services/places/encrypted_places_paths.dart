@@ -33,13 +33,6 @@ String getEncryptedPlacesFilePath() {
   return '$encryptedPlacesDirName/$encryptedPlacesFileName';
 }
 
-/// Get the full file path for encrypted places (relative to POD root).
-/// This is used with functions like getFileUrl that expect full path.
-Future<String> getFullEncryptedPlacesFilePath() async {
-  final dataPath = await getDataDirPath();
-  return '$dataPath/$encryptedPlacesDirName/$encryptedPlacesFileName';
-}
-
 /// Get the full directory path for encrypted places (relative to POD root).
 Future<String> getFullEncryptedPlacesDirPath() async {
   final dataPath = await getDataDirPath();

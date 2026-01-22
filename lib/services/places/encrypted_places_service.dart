@@ -206,10 +206,9 @@ class EncryptedPlacesService {
       // Notify places change to trigger UI refresh
       placesChangeNotifier.value++;
 
-      // If directory was newly created, clear security key cache and notify UI
-      // (new directory setup may affect encryption key availability)
+      // If directory was newly created, update security key cache and notify UI
+      // (directory creation confirms encryption keys are available)
       if (dirCreated) {
-        clearSecurityKeyCache(); // Clear cache as directory setup changed
         _securityKeyAvailableCache = true; // Keys are now known to be available
         if (context.mounted) {
           const SecurityKeyStatusChangedNotification(

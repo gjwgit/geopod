@@ -77,10 +77,10 @@ class _LocationsPageState extends State<LocationsPage>
     final loggedIn = await isUserLoggedIn();
     if (!mounted) return;
 
-    // If auth state differs from mixin state, it means state changed but mixin hasn't updated yet
-    // Force reload in this case
+    // If auth state differs from mixin state OR we haven't loaded once yet
+    // Force reload to ensure we have the correct data
     if (loggedIn != isLoggedIn || !_hasLoadedOnce) {
-      await _loadPlaces(forceRefresh: false);
+      await _loadPlaces(forceRefresh: true); // Force refresh to get fresh data
     }
   }
 

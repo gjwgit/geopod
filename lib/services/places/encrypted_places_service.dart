@@ -23,6 +23,7 @@ import 'package:solidui/solidui.dart' show SecurityKeyStatusChangedNotification;
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places/encrypted_places_io.dart';
+import 'package:geopod/services/places_service.dart' show placesChangeNotifier;
 import 'package:geopod/widgets/encryption/security_key_dialog.dart';
 
 /// Service for managing encrypted places.
@@ -201,6 +202,9 @@ class EncryptedPlacesService {
         await _saveDirVerifiedFlag(true);
       }
       _cachedEncryptedPlaces = places;
+
+      // Notify places change to trigger UI refresh
+      placesChangeNotifier.value++;
 
       // If new keys were created, notify UI and clear key cache
       if (keysCreated) {

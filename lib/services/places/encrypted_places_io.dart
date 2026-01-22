@@ -57,6 +57,8 @@ Future<(bool success, bool keysCreated)> ensureEncryptedPlacesDir(
       // Create the directory with encryption key inheritance
       // WARNING: setInheritKeyDir internally calls checkResourceStatus again
       // (solidpod limitation - can't skip this redundant check)
+      await setInheritKeyDir(dirUrl, createAcl: true);
+      return (true, true); // Keys were created
     }
     // Directory exists, return success without keys created
     return (true, false);

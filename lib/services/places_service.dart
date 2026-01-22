@@ -187,7 +187,7 @@ class PlacesService {
     try {
       PlacesCacheManager().clearCache();
       await PlacesCachePersistence.clearPodPlacesCache();
-      EncryptedPlacesService.resetSessionState();
+      await EncryptedPlacesService.resetSessionState();
     } catch (_) {}
   }
 

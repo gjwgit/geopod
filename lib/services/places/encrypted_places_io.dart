@@ -31,7 +31,7 @@ import 'package:geopod/services/places/encrypted_places_paths.dart';
 /// skips all network checks - the directory is assumed to exist.
 ///
 /// IMPORTANT: API parameter types in solidpod:
-/// - checkResourceStatus() expects a full Pod URL (e.g., https://pod.../dir/)
+/// - checkResourceStatus() expects a full Pod URL
 /// - setInheritKeyDir() expects a full Pod URL
 /// - readPod/writePod expect relative paths (e.g., "encryption_data/places")
 ///

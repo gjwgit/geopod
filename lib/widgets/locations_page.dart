@@ -78,10 +78,10 @@ class _LocationsPageState extends State<LocationsPage>
     // Always check current login state from server
     final loggedIn = await isUserLoggedIn();
 
-    // Check if cache matches current login state
+    // Check if cache matches the actual login state from server
     final cm = PlacesCacheManager();
     final cacheState = cm.wasLoggedInWhenCached;
-    final cacheMatchesLoginState = cacheState == isLoggedIn;
+    final cacheMatchesLoginState = cacheState == loggedIn;
 
     if (!mounted) return;
 

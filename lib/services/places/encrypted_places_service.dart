@@ -192,7 +192,7 @@ class EncryptedPlacesService {
     // Write to Pod using IO helper
     // The directoryVerified flag (loaded from persistent storage) prevents
     // repeated checkResourceStatus calls for the directory
-    final (success, keysCreated) = await writeEncryptedPlacesToPod(
+    final (success, dirCreated) = await writeEncryptedPlacesToPod(
       places,
       _directoryVerified,
     );
@@ -206,16 +206,17 @@ class EncryptedPlacesService {
       // Notify places change to trigger UI refresh
       placesChangeNotifier.value++;
 
-      // If new keys were created, notify UI and clear key cache
-      if (keysCreated) {
-        clearSecurityKeyCache(); // Clear cache as new keys created
+      // If directory was newly created, clear security key cache and notify UI
+      // (new directory setup may affect encryption key availability)
+      if (dirCreated) {
+        clearSecurityKeyCache(); // Clear cache as directory setup changed
         _securityKeyAvailableCache = true; // Keys are now known to be available
         if (context.mounted) {
           const SecurityKeyStatusChangedNotification(
             isKeySaved: true,
           ).dispatch(context);
           debugPrint(
-            'Keys created, security key status notification dispatched',
+            'Directory created, security key status notification dispatched',
           );
         }
       }

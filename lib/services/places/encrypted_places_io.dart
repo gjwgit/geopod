@@ -23,10 +23,9 @@ import 'package:geopod/services/places/encrypted_places_paths.dart';
 
 /// Ensure the encrypted places directory exists.
 /// Uses persistent caching flag to avoid repeated server checks.
-/// Returns (success, keysCreated) tuple.
+/// Returns (success, dirCreated) tuple.
 /// - success: true if directory exists or was created successfully
-/// - keysCreated: true if directory was newly created with encryption
-///   inheritance setup (not necessarily creating new keys, may inherit existing)
+/// - dirCreated: true if directory was newly created (false if already existed)
 ///
 /// Optimization: If directoryVerified is true (from persistent storage),
 /// skips all network checks - the directory is assumed to exist.
@@ -38,7 +37,7 @@ import 'package:geopod/services/places/encrypted_places_paths.dart';
 ///    - checkResourceStatus(aclUrl) - check ACL file
 ///    - createResource() for directory and ACL if needed
 /// This is why persistent caching is critical - it saves 3+ network calls!
-Future<(bool success, bool keysCreated)> ensureEncryptedPlacesDir(
+Future<(bool success, bool dirCreated)> ensureEncryptedPlacesDir(
   bool directoryVerified,
 ) async {
   // Skip all checks if already verified (from persistent storage or session)
@@ -59,9 +58,9 @@ Future<(bool success, bool keysCreated)> ensureEncryptedPlacesDir(
       // WARNING: setInheritKeyDir internally calls checkResourceStatus again
       // (solidpod limitation - can't skip this redundant check)
       await setInheritKeyDir(dirUrl, createAcl: true);
-      return (true, true); // Keys were created
+      return (true, true); // Directory was created
     }
-    // Directory exists, return success without keys created
+    // Directory exists, return success without creation
     return (true, false);
   } catch (e) {
     debugPrint('Failed to ensure encrypted places directory: $e');
@@ -120,14 +119,14 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
 }
 
 /// Write encrypted places to Pod.
-/// Returns (success, keysCreated) tuple.
-Future<(bool success, bool keysCreated)> writeEncryptedPlacesToPod(
+/// Returns (success, dirCreated) tuple.
+Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(
   List<Place> places,
   bool directoryVerified,
 ) async {
   try {
     // Ensure directory exists
-    final (dirExists, keysCreated) = await ensureEncryptedPlacesDir(
+    final (dirExists, dirCreated) = await ensureEncryptedPlacesDir(
       directoryVerified,
     );
     if (!dirExists) {
@@ -159,7 +158,7 @@ Future<(bool success, bool keysCreated)> writeEncryptedPlacesToPod(
     );
 
     // writePod returns void in 0.9.x, assume success if no exception
-    return (true, keysCreated);
+    return (true, dirCreated);
   } catch (e) {
     debugPrint('Error writing encrypted places: $e');
     return (false, false);

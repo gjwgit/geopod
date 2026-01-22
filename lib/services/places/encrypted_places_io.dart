@@ -30,13 +30,23 @@ import 'package:geopod/services/places/encrypted_places_paths.dart';
 /// Optimization: If directoryVerified is true (from persistent storage),
 /// skips all network checks - the directory is assumed to exist.
 ///
+/// IMPORTANT: API parameter types in solidpod:
+/// - checkResourceStatus() expects a full Pod URL (e.g., https://pod.../dir/)
+/// - setInheritKeyDir() expects a full Pod URL
+/// - readPod/writePod expect relative paths (e.g., "encryption_data/places")
+///
 /// Network calls breakdown (only when directoryVerified=false):
-/// 1. checkResourceStatus(dirUrl) - check if directory exists
-/// 2. If not exist, setInheritKeyDir() creates it, which internally calls:
-///    - checkResourceStatus(dirUrl) again (solidpod internal, redundant)
-///    - checkResourceStatus(aclUrl) - check ACL file
-///    - createResource() for directory and ACL if needed
-/// This is why persistent caching is critical - it saves 3+ network calls!
+/// 1. checkResourceStatus(dirUrl) - check if directory exists [URL-based]
+/// 2. If not exist, setInheritKeyDir(dirUrl) creates it [URL-based], which internally:
+///    - Calls checkResourceStatus(dirUrl) again (solidpod internal, redundant)
+///    - Checks ACL file status via checkResourceStatus(aclUrl)
+///    - Creates directory and ACL resources if needed
+/// This is why persistent caching is critical - it saves 3+ URL-based network calls!
+///
+/// Reliability note: If the directory is deleted on the server side (by manual
+/// cleanup or another client), the persistent flag won't detect it until a write
+/// operation fails. The app handles this by clearing the flag on write failures,
+/// forcing re-verification on the next attempt (see encrypted_places_service.dart).
 Future<(bool success, bool dirCreated)> ensureEncryptedPlacesDir(
   bool directoryVerified,
 ) async {
@@ -120,6 +130,11 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
 
 /// Write encrypted places to Pod.
 /// Returns (success, dirCreated) tuple.
+///
+/// Note: This function uses relative paths for writePod() which expects
+/// paths relative to the data directory (e.g., "encryption_data/places.json").
+/// The inheritKeyFrom parameter also uses a relative directory path.
+/// This differs from ensureEncryptedPlacesDir() which uses full URLs.
 Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(
   List<Place> places,
   bool directoryVerified,

@@ -220,9 +220,10 @@ class EncryptedPlacesService {
         }
       }
     } else {
-      // If write failed while assuming directory was verified,
-      // clear the persisted flag so next attempt will re-verify and
-      // recreate the directory if needed.
+      // Error recovery: If write failed while assuming directory was verified,
+      // clear the persisted flag to force re-verification on next attempt.
+      // This handles cases where the directory was deleted on the server side
+      // (e.g., manual cleanup or by another client) without the app knowing.
       if (_directoryVerified) {
         await _saveDirVerifiedFlag(false);
         debugPrint('Write failed, cleared directory verified flag for retry');

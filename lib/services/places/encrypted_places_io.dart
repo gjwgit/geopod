@@ -1,6 +1,6 @@
 /// I/O operations for encrypted places data.
 ///
-// Time-stamp: <Tuesday 2026-01-14 +1100>
+// Time-stamp: <Thursday 2026-01-22 08:50:55 +1100 Graham Williams>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -57,11 +57,6 @@ Future<(bool success, bool keysCreated)> ensureEncryptedPlacesDir(
       // Create the directory with encryption key inheritance
       // WARNING: setInheritKeyDir internally calls checkResourceStatus again
       // (solidpod limitation - can't skip this redundant check)
-      final dirPath = getEncryptedPlacesDirPath();
-      await setInheritKeyDir(dirPath);
-      debugPrint('Created encrypted places directory: $dirPath');
-      // Return true to indicate keys were created
-      return (true, true);
     }
     // Directory exists, return success without keys created
     return (true, false);
@@ -93,7 +88,8 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
       return places;
     }
 
-    // Parse JSON content directly
+    // Parse JSON content directly.
+
     try {
       final jsonList = jsonDecode(content);
       if (jsonList is List) {
@@ -136,10 +132,12 @@ Future<(bool success, bool keysCreated)> writeEncryptedPlacesToPod(
     }
 
     // Use relative paths (writePod uses PathType.relativeToData by default)
+
     final filePath = getEncryptedPlacesFilePath();
     final dirPath = getEncryptedPlacesDirPath();
 
     // Convert places to JSON
+
     final jsonList = places.map((p) => p.toJson()).toList();
     final jsonContent = jsonEncode(jsonList);
 
@@ -148,6 +146,7 @@ Future<(bool success, bool keysCreated)> writeEncryptedPlacesToPod(
     // directory's key, not by a file-specific individual key. So we set
     // encrypted: false to avoid the "encryption status changed" dialog.
     // The file will still be encrypted via the inherited directory key.
+
     await writePod(
       filePath,
       jsonContent,

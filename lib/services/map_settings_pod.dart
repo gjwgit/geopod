@@ -88,7 +88,6 @@ Future<bool> writeSettingsToPod(Map<String, dynamic> data) async {
     if (success) {
       PodDirectoryService.invalidateCache('data');
       PodDirectoryService.notifyChange();
-      debugPrint('Settings written to POD, cache invalidated for data/');
     }
     return success;
   } catch (e) {

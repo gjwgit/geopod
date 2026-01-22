@@ -17,6 +17,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart' show SecurityKeyStatusChangedNotification;
 
@@ -28,29 +29,84 @@ import 'package:geopod/widgets/encryption/security_key_dialog.dart';
 class EncryptedPlacesService {
   EncryptedPlacesService._();
 
+  /// SharedPreferences key for directory verification flag.
+  static const _keyDirVerified = 'encrypted_places_dir_verified';
+
   /// Cache for encrypted places.
   static List<Place>? _cachedEncryptedPlaces;
 
-  /// Flag to track if directory has been verified this session.
+  /// Flag to track if directory has been verified.
   static bool _directoryVerified = false;
 
   /// Flag to track if security key has been verified this session.
   static bool _securityKeyVerified = false;
 
+  /// Cached security key availability status.
+  static bool? _securityKeyAvailableCache;
+
+  /// Load persistent flags from storage.
+  static Future<void> _loadPersistentFlags() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _directoryVerified = prefs.getBool(_keyDirVerified) ?? false;
+    } catch (e) {
+      debugPrint('Failed to load persistent flags: $e');
+    }
+  }
+
+  /// Save directory verified flag to storage.
+  static Future<void> _saveDirVerifiedFlag(bool verified) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyDirVerified, verified);
+      _directoryVerified = verified;
+    } catch (e) {
+      debugPrint('Failed to save dir verified flag: $e');
+    }
+  }
+
+  /// Initialize service - load persistent flags.
+  /// Call this once at app startup for better performance.
+  static Future<void> initialize() async {
+    await _loadPersistentFlags();
+  }
+
   /// Reset session state (call on logout).
-  static void resetSessionState() {
+  static Future<void> resetSessionState() async {
     _cachedEncryptedPlaces = null;
-    _directoryVerified = false;
     _securityKeyVerified = false;
+    _securityKeyAvailableCache = null;
+    // Clear persistent directory flag on logout
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyDirVerified);
+      _directoryVerified = false;
+    } catch (e) {
+      debugPrint('Failed to reset persistent flags: $e');
+    }
   }
 
   /// Check if security key is available for encryption operations.
+  /// Uses cache to avoid repeated KeyManager calls.
   static Future<bool> isSecurityKeyAvailable() async {
+    // Return cached value if available
+    if (_securityKeyAvailableCache != null) {
+      return _securityKeyAvailableCache!;
+    }
+
     try {
-      return await KeyManager.hasSecurityKey();
+      final available = await KeyManager.hasSecurityKey();
+      _securityKeyAvailableCache = available;
+      return available;
     } catch (_) {
+      _securityKeyAvailableCache = false;
       return false;
     }
+  }
+
+  /// Clear security key cache (call when key is added/removed).
+  static void clearSecurityKeyCache() {
+    _securityKeyAvailableCache = null;
   }
 
   /// Check if verification key exists (meaning encryption was set up).
@@ -94,6 +150,7 @@ class EncryptedPlacesService {
     final result = await showSecurityKeyDialog(context);
     if (result) {
       _securityKeyVerified = true;
+      _securityKeyAvailableCache = true; // Update cache
       // Notify the status bar that security key is now available
       if (context.mounted) {
         const SecurityKeyStatusChangedNotification(
@@ -119,6 +176,8 @@ class EncryptedPlacesService {
   }
 
   /// Write encrypted places to Pod.
+  /// Optimized: Uses persistent directoryVerified flag to skip repeated
+  /// directory status checks across app sessions.
   static Future<bool> writeEncryptedPlaces(
     List<Place> places,
     BuildContext context,
@@ -130,11 +189,31 @@ class EncryptedPlacesService {
     }
 
     // Write to Pod using IO helper
-    final success = await writeEncryptedPlacesToPod(places, _directoryVerified);
+    // The directoryVerified flag (loaded from persistent storage) prevents
+    // repeated checkResourceStatus calls for the directory
+    final (success, keysCreated) = await writeEncryptedPlacesToPod(
+      places,
+      _directoryVerified,
+    );
     if (success) {
-      // Update directory verification flag if write succeeded
-      _directoryVerified = true;
+      // Update and persist directory verification flag if write succeeded
+      if (!_directoryVerified) {
+        await _saveDirVerifiedFlag(true);
+      }
       _cachedEncryptedPlaces = places;
+
+      // If new keys were created, notify UI and clear key cache
+      if (keysCreated) {
+        clearSecurityKeyCache(); // Clear cache as new keys created
+        if (context.mounted) {
+          const SecurityKeyStatusChangedNotification(
+            isKeySaved: true,
+          ).dispatch(context);
+          debugPrint(
+            'Keys created, security key status notification dispatched',
+          );
+        }
+      }
     }
     return success;
   }
@@ -148,14 +227,32 @@ class EncryptedPlacesService {
     BuildContext context,
     Widget child,
   ) async {
+    return addEncryptedPlacesBatch([place], context, child);
+  }
+
+  /// Add multiple encrypted places in a single batch operation.
+  /// More efficient than calling addEncryptedPlace multiple times.
+  /// Uses local cache to avoid fetching from server if available.
+  static Future<bool> addEncryptedPlacesBatch(
+    List<Place> places,
+    BuildContext context,
+    Widget child,
+  ) async {
+    if (places.isEmpty) return true;
+
     try {
+      // Load persistent flags first
+      if (!_directoryVerified) {
+        await _loadPersistentFlags();
+      }
+
       // If no cached data, we MUST ensure security key is available first
       // before fetching existing places. Otherwise, fetchEncryptedPlaces()
       // might return empty list and we'd overwrite existing data.
       if (_cachedEncryptedPlaces == null) {
         if (!await ensureSecurityKey(context, child)) {
           debugPrint(
-            'Security key not available, cannot safely add encrypted place',
+            'Security key not available, cannot safely add encrypted places',
           );
           return false;
         }
@@ -164,10 +261,10 @@ class EncryptedPlacesService {
       // Now safe to get existing places (either from cache or fetch with key)
       final existingPlaces =
           _cachedEncryptedPlaces ?? await fetchEncryptedPlaces();
-      final updatedPlaces = [place, ...existingPlaces];
+      final updatedPlaces = [...places, ...existingPlaces];
       return await writeEncryptedPlaces(updatedPlaces, context, child);
     } catch (e) {
-      debugPrint('Error adding encrypted place: $e');
+      debugPrint('Error adding encrypted places batch: $e');
       return false;
     }
   }

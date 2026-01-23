@@ -1,6 +1,6 @@
 /// Weather view widgets for weather dialog.
 ///
-// Time-stamp: <Tuesday 2026-01-14 10:00:00 +1100>
+// Time-stamp: <Saturday 2026-01-24 06:34:56 +1100 Graham Williams>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -98,7 +98,7 @@ Widget buildCurrentWeatherView({
                   weatherData.dailyMinTemp != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  'H: ${weatherData.dailyMaxTemp!.toStringAsFixed(1)}°  L: ${weatherData.dailyMinTemp!.toStringAsFixed(1)}°',
+                  'L: ${weatherData.dailyMinTemp!.toStringAsFixed(1)}° H: ${weatherData.dailyMaxTemp!.toStringAsFixed(1)}°',
                   style: Theme.of(
                     context,
                   ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),

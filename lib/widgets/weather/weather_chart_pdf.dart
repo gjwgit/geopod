@@ -398,9 +398,10 @@ pw.Widget buildPdfChart(
               bottom: 0,
               child: pw.SizedBox(
                 height: 20,
-                child: pw.Stack(
-                  children: () {
-                    final chartWidth = 500.0; // Approximate chart width in PDF
+                child: pw.LayoutBuilder(
+                  builder: (context, constraints) {
+                    final chartWidth =
+                        constraints!.maxWidth; // Use actual available width
                     final labelStep = sampledEntries.length <= 10
                         ? 1
                         : (sampledEntries.length / 7).ceil();
@@ -446,8 +447,8 @@ pw.Widget buildPdfChart(
                         ),
                       );
                     }
-                    return labels;
-                  }(),
+                    return pw.Stack(children: labels);
+                  },
                 ),
               ),
             ),

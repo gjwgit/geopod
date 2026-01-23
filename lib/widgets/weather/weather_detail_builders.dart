@@ -89,12 +89,12 @@ Widget buildPrecipitationDetail({
   required VoidCallback onToggle,
 }) {
   // API returns precipitation for the past hour (mm)
-  // User can toggle to see estimated daily total
+  // User can toggle to see today's accumulated total
   final precipValue = showDailyPrecipitation
-      ? weather.precipitation *
-            24 // Estimated daily total (mm/day) if rate continues
-      : weather.precipitation; // Past hour total (mm)
-  final unit = showDailyPrecipitation ? 'mm/day' : 'mm';
+      ? (weather.todayTotalPrecipitation ??
+            weather.precipitation) // Today's total accumulated
+      : weather.precipitation; // Past hour
+  final unit = showDailyPrecipitation ? 'mm' : 'mm';
 
   return InkWell(
     onTap: onToggle,
@@ -109,7 +109,7 @@ Widget buildPrecipitationDetail({
               children: [
                 Text(
                   showDailyPrecipitation
-                      ? 'Precipitation (Est. Daily)'
+                      ? 'Precipitation (Today Total)'
                       : 'Precipitation (Past Hour)',
                   style: const TextStyle(fontSize: 15),
                 ),

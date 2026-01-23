@@ -22,6 +22,7 @@ class WeatherData {
     required this.time,
     this.dailyMaxTemp,
     this.dailyMinTemp,
+    this.todayTotalPrecipitation,
   });
 
   factory WeatherData.fromJson(Map<String, dynamic> json) {
@@ -42,6 +43,30 @@ class WeatherData {
       }
     }
 
+    // Calculate today's total precipitation from hourly data
+    double? todayTotal;
+    if (json.containsKey('hourly')) {
+      final hourly = json['hourly'] as Map<String, dynamic>;
+      if (hourly.containsKey('precipitation') && hourly.containsKey('time')) {
+        final times = (hourly['time'] as List).cast<String>();
+        final precips = (hourly['precipitation'] as List).cast<num>();
+        final now = DateTime.parse(current['time'] as String);
+
+        double sum = 0.0;
+        for (var i = 0; i < times.length; i++) {
+          final time = DateTime.parse(times[i]);
+          // Only sum precipitation for hours up to current time today
+          if (time.year == now.year &&
+              time.month == now.month &&
+              time.day == now.day &&
+              time.isBefore(now.add(const Duration(hours: 1)))) {
+            sum += precips[i].toDouble();
+          }
+        }
+        todayTotal = sum;
+      }
+    }
+
     return WeatherData(
       temperature: (current['temperature_2m'] as num).toDouble(),
       weatherCode: current['weather_code'] as int,
@@ -52,6 +77,7 @@ class WeatherData {
       time: DateTime.parse(current['time'] as String),
       dailyMaxTemp: maxTemp,
       dailyMinTemp: minTemp,
+      todayTotalPrecipitation: todayTotal,
     );
   }
 
@@ -64,6 +90,8 @@ class WeatherData {
   final DateTime time;
   final double? dailyMaxTemp;
   final double? dailyMinTemp;
+  final double?
+  todayTotalPrecipitation; // Total precipitation accumulated today
 
   /// Get weather description from WMO weather code.
   String get weatherDescription {

@@ -267,7 +267,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         ),
         const SizedBox(height: 8),
         SizedBox(
-          height: 140,
+          height: 120,
           child: Scrollbar(
             controller: _scrollController,
             thumbVisibility: true,
@@ -289,7 +289,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                       date.year == DateTime.now().year;
 
                   return Container(
-                    width: 70,
+                    width: 80,
                     margin: const EdgeInsets.only(right: 6),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 5,
@@ -346,7 +346,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                               ),
                             ),
                             Text(
-                              dayMin.toStringAsFixed(1),
+                              '${dayMin.toStringAsFixed(1)}${widget.dataType == 'precipitation' ? 'mm/h' : ''}',
                               style: TextStyle(
                                 fontSize: 8,
                                 fontWeight: FontWeight.w500,
@@ -366,7 +366,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                               ),
                             ),
                             Text(
-                              dayMax.toStringAsFixed(1),
+                              '${dayMax.toStringAsFixed(1)}${widget.dataType == 'precipitation' ? 'mm/h' : ''}',
                               style: TextStyle(
                                 fontSize: 8,
                                 fontWeight: FontWeight.w500,

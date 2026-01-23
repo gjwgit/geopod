@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# Get the commit message.
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Check if the commit message starts with 'Bump version'.
+
+#if [[ $COMMIT_MSG == Bump\ version* ]]; then
+if [[ $COMMIT_MSG == Test\ version* ]]; then
+    # Run make versions.
+
+    make versions
+
+    # Add any changed files to the commit.
+
+    git add .
+fi

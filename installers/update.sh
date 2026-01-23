@@ -83,6 +83,10 @@ if [[ "${status}" == "completed" ]]; then
 
     TARGET="${APP}_amd64.deb"
 
+    # 20260123 gjw Note that this obtains the latest available
+    # linxu-deb artifact, which is not necessarily the one from the
+    # latest bumpId if it failed to be build for the latest bumpId.
+
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
 		    --jq '.artifacts[] | select(.name | endswith("-linux-deb")) | .id' | head -n 1)
 

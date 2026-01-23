@@ -20,10 +20,28 @@ class WeatherData {
     required this.humidity,
     required this.precipitation,
     required this.time,
+    this.dailyMaxTemp,
+    this.dailyMinTemp,
   });
 
   factory WeatherData.fromJson(Map<String, dynamic> json) {
     final current = json['current'] as Map<String, dynamic>;
+
+    // Get today's min/max temperature from daily data if available
+    double? maxTemp;
+    double? minTemp;
+    if (json.containsKey('daily')) {
+      final daily = json['daily'] as Map<String, dynamic>;
+      if (daily.containsKey('temperature_2m_max')) {
+        final maxList = daily['temperature_2m_max'] as List;
+        if (maxList.isNotEmpty) maxTemp = (maxList[0] as num).toDouble();
+      }
+      if (daily.containsKey('temperature_2m_min')) {
+        final minList = daily['temperature_2m_min'] as List;
+        if (minList.isNotEmpty) minTemp = (minList[0] as num).toDouble();
+      }
+    }
+
     return WeatherData(
       temperature: (current['temperature_2m'] as num).toDouble(),
       weatherCode: current['weather_code'] as int,
@@ -32,6 +50,8 @@ class WeatherData {
       humidity: (current['relative_humidity_2m'] as num).toInt(),
       precipitation: (current['precipitation'] as num).toDouble(),
       time: DateTime.parse(current['time'] as String),
+      dailyMaxTemp: maxTemp,
+      dailyMinTemp: minTemp,
     );
   }
 
@@ -42,6 +62,8 @@ class WeatherData {
   final int humidity;
   final double precipitation;
   final DateTime time;
+  final double? dailyMaxTemp;
+  final double? dailyMinTemp;
 
   /// Get weather description from WMO weather code.
   String get weatherDescription {

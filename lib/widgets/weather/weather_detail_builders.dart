@@ -88,42 +88,42 @@ Widget buildPrecipitationDetail({
   required bool showDailyPrecipitation,
   required VoidCallback onToggle,
 }) {
+  // API returns precipitation for the past hour (mm)
+  // User can toggle to see estimated daily total
   final precipValue = showDailyPrecipitation
       ? weather.precipitation *
-            24 // Approximate daily total
-      : weather.precipitation;
-  final unit = showDailyPrecipitation ? 'mm/day' : 'mm/h';
+            24 // Estimated daily total (mm/day) if rate continues
+      : weather.precipitation; // Past hour total (mm)
+  final unit = showDailyPrecipitation ? 'mm/day' : 'mm';
 
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Row(
-      children: [
-        Icon(Icons.umbrella, size: 24, color: Colors.grey[600]),
-        const SizedBox(width: 16),
-        const Expanded(
-          child: Text('Precipitation', style: TextStyle(fontSize: 15)),
-        ),
-        InkWell(
-          onTap: onToggle,
-          borderRadius: BorderRadius.circular(4),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+  return InkWell(
+    onTap: onToggle,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(Icons.umbrella, size: 24, color: Colors.grey[600]),
+          const SizedBox(width: 16),
+          Expanded(
             child: Row(
               children: [
                 Text(
-                  '${precipValue.toStringAsFixed(1)} $unit',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  showDailyPrecipitation
+                      ? 'Precipitation (Est. Daily)'
+                      : 'Precipitation (Past Hour)',
+                  style: const TextStyle(fontSize: 15),
                 ),
-                const SizedBox(width: 4),
-                Icon(Icons.swap_horiz, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 8),
+                Icon(Icons.swap_horiz, size: 16, color: Colors.grey[400]),
               ],
             ),
           ),
-        ),
-      ],
+          Text(
+            '${precipValue.toStringAsFixed(1)} $unit',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     ),
   );
 }

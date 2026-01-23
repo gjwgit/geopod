@@ -93,6 +93,17 @@ Widget buildCurrentWeatherView({
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              // Show today's high/low if available
+              if (weatherData.dailyMaxTemp != null &&
+                  weatherData.dailyMinTemp != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'H: ${weatherData.dailyMaxTemp!.toStringAsFixed(1)}°  L: ${weatherData.dailyMinTemp!.toStringAsFixed(1)}°',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                ),
+              ],
             ],
           ),
         ),
@@ -179,6 +190,7 @@ Widget buildPastWeatherView({
         HourlyWeatherChart(
           data: pastWeatherData,
           dataType: selectedDataType,
+          sortAscending: false, // Past: newest to oldest
           latitude: latitude,
           longitude: longitude,
           address: address,
@@ -238,6 +250,7 @@ Widget buildForecastWeatherView({
         HourlyWeatherChart(
           data: forecastWeatherData,
           dataType: selectedDataType,
+          sortAscending: true, // Forecast: oldest to newest (today to future)
           latitude: latitude,
           longitude: longitude,
           address: address,
@@ -331,6 +344,7 @@ Widget buildHistoricalWeatherView({
         HourlyWeatherChart(
           data: historicalWeatherData,
           dataType: selectedDataType,
+          sortAscending: false, // Historical: newest to oldest
           latitude: latitude,
           longitude: longitude,
           address: address,

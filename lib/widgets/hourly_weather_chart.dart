@@ -28,6 +28,7 @@ class HourlyWeatherChart extends StatefulWidget {
   const HourlyWeatherChart({
     required this.data,
     this.dataType = 'temperature',
+    this.sortAscending = false,
     this.latitude,
     this.longitude,
     this.address,
@@ -37,6 +38,7 @@ class HourlyWeatherChart extends StatefulWidget {
   final HourlyWeatherData data;
   final String
   dataType; // 'temperature', 'humidity', 'wind_speed', 'precipitation'
+  final bool sortAscending; // true = oldest to newest, false = newest to oldest
   final double? latitude;
   final double? longitude;
   final String? address;
@@ -62,13 +64,29 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
 
   @override
   Widget build(BuildContext context) {
-    final (min, max) = getDataRange(widget.dataType, widget.data);
+    final (axisMin, axisMax) = getDataRange(widget.dataType, widget.data);
     var dailyData = getDailyData(widget.dataType, widget.data);
 
-    // Reverse the data to show newest first (from new to old)
+    // Get daily min/max values for each day
+    final dailyMinMax = widget.data.getDailyMinMax(widget.dataType);
+
+    // Sort data based on sortAscending parameter
     final sortedEntries = dailyData.entries.toList()
-      ..sort((a, b) => b.key.compareTo(a.key)); // Sort descending by date
+      ..sort(
+        (a, b) => widget.sortAscending
+            ? a.key.compareTo(b.key) // Ascending: old to new
+            : b.key.compareTo(a.key),
+      ); // Descending: new to old
     dailyData = Map.fromEntries(sortedEntries);
+
+    // Calculate actual data range for display
+    double dataMin = axisMin;
+    double dataMax = axisMax;
+    if (dailyData.isNotEmpty) {
+      final values = dailyData.values.toList();
+      dataMin = values.reduce((a, b) => a < b ? a : b);
+      dataMax = values.reduce((a, b) => a > b ? a : b);
+    }
 
     // Check if we have any data
     if (dailyData.isEmpty) {
@@ -100,9 +118,10 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       );
     }
 
-    // Sample data if too many points for better performance
+    // Sample data for chart if too many points (but keep full data for cards display)
+    Map<DateTime, double> chartData = dailyData;
     if (dailyData.length > maxChartDataPoints) {
-      dailyData = sampleData(dailyData, maxChartDataPoints);
+      chartData = sampleData(dailyData, maxChartDataPoints);
     }
 
     final dateFormat = DateFormat('MMM dd');
@@ -133,36 +152,41 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         ),
         const SizedBox(height: 12),
 
-        // Data range indicator
+        // Data range indicator (shows actual data min/max)
         Row(
           children: [
             Icon(icon, size: 16, color: Colors.blue[700]),
             const SizedBox(width: 4),
             Text(
-              'Min: ${min.toStringAsFixed(1)}$unit',
+              'Min: ${dataMin.toStringAsFixed(1)}$unit',
               style: TextStyle(fontSize: 12, color: Colors.blue[700]),
             ),
             const SizedBox(width: 16),
             Icon(icon, size: 16, color: Colors.red[700]),
             const SizedBox(width: 4),
             Text(
-              'Max: ${max.toStringAsFixed(1)}$unit',
+              'Max: ${dataMax.toStringAsFixed(1)}$unit',
               style: TextStyle(fontSize: 12, color: Colors.red[700]),
             ),
           ],
         ),
         const SizedBox(height: 16),
 
-        // Simple chart using daily averages
+        // Simple chart using daily data
         Container(
-          height: 220,
+          height: 250, // Increased height to accommodate X-axis labels
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey[300]!),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 16, 16, 16),
-            child: _buildSimpleChart(context, dailyData, min, max),
+            padding: const EdgeInsets.fromLTRB(
+              8,
+              16,
+              16,
+              30,
+            ), // More bottom padding for X-axis
+            child: _buildSimpleChart(context, chartData, axisMin, axisMax),
           ),
         ),
         const SizedBox(height: 4),
@@ -203,10 +227,12 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
               context,
               data: widget.data,
               dailyData: dailyData,
-              minValue: min,
-              maxValue: max,
+              dailyMinMax: dailyMinMax,
+              minValue: dataMin,
+              maxValue: dataMax,
               title: title,
               unit: unit,
+              dataType: widget.dataType,
               latitude: widget.latitude,
               longitude: widget.longitude,
               address: widget.address,
@@ -220,11 +246,13 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         ),
         const SizedBox(height: 12),
 
-        // Daily averages list with scrollbar
+        // Daily data list with scrollbar
         Row(
           children: [
             Text(
-              'Daily Averages',
+              widget.dataType == 'precipitation'
+                  ? 'Daily Totals'
+                  : 'Daily Averages',
               style: Theme.of(
                 context,
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
@@ -253,6 +281,8 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                 children: dailyData.entries.map((entry) {
                   final date = entry.key;
                   final avgValue = entry.value;
+                  final (dayMin, dayMax) =
+                      dailyMinMax[date] ?? (avgValue, avgValue);
                   final isToday =
                       date.day == DateTime.now().day &&
                       date.month == DateTime.now().month &&
@@ -262,7 +292,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                     width: 70,
                     margin: const EdgeInsets.only(right: 6),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
+                      horizontal: 5,
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
@@ -283,25 +313,67 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                         Text(
                           DateFormat('MMM').format(date),
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 9,
                             color: Colors.grey[600],
                           ),
                         ),
                         Text(
                           DateFormat('dd').format(date),
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Text(
                           '${avgValue.toStringAsFixed(1)}${getDataUnit(widget.dataType)}',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: getValueColor(avgValue, min, max),
+                            color: getValueColor(avgValue, dataMin, dataMax),
                           ),
+                        ),
+                        const SizedBox(height: 2),
+                        // Show min/max for the day
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'min ',
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Text(
+                              dayMin.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.blue[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'max ',
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Text(
+                              dayMax.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.red[700],
+                              ),
+                            ),
+                          ],
                         ),
                         if (isToday)
                           Padding(
@@ -309,7 +381,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                             child: Text(
                               'Today',
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 8,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
                             ),

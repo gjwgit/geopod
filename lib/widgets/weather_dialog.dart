@@ -67,7 +67,7 @@ class _WeatherDialogState extends State<WeatherDialog>
   bool _isLoadingForecast = false;
   bool _isLoadingHistorical = false;
   String? _errorMessage;
-  bool _showDailyPrecipitation = false; // false = hourly, true = daily
+  bool _showDailyPrecipitation = false; // false = hourly, true = daily total
   String _selectedDataType = 'temperature'; // temperature, humidity, wind_speed
   DateTime? _historicalStartDate;
   DateTime? _historicalEndDate;

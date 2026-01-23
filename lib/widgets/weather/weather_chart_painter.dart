@@ -46,6 +46,9 @@ class WeatherChartPainter extends CustomPainter {
     // Draw Y-axis grid lines and labels
     _drawYAxisAndGrid(canvas, size, chartLeft);
 
+    // Reserve space for X-axis labels at bottom
+    final chartHeight = size.height - 20; // Reserve 20px for X-axis labels
+
     // Draw smooth curve using cubic Bezier interpolation
     final curvePaint = Paint()
       ..color = color.withValues(alpha: 0.8)
@@ -62,7 +65,7 @@ class WeatherChartPainter extends CustomPainter {
     for (var i = 0; i < entries.length; i++) {
       final value = entries[i].value;
       final x = chartLeft + (i * xStep);
-      final y = size.height - ((value - minValue) / valueRange) * size.height;
+      final y = chartHeight - ((value - minValue) / valueRange) * chartHeight;
       points.add(Offset(x, y));
     }
 
@@ -83,16 +86,27 @@ class WeatherChartPainter extends CustomPainter {
           final p3 = i < points.length - 2 ? points[i + 2] : points[i + 1];
 
           // Calculate control points using Catmull-Rom to Bezier conversion
-          final cp1x = p1.dx + (p2.dx - p0.dx) / 6;
-          final cp1y = p1.dy + (p2.dy - p0.dy) / 6;
-          final cp2x = p2.dx - (p3.dx - p1.dx) / 6;
-          final cp2y = p2.dy - (p3.dy - p1.dy) / 6;
+          var cp1x = p1.dx + (p2.dx - p0.dx) / 6;
+          var cp1y = p1.dy + (p2.dy - p0.dy) / 6;
+          var cp2x = p2.dx - (p3.dx - p1.dx) / 6;
+          var cp2y = p2.dy - (p3.dy - p1.dy) / 6;
+
+          // Clamp control points to prevent curve going below chartHeight (value < 0)
+          // This is important for non-negative values like precipitation and wind speed
+          cp1y = cp1y.clamp(0.0, chartHeight);
+          cp2y = cp2y.clamp(0.0, chartHeight);
 
           path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.dx, p2.dy);
         }
       }
 
+      // Clip the path to ensure it doesn't go below the chart area
+      canvas.save();
+      canvas.clipRect(
+        Rect.fromLTWH(chartLeft, 0, size.width - chartLeft, chartHeight),
+      );
       canvas.drawPath(path, curvePaint);
+      canvas.restore();
     }
 
     // Draw data points
@@ -111,9 +125,13 @@ class WeatherChartPainter extends CustomPainter {
 
     // Draw function info
     _drawFunctionInfo(canvas, size, chartLeft);
+
+    // Draw X-axis labels (dates)
+    _drawXAxisLabels(canvas, size, chartLeft, chartHeight, xStep);
   }
 
   void _drawYAxisAndGrid(Canvas canvas, Size size, double chartLeft) {
+    final chartHeight = size.height - 20; // Reserve space for X-axis labels
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
       ..strokeWidth = 0.5
@@ -145,7 +163,7 @@ class WeatherChartPainter extends CustomPainter {
     // Draw Y-axis
     canvas.drawLine(
       Offset(chartLeft, 0),
-      Offset(chartLeft, size.height),
+      Offset(chartLeft, chartHeight),
       axisPaint,
     );
 
@@ -155,7 +173,7 @@ class WeatherChartPainter extends CustomPainter {
 
     while (currentValue <= maxValue) {
       final y =
-          size.height - ((currentValue - minValue) / valueRange) * size.height;
+          chartHeight - ((currentValue - minValue) / valueRange) * chartHeight;
 
       // Draw grid line
       canvas.drawLine(Offset(chartLeft, y), Offset(size.width, y), gridPaint);
@@ -206,6 +224,76 @@ class WeatherChartPainter extends CustomPainter {
 
     // Position at top-right with padding
     textPainter.paint(canvas, Offset(size.width - textPainter.width - 8, 4));
+  }
+
+  void _drawXAxisLabels(
+    Canvas canvas,
+    Size size,
+    double chartLeft,
+    double chartHeight,
+    double xStep,
+  ) {
+    final entries = dailyAverages.entries.toList();
+    final axisPaint = Paint()
+      ..color = Colors.grey[600]!
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    // Draw X-axis line
+    canvas.drawLine(
+      Offset(chartLeft, chartHeight),
+      Offset(size.width, chartHeight),
+      axisPaint,
+    );
+
+    // Calculate label step based on number of points
+    // Allow showing 10-14 labels for better readability
+    int labelStep;
+    if (entries.length <= 14) {
+      labelStep = 1; // Show all labels (up to 14)
+    } else if (entries.length <= 28) {
+      labelStep = 2; // Show every 2nd label (~7-14 labels)
+    } else if (entries.length <= 42) {
+      labelStep = 3; // Show every 3rd label (~10-14 labels)
+    } else {
+      // For many points, aim for 10-14 labels
+      labelStep = (entries.length / 12).ceil();
+    }
+
+    // Draw date labels and tick marks
+    for (var i = 0; i < entries.length; i++) {
+      final date = entries[i].key;
+      final x = chartLeft + (i * xStep);
+
+      // Always draw tick marks for all points
+      canvas.drawLine(
+        Offset(x, chartHeight),
+        Offset(x, chartHeight + 5),
+        axisPaint,
+      );
+
+      // Only draw labels at intervals
+      if (i % labelStep == 0 || i == entries.length - 1) {
+        // Format date as MM/DD
+        final dateText = '${date.month}/${date.day}';
+        final textSpan = TextSpan(
+          text: dateText,
+          style: TextStyle(color: Colors.grey[700], fontSize: 9),
+        );
+        final textPainter = TextPainter(
+          text: textSpan,
+          textDirection: ui.TextDirection.ltr,
+        );
+        textPainter.layout();
+
+        // Draw label centered under the tick, with rotation for better fit
+        canvas.save();
+        canvas.translate(x, chartHeight + 8);
+        canvas.rotate(-0.3); // Slight rotation for better readability
+        textPainter.paint(canvas, Offset(-textPainter.width / 2, 0));
+        canvas.restore();
+      }
+    }
   }
 
   @override

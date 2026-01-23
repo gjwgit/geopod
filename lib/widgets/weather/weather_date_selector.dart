@@ -54,6 +54,7 @@ Widget buildDateRangeSelector({
                       firstDate: DateTime(1940),
                       lastDate: maxEndDate.subtract(const Duration(days: 1)),
                       helpText: 'Select Start Date',
+                      initialDatePickerMode: DatePickerMode.day,
                     );
                     if (selectedDate != null) {
                       onStartDateChanged(selectedDate);
@@ -79,6 +80,7 @@ Widget buildDateRangeSelector({
                       firstDate: minDate.add(const Duration(days: 1)),
                       lastDate: maxEndDate,
                       helpText: 'Select End Date',
+                      initialDatePickerMode: DatePickerMode.day,
                     );
                     if (selectedDate != null) {
                       final daysDiff = selectedDate.difference(minDate).inDays;

@@ -122,6 +122,42 @@ class HourlyWeatherData {
     );
   }
 
+  /// Get daily min/max values for a specific data type.
+  /// Returns a map where each date maps to (min, max) tuple.
+  Map<DateTime, (double, double)> getDailyMinMax(String dataType) {
+    final dailyValues = <DateTime, List<double>>{};
+
+    for (final point in data) {
+      final date = DateTime(point.time.year, point.time.month, point.time.day);
+
+      switch (dataType) {
+        case 'temperature':
+          dailyValues.putIfAbsent(date, () => []).add(point.temperature);
+        case 'humidity':
+          if (point.humidity != null) {
+            dailyValues
+                .putIfAbsent(date, () => [])
+                .add(point.humidity!.toDouble());
+          }
+        case 'wind_speed':
+          if (point.windSpeed != null) {
+            dailyValues.putIfAbsent(date, () => []).add(point.windSpeed!);
+          }
+        case 'precipitation':
+          if (point.precipitation != null) {
+            dailyValues.putIfAbsent(date, () => []).add(point.precipitation!);
+          }
+      }
+    }
+
+    return dailyValues.map((date, values) {
+      if (values.isEmpty) return MapEntry(date, (0.0, 0.0));
+      final min = values.reduce((a, b) => a < b ? a : b);
+      final max = values.reduce((a, b) => a > b ? a : b);
+      return MapEntry(date, (min, max));
+    });
+  }
+
   /// Get temperature range (min, max).
   (double min, double max) getTemperatureRange() {
     var min = data.first.temperature;
@@ -168,8 +204,9 @@ class HourlyWeatherData {
     return (min, max);
   }
 
-  /// Get daily average precipitation.
-  Map<DateTime, double> getDailyAveragePrecipitation() {
+  /// Get daily total precipitation.
+  /// Sums all hourly precipitation values for each day.
+  Map<DateTime, double> getDailyTotalPrecipitation() {
     final dailyPrecipitation = <DateTime, List<double>>{};
 
     for (final point in data) {
@@ -186,12 +223,12 @@ class HourlyWeatherData {
     return dailyPrecipitation.map(
       (date, precipitations) => MapEntry(
         date,
-        precipitations.reduce((a, b) => a + b) / precipitations.length,
+        precipitations.reduce((a, b) => a + b), // Sum all hourly values
       ),
     );
   }
 
-  /// Get precipitation range (min, max).
+  /// Get precipitation range (min, max) for hourly data.
   (double min, double max) getPrecipitationRange() {
     final validPoints = data.where((p) => p.precipitation != null).toList();
     if (validPoints.isEmpty) return (0, 2); // Smaller default range
@@ -214,5 +251,32 @@ class HourlyWeatherData {
     }
 
     return (min, max);
+  }
+
+  /// Get daily total precipitation range (min, max).
+  /// Used for chart axis scaling when displaying daily totals.
+  /// Min is always 0 (precipitation cannot be negative).
+  (double min, double max) getDailyTotalPrecipitationRange() {
+    final dailyTotals = getDailyTotalPrecipitation();
+    if (dailyTotals.isEmpty) return (0, 10); // Default range for no data
+
+    final values = dailyTotals.values.toList();
+    var maxValue = values.first;
+
+    for (final value in values) {
+      if (value > maxValue) maxValue = value;
+    }
+
+    // If all values are 0 or very close, set a visible range
+    if (maxValue < 0.5) {
+      return (0, 5.0); // Show 0-5mm range for very small/zero precipitation
+    }
+
+    if (maxValue < 1.0) {
+      return (0, maxValue + 5.0);
+    }
+
+    // Add some padding to the max for better visualization
+    return (0, maxValue * 1.1);
   }
 }

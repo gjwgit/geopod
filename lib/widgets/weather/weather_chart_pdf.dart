@@ -31,10 +31,12 @@ Future<void> exportWeatherChartToPdf(
   BuildContext context, {
   required HourlyWeatherData data,
   required Map<DateTime, double> dailyData,
+  required Map<DateTime, (double, double)> dailyMinMax,
   required double minValue,
   required double maxValue,
   required String title,
   required String unit,
+  String? dataType,
   double? latitude,
   double? longitude,
   String? address,
@@ -137,7 +139,9 @@ Future<void> exportWeatherChartToPdf(
 
           // Daily data table
           pw.Text(
-            'Daily Average Data',
+            dataType == 'precipitation'
+                ? 'Daily Total Data'
+                : 'Daily Average Data',
             style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 10),
@@ -150,12 +154,25 @@ Future<void> exportWeatherChartToPdf(
             cellAlignments: {
               0: pw.Alignment.centerLeft,
               1: pw.Alignment.centerRight,
+              2: pw.Alignment.centerRight,
+              3: pw.Alignment.centerRight,
             },
-            headers: ['Date', 'Average$unit'],
+            headers: [
+              'Date',
+              dataType == 'precipitation' ? 'Total$unit' : 'Average$unit',
+              'Min$unit',
+              'Max$unit',
+            ],
             data: dailyData.entries.map((entry) {
+              final date = entry.key;
+              final avgValue = entry.value;
+              final (dayMin, dayMax) =
+                  dailyMinMax[date] ?? (avgValue, avgValue);
               return [
-                dateFormat.format(entry.key),
-                entry.value.toStringAsFixed(2),
+                dateFormat.format(date),
+                avgValue.toStringAsFixed(1),
+                dayMin.toStringAsFixed(1),
+                dayMax.toStringAsFixed(1),
               ];
             }).toList(),
           ),
@@ -345,10 +362,17 @@ pw.Widget buildPdfChart(
                             ? points[i + 2]
                             : points[i + 1];
 
-                        final cp1x = p1.x + (p2.x - p0.x) / 6;
-                        final cp1y = p1.y + (p2.y - p0.y) / 6;
-                        final cp2x = p2.x - (p3.x - p1.x) / 6;
-                        final cp2y = p2.y - (p3.y - p1.y) / 6;
+                        var cp1x = p1.x + (p2.x - p0.x) / 6;
+                        var cp1y = p1.y + (p2.y - p0.y) / 6;
+                        var cp2x = p2.x - (p3.x - p1.x) / 6;
+                        var cp2y = p2.y - (p3.y - p1.y) / 6;
+
+                        // Clamp control points Y to prevent curve going below chartHeight (value < 0)
+                        // Important for non-negative values like precipitation and wind speed
+                        if (cp1y > chartHeight) cp1y = chartHeight;
+                        if (cp1y < 0) cp1y = 0;
+                        if (cp2y > chartHeight) cp2y = chartHeight;
+                        if (cp2y < 0) cp2y = 0;
 
                         canvas.curveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
                       }
@@ -374,19 +398,51 @@ pw.Widget buildPdfChart(
               bottom: 0,
               child: pw.SizedBox(
                 height: 20,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                child: pw.Stack(
                   children: () {
-                    final labelStep = (sampledEntries.length / 6).ceil().clamp(
-                      1,
-                      5,
-                    );
+                    final chartWidth = 500.0; // Approximate chart width in PDF
+                    final labelStep = sampledEntries.length <= 10
+                        ? 1
+                        : (sampledEntries.length / 7).ceil();
                     final labels = <pw.Widget>[];
+                    final xStep = sampledEntries.length > 1
+                        ? chartWidth / (sampledEntries.length - 1)
+                        : 0.0;
+
                     for (var i = 0; i < sampledEntries.length; i += labelStep) {
+                      final x = i * xStep;
+                      // Adjust position to prevent first label from being cut off
+                      final labelLeft = i == 0
+                          ? 0.0 // First label: align to left edge
+                          : (i == sampledEntries.length - 1)
+                          ? x -
+                                30 // Last label: align to right
+                          : x - 15; // Middle labels: center
+
                       labels.add(
-                        pw.Text(
-                          DateFormat('MM/dd').format(sampledEntries[i].key),
-                          style: const pw.TextStyle(fontSize: 7),
+                        pw.Positioned(
+                          left: labelLeft.clamp(0.0, chartWidth - 30),
+                          child: pw.Text(
+                            DateFormat('MM/dd').format(sampledEntries[i].key),
+                            style: const pw.TextStyle(fontSize: 7),
+                          ),
+                        ),
+                      );
+                    }
+                    // Always show the last label
+                    if (sampledEntries.length > 1 &&
+                        (sampledEntries.length - 1) % labelStep != 0) {
+                      final lastIndex = sampledEntries.length - 1;
+                      final x = lastIndex * xStep;
+                      labels.add(
+                        pw.Positioned(
+                          left: (x - 30).clamp(0.0, chartWidth - 30),
+                          child: pw.Text(
+                            DateFormat(
+                              'MM/dd',
+                            ).format(sampledEntries[lastIndex].key),
+                            style: const pw.TextStyle(fontSize: 7),
+                          ),
                         ),
                       );
                     }

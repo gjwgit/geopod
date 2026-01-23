@@ -97,13 +97,8 @@ Future<LoadEncryptedPlacesResult> loadEncryptedPlacesData({
   }
 
   try {
-    debugPrint('Loading encrypted places...');
     final encryptedPlaces = await PlacesService.fetchEncryptedPlaces(
       forceRefresh: true,
-    );
-    debugPrint(
-      'Fetched ${encryptedPlaces.length} encrypted places, '
-      'isEncrypted flags: ${encryptedPlaces.map((p) => p.isEncrypted).toList()}',
     );
     return LoadEncryptedPlacesResult(encryptedPlaces: encryptedPlaces);
   } catch (e) {
@@ -121,10 +116,6 @@ List<Place> mergeEncryptedPlaces({
   final result = allPlaces.where((p) => !p.isEncrypted).toList();
   // Add newly loaded encrypted places
   result.addAll(encryptedPlaces);
-  debugPrint(
-    'Merged places: total=${result.length}, '
-    'encrypted=${result.where((p) => p.isEncrypted).length}',
-  );
   return result;
 }
 

@@ -34,6 +34,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:geopod/app.dart';
 import 'package:geopod/app_scaffold.dart';
 import 'package:geopod/constants/app.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/utils/is_desktop.dart';
 
 /// Main entry point for the application.
@@ -57,6 +58,10 @@ void main() async {
   // This must be called early to prevent double-slash bug in file paths
   // Without this, paths become //data/places.json instead of geopod/data/places.json
   await setAppDirName('geopod');
+
+  // Initialize encrypted places service to load persistent flags
+  // This improves performance by avoiding repeated checks
+  await EncryptedPlacesService.initialize();
 
   // Configure SolidAuthHandler with app-specific settings
   // This ensures proper login page navigation when guest users want to authenticate

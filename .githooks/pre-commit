@@ -18,8 +18,9 @@ printf "\e[32;1m%s\e[0m\n" 'Finished running dart format.'
 
 # Get the commit message.
 
-COMMIT_MSG_FILE=$1
-COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+#COMMIT_MSG_FILE=$1
+#COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+COMMIT_MSG=$(git log -1 --pretty=%B)
 
 # Check if the commit message starts with 'Bump version'.
 

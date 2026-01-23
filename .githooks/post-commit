@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-
-if [ -d snap ]; then
-    PVER=$(egrep '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d'+' -f1)
-    printf "\e[33;1m%s\e[0m\n" 'Update snap version.'
-    perl -pi -e "s|^version:.*|version: ${PVER}|" snap/snapcraft.yaml;
-fi

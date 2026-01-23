@@ -15,7 +15,7 @@ if [[ $COMMIT_MSG == Test\ version* ]]; then
 
     # Add any changed files to the commit.
 
-    git add .
+#    git add .
 
     echo $(git status)
     echo "DONE"

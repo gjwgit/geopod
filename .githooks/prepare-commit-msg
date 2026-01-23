@@ -11,7 +11,7 @@ COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
 if [[ $COMMIT_MSG == Test\ version* ]]; then
     # Run make versions.
 
-    make versions
+#    make versions
 
     # Add any changed files to the commit.
 

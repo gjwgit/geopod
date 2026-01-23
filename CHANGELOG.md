@@ -26,6 +26,7 @@ a Pull Request. Thanks.
 
 ## 0.1 First beta release
 
++ Fix encrypted file saving [0.0.10 20260123 miduo]
 + Cleanup [0.0.9 20260122 miduo]
 + Add LOCATE ME button [0.0.8 20260121 miduo]
 + Re-enginer to split large file into function-based files [0.0.7 20260110 miduo]

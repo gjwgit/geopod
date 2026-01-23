@@ -51,7 +51,9 @@ Widget buildMapTileLayer({
         ? const ColorFilter.matrix(midnightMatrix)
         : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
     child: TileLayer(
-      key: ValueKey(mapSettings.mapSource),
+      // Use ObjectKey with tileProvider to ensure fresh TileLayer when provider changes
+      // This prevents widget reuse issues when app resumes with a new provider
+      key: ObjectKey(tileProvider),
       urlTemplate: mapSettings.mapSource.urlTemplate,
       subdomains: mapSettings.mapSource.subdomains,
       userAgentPackageName: 'com.togaware.geopod',

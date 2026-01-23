@@ -52,8 +52,8 @@ Widget buildFlutterMapWidget({
     child: FadeTransition(
       opacity: fadeAnimation,
       child: FlutterMap(
-        // Use key to force rebuild when map source changes (different maxZoom)
-        key: ValueKey('map_${mapSettings.mapSource.name}'),
+        // Remove key to allow FlutterMap to properly handle tileProvider changes
+        // The TileLayer's ObjectKey will handle proper recreation when needed
         mapController: mapController,
         options: MapOptions(
           initialCenter: initialCenter,

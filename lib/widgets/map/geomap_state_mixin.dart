@@ -70,6 +70,7 @@ mixin MarkerCacheMixin {
   int _lastSavingIdsHash = 0;
   bool _lastShowLocalPlaces = true;
   bool _lastShowEncryptedPlaces = false;
+  bool _lastHideAllMarkers = false;
 
   /// Get filtered markers with caching to avoid expensive rebuilds.
   List<MarkerData> getCachedFilteredMarkers({
@@ -83,13 +84,15 @@ mixin MarkerCacheMixin {
     final savingHash = Object.hashAll(savingPlaceIds);
     final showLocal = mapSettings.showLocalPlaces;
     final showEncrypted = mapSettings.showEncryptedPlaces;
+    final hideMarkers = mapSettings.hideAllMarkers;
 
     // Return cached if nothing changed
     if (_cachedFilteredMarkers != null &&
         placesHash == _lastPlacesHash &&
         savingHash == _lastSavingIdsHash &&
         showLocal == _lastShowLocalPlaces &&
-        showEncrypted == _lastShowEncryptedPlaces) {
+        showEncrypted == _lastShowEncryptedPlaces &&
+        hideMarkers == _lastHideAllMarkers) {
       return _cachedFilteredMarkers!;
     }
 
@@ -98,6 +101,7 @@ mixin MarkerCacheMixin {
     _lastSavingIdsHash = savingHash;
     _lastShowLocalPlaces = showLocal;
     _lastShowEncryptedPlaces = showEncrypted;
+    _lastHideAllMarkers = hideMarkers;
     _cachedFilteredMarkers = builder();
     return _cachedFilteredMarkers!;
   }

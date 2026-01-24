@@ -81,10 +81,12 @@ Future<void> showColorPickerDialog({
 Widget buildVisibilitySection({
   required bool showLocalPlaces,
   required bool showEncryptedPlaces,
+  required bool hideAllMarkers,
   required bool isLoadingEncrypted,
   required bool isLoggedIn,
   required void Function(bool) onShowLocalChanged,
   required Function(bool) onShowEncryptedChanged, // Can be async
+  required void Function(bool) onHideAllMarkersChanged,
 }) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,10 +101,21 @@ Widget buildVisibilitySection({
       ),
       const SizedBox(height: 8),
       SwitchListTile(
+        title: const Text('Hide All Markers'),
+        subtitle: const Text('Hide all place markers on the map'),
+        value: hideAllMarkers,
+        onChanged: onHideAllMarkersChanged,
+        secondary: Icon(
+          hideAllMarkers ? Icons.visibility_off : Icons.place,
+          color: hideAllMarkers ? Colors.red : Colors.blue,
+        ),
+      ),
+      const SizedBox(height: 8),
+      SwitchListTile(
         title: const Text('Show Example Locations'),
         subtitle: const Text('Display canned examples on map'),
         value: showLocalPlaces,
-        onChanged: onShowLocalChanged,
+        onChanged: hideAllMarkers ? null : onShowLocalChanged,
         secondary: Icon(
           showLocalPlaces ? Icons.visibility : Icons.visibility_off,
           color: showLocalPlaces ? Colors.green : Colors.grey,
@@ -119,7 +132,9 @@ Widget buildVisibilitySection({
                 : 'Display encrypted places (requires key)',
           ),
           value: showEncryptedPlaces,
-          onChanged: isLoadingEncrypted ? null : onShowEncryptedChanged,
+          onChanged: (isLoadingEncrypted || hideAllMarkers)
+              ? null
+              : onShowEncryptedChanged,
           secondary: isLoadingEncrypted
               ? const SizedBox(
                   width: 24,

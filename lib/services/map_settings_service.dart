@@ -41,6 +41,7 @@ export 'package:geopod/services/map_source.dart';
 /// Keys for SharedPreferences storage.
 const String _keyShowLocalPlaces = 'map_show_local_places';
 const String _keyShowEncryptedPlaces = 'map_show_encrypted_places';
+const String _keyHideAllMarkers = 'map_hide_all_markers';
 const String _keyUserPlacesColor = 'map_user_places_color';
 const String _keyLocalPlacesColor = 'map_local_places_color';
 const String _keyEncryptedPlacesColor = 'map_encrypted_places_color';
@@ -69,6 +70,10 @@ class MapSettings {
   /// Encrypted places require security key to decrypt.
   final bool showEncryptedPlaces;
 
+  /// Whether to hide all markers on the map.
+  /// When true, no place markers will be displayed.
+  final bool hideAllMarkers;
+
   /// Color for user's saved places (from Pod).
   final Color userPlacesColor;
 
@@ -96,6 +101,7 @@ class MapSettings {
   const MapSettings({
     this.showLocalPlaces = true,
     this.showEncryptedPlaces = false,
+    this.hideAllMarkers = false,
     this.userPlacesColor = defaultUserColor,
     this.localPlacesColor = defaultLocalColor,
     this.encryptedPlacesColor = defaultEncryptedColor,
@@ -117,6 +123,7 @@ class MapSettings {
   MapSettings copyWith({
     bool? showLocalPlaces,
     bool? showEncryptedPlaces,
+    bool? hideAllMarkers,
     Color? userPlacesColor,
     Color? localPlacesColor,
     Color? encryptedPlacesColor,
@@ -129,6 +136,7 @@ class MapSettings {
     return MapSettings(
       showLocalPlaces: showLocalPlaces ?? this.showLocalPlaces,
       showEncryptedPlaces: showEncryptedPlaces ?? this.showEncryptedPlaces,
+      hideAllMarkers: hideAllMarkers ?? this.hideAllMarkers,
       userPlacesColor: userPlacesColor ?? this.userPlacesColor,
       localPlacesColor: localPlacesColor ?? this.localPlacesColor,
       encryptedPlacesColor: encryptedPlacesColor ?? this.encryptedPlacesColor,
@@ -148,6 +156,7 @@ class MapSettingsService {
     return {
       'showLocalPlaces': settings.showLocalPlaces,
       'showEncryptedPlaces': settings.showEncryptedPlaces,
+      'hideAllMarkers': settings.hideAllMarkers,
       'userPlacesColor': settings.userPlacesColor.toARGB32(),
       'localPlacesColor': settings.localPlacesColor.toARGB32(),
       'encryptedPlacesColor': settings.encryptedPlacesColor.toARGB32(),
@@ -172,6 +181,7 @@ class MapSettingsService {
     return MapSettings(
       showLocalPlaces: json['showLocalPlaces'] as bool? ?? true,
       showEncryptedPlaces: json['showEncryptedPlaces'] as bool? ?? false,
+      hideAllMarkers: json['hideAllMarkers'] as bool? ?? false,
       userPlacesColor: json['userPlacesColor'] != null
           ? Color(json['userPlacesColor'] as int)
           : defaultUserColor,
@@ -195,6 +205,7 @@ class MapSettingsService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces);
     await prefs.setBool(_keyShowEncryptedPlaces, settings.showEncryptedPlaces);
+    await prefs.setBool(_keyHideAllMarkers, settings.hideAllMarkers);
     await prefs.setInt(
       _keyUserPlacesColor,
       settings.userPlacesColor.toARGB32(),
@@ -220,6 +231,7 @@ class MapSettingsService {
 
     final showLocal = prefs.getBool(_keyShowLocalPlaces) ?? true;
     final showEncrypted = prefs.getBool(_keyShowEncryptedPlaces) ?? false;
+    final hideMarkers = prefs.getBool(_keyHideAllMarkers) ?? false;
     final userColorValue = prefs.getInt(_keyUserPlacesColor);
     final localColorValue = prefs.getInt(_keyLocalPlacesColor);
     final encryptedColorValue = prefs.getInt(_keyEncryptedPlacesColor);
@@ -239,6 +251,7 @@ class MapSettingsService {
     return MapSettings(
       showLocalPlaces: showLocal,
       showEncryptedPlaces: showEncrypted,
+      hideAllMarkers: hideMarkers,
       userPlacesColor: userColorValue != null
           ? Color(userColorValue)
           : defaultUserColor,

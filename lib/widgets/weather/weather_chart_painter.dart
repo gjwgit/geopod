@@ -92,9 +92,13 @@ class WeatherChartPainter extends CustomPainter {
           var cp2y = p2.dy - (p3.dy - p1.dy) / 6;
 
           // Clamp control points to prevent curve going below chartHeight (value < 0)
-          // This is important for non-negative values like precipitation and wind speed
-          cp1y = cp1y.clamp(0.0, chartHeight);
-          cp2y = cp2y.clamp(0.0, chartHeight);
+          // Important for non-negative values like precipitation and wind speed.
+          // Only apply this clamping when the data domain is non-negative (minValue >= 0)
+          // to avoid distorting curves for data types that can be negative (e.g. temperature).
+          if (minValue >= 0) {
+            cp1y = cp1y.clamp(0.0, chartHeight);
+            cp2y = cp2y.clamp(0.0, chartHeight);
+          }
 
           path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.dx, p2.dy);
         }

@@ -164,18 +164,22 @@ Future<void> exportWeatherChartToPdf(
               'Min$unit',
               'Max$unit',
             ],
-            data: dailyData.entries.map((entry) {
-              final date = entry.key;
-              final avgValue = entry.value;
-              final (dayMin, dayMax) =
-                  dailyMinMax[date] ?? (avgValue, avgValue);
-              return [
-                dateFormat.format(date),
-                avgValue.toStringAsFixed(1),
-                dayMin.toStringAsFixed(1),
-                dayMax.toStringAsFixed(1),
-              ];
-            }).toList(),
+            data:
+                (dailyData.entries.toList()
+                      ..sort((a, b) => a.key.compareTo(b.key)))
+                    .map((entry) {
+                      final date = entry.key;
+                      final avgValue = entry.value;
+                      final (dayMin, dayMax) =
+                          dailyMinMax[date] ?? (avgValue, avgValue);
+                      return [
+                        dateFormat.format(date),
+                        avgValue.toStringAsFixed(1),
+                        dayMin.toStringAsFixed(1),
+                        dayMax.toStringAsFixed(1),
+                      ];
+                    })
+                    .toList(),
           ),
 
           pw.SizedBox(height: 20),
@@ -262,7 +266,9 @@ pw.Widget buildPdfChart(
 ) {
   if (data.isEmpty) return pw.SizedBox();
 
-  final entries = data.entries.toList();
+  // Always sort entries by date in ascending order for PDF
+  // This ensures data points and X-axis labels are properly aligned
+  final entries = data.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
   final valueRange = maxValue - minValue;
 
   // Handle flat lines (all same values)
@@ -369,11 +375,15 @@ pw.Widget buildPdfChart(
                         var cp2y = p2.y - (p3.y - p1.y) / 6;
 
                         // Clamp control points Y to prevent curve going below chartHeight (value < 0)
-                        // Important for non-negative values like precipitation and wind speed
-                        if (cp1y > chartHeight) cp1y = chartHeight;
-                        if (cp1y < 0) cp1y = 0;
-                        if (cp2y > chartHeight) cp2y = chartHeight;
-                        if (cp2y < 0) cp2y = 0;
+                        // Important for non-negative values like precipitation and wind speed.
+                        // Only apply this clamping when the data domain is non-negative (minValue >= 0)
+                        // to avoid distorting curves for data types that can be negative (e.g. temperature).
+                        if (minValue >= 0) {
+                          if (cp1y > chartHeight) cp1y = chartHeight;
+                          if (cp1y < 0) cp1y = 0;
+                          if (cp2y > chartHeight) cp2y = chartHeight;
+                          if (cp2y < 0) cp2y = 0;
+                        }
 
                         canvas.curveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
                       }

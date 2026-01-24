@@ -63,6 +63,7 @@ class MapSettingsDialog extends StatefulWidget {
 class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late bool _showLocalPlaces;
   late bool _showEncryptedPlaces;
+  late bool _hideAllMarkers;
   late Color _userPlacesColor;
   late Color _localPlacesColor;
   late Color _encryptedPlacesColor;
@@ -82,6 +83,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     _initialSnapshot = widget.currentSettings;
     _showLocalPlaces = widget.currentSettings.showLocalPlaces;
     _showEncryptedPlaces = widget.currentSettings.showEncryptedPlaces;
+    _hideAllMarkers = widget.currentSettings.hideAllMarkers;
     _userPlacesColor = widget.currentSettings.userPlacesColor;
     _localPlacesColor = widget.currentSettings.localPlacesColor;
     _encryptedPlacesColor = widget.currentSettings.encryptedPlacesColor;
@@ -96,6 +98,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   bool _hasActualChanges() {
     return _showLocalPlaces != _initialSnapshot.showLocalPlaces ||
         _showEncryptedPlaces != _initialSnapshot.showEncryptedPlaces ||
+        _hideAllMarkers != _initialSnapshot.hideAllMarkers ||
         _userPlacesColor != _initialSnapshot.userPlacesColor ||
         _localPlacesColor != _initialSnapshot.localPlacesColor ||
         _encryptedPlacesColor != _initialSnapshot.encryptedPlacesColor ||
@@ -111,6 +114,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     final newSettings = MapSettings(
       showLocalPlaces: _showLocalPlaces,
       showEncryptedPlaces: _showEncryptedPlaces,
+      hideAllMarkers: _hideAllMarkers,
       userPlacesColor: _userPlacesColor,
       localPlacesColor: _localPlacesColor,
       encryptedPlacesColor: _encryptedPlacesColor,
@@ -133,6 +137,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     setState(() {
       _showLocalPlaces = true;
       _showEncryptedPlaces = false;
+      _hideAllMarkers = false;
       _userPlacesColor = defaultUserColor;
       _localPlacesColor = defaultLocalColor;
       _encryptedPlacesColor = defaultEncryptedColor;
@@ -170,6 +175,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               buildVisibilitySection(
                 showLocalPlaces: _showLocalPlaces,
                 showEncryptedPlaces: _showEncryptedPlaces,
+                hideAllMarkers: _hideAllMarkers,
                 isLoadingEncrypted: _isLoadingEncrypted,
                 isLoggedIn: authStateNotifier.value,
                 onShowLocalChanged: (value) {
@@ -207,6 +213,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                     setState(() => _showEncryptedPlaces = false);
                     _saveAndNotify();
                   }
+                },
+                onHideAllMarkersChanged: (value) {
+                  setState(() => _hideAllMarkers = value);
+                  _saveAndNotify();
                 },
               ),
               const Divider(height: 24),

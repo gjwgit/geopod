@@ -228,6 +228,27 @@ class HourlyWeatherData {
     );
   }
 
+  /// Get count of hours with precipitation for each day.
+  /// Counts hours where precipitation > 0.
+  Map<DateTime, int> getDailyPrecipitationHours() {
+    final dailyHours = <DateTime, int>{};
+
+    for (final point in data) {
+      if (point.precipitation == null) continue;
+      final date = DateTime(point.time.year, point.time.month, point.time.day);
+
+      // Count hours with measurable precipitation (> 0)
+      if (point.precipitation! > 0) {
+        dailyHours[date] = (dailyHours[date] ?? 0) + 1;
+      } else {
+        // Ensure date exists in map even if no precipitation
+        dailyHours.putIfAbsent(date, () => 0);
+      }
+    }
+
+    return dailyHours;
+  }
+
   /// Get precipitation range (min, max) for hourly data.
   (double min, double max) getPrecipitationRange() {
     final validPoints = data.where((p) => p.precipitation != null).toList();

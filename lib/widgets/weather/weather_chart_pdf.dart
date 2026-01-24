@@ -41,6 +41,8 @@ Future<void> exportWeatherChartToPdf(
   double? latitude,
   double? longitude,
   String? address,
+  Map<DateTime, int>? precipitationHours,
+  String? dataSource,
 }) async {
   try {
     final pdf = pw.Document();
@@ -75,6 +77,30 @@ Future<void> exportWeatherChartToPdf(
               style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
             ),
           pw.SizedBox(height: 10),
+
+          // Data source (forecast, past, historical)
+          if (dataSource != null) ...[
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.blue50,
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                border: pw.Border.all(color: PdfColors.blue200),
+              ),
+              child: pw.Text(
+                dataSource,
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.blue800,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 10),
+          ],
 
           // Date range
           pw.Text(
@@ -161,7 +187,7 @@ Future<void> exportWeatherChartToPdf(
             headers: [
               'Date',
               dataType == 'precipitation' ? 'Total$unit' : 'Average$unit',
-              dataType == 'precipitation' ? 'Min mm/h' : 'Min$unit',
+              dataType == 'precipitation' ? 'Hours' : 'Min$unit',
               dataType == 'precipitation' ? 'Max mm/h' : 'Max$unit',
             ],
             data:
@@ -174,10 +200,16 @@ Future<void> exportWeatherChartToPdf(
                       final value = entry.value;
                       final (dayMin, dayMax) =
                           dailyMinMax[date] ?? (value, value);
+
+                      // For precipitation, show hours with rain and max hourly rate
+                      final secondCol = dataType == 'precipitation'
+                          ? (precipitationHours?[date] ?? 0).toString()
+                          : dayMin.toStringAsFixed(1);
+
                       return [
                         dateFormat.format(date),
                         value.toStringAsFixed(1),
-                        dayMin.toStringAsFixed(1),
+                        secondCol,
                         dayMax.toStringAsFixed(1),
                       ];
                     })
@@ -273,8 +305,11 @@ pw.Widget buildPdfChart(
   final entries = data.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
   final valueRange = maxValue - minValue;
 
+  // For non-negative data (precipitation, wind, humidity), start from 0
+  // For temperature, use actual min value
+  final effectiveMin = minValue >= 0 ? 0.0 : minValue;
+
   // Handle flat lines (all same values)
-  final effectiveMin = minValue;
   final effectiveMax = valueRange < 0.01
       ? (minValue == 0 ? 1.0 : minValue * 1.1)
       : maxValue;
@@ -290,13 +325,13 @@ pw.Widget buildPdfChart(
     children: [
       // Chart area with grid and line
       pw.Container(
-        height: 160,
+        height: 200,
         decoration: pw.BoxDecoration(
           border: pw.Border.all(color: PdfColors.grey400),
         ),
         child: pw.Stack(
           children: [
-            // Y-axis labels
+            // Y-axis labels (from bottom to top: min to max)
             pw.Positioned(
               left: 0,
               top: 0,
@@ -307,7 +342,8 @@ pw.Widget buildPdfChart(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: List.generate(5, (i) {
-                    final value = effectiveMax - (effectiveRange * i / 4);
+                    // Reverse order: i=0 should be max (top), i=4 should be min (bottom)
+                    final value = effectiveMin + (effectiveRange * (4 - i) / 4);
                     return pw.Text(
                       value.toStringAsFixed(1),
                       style: const pw.TextStyle(fontSize: 7),
@@ -347,13 +383,15 @@ pw.Widget buildPdfChart(
                       ..setLineWidth(2);
 
                     // Calculate points
+                    // PDF coordinate system: origin at bottom-left, Y-axis goes upward
                     final points = <PdfPoint>[];
                     for (var i = 0; i < sampledEntries.length; i++) {
                       final x = i * xStep;
                       final normalizedY =
                           (sampledEntries[i].value - effectiveMin) /
                           effectiveRange;
-                      final y = chartHeight - (normalizedY * chartHeight);
+                      // In PDF: y=0 is bottom, y=chartHeight is top
+                      final y = normalizedY * chartHeight;
                       points.add(PdfPoint(x, y));
                     }
 

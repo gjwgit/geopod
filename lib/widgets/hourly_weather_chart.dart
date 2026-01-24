@@ -33,6 +33,7 @@ class HourlyWeatherChart extends StatefulWidget {
     this.latitude,
     this.longitude,
     this.address,
+    this.dataSource,
     super.key,
   });
 
@@ -43,6 +44,7 @@ class HourlyWeatherChart extends StatefulWidget {
   final double? latitude;
   final double? longitude;
   final String? address;
+  final String? dataSource; // 'Past 10 Days', 'Forecast (7 Days)', 'Historical'
 
   @override
   State<HourlyWeatherChart> createState() => _HourlyWeatherChartState();
@@ -71,7 +73,15 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
     // Get daily min/max values for each day
     final dailyMinMax = widget.data.getDailyMinMax(widget.dataType);
 
-    // Sort data based on sortAscending parameter
+    // Get precipitation hours for each day (only for precipitation data)
+    final precipitationHours = widget.dataType == 'precipitation'
+        ? widget.data.getDailyPrecipitationHours()
+        : null;
+
+    // Keep original unsorted data for PDF export
+    final originalDailyData = dailyData;
+
+    // Sort data based on sortAscending parameter for UI display
     final sortedEntries = dailyData.entries.toList()
       ..sort(
         (a, b) => widget.sortAscending
@@ -227,7 +237,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
             onPressed: () => exportWeatherChartToPdf(
               context,
               data: widget.data,
-              dailyData: dailyData,
+              dailyData: originalDailyData,
               dailyMinMax: dailyMinMax,
               minValue: dataMin,
               maxValue: dataMax,
@@ -237,6 +247,8 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
               latitude: widget.latitude,
               longitude: widget.longitude,
               address: widget.address,
+              precipitationHours: precipitationHours,
+              dataSource: widget.dataSource,
             ),
             icon: const Icon(Icons.picture_as_pdf, size: 18),
             label: const Text('Export to PDF'),
@@ -335,47 +347,92 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        // Show min/max for the day
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'min ',
-                              style: TextStyle(
-                                fontSize: 8,
+                        // Show min/max or hours for precipitation
+                        if (widget.dataType == 'precipitation') ...[
+                          // For precipitation: show hours with rain
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 10,
                                 color: Colors.grey[600],
                               ),
-                            ),
-                            Text(
-                              '${dayMin.toStringAsFixed(1)}${widget.dataType == 'precipitation' ? 'mm/h' : ''}',
-                              style: TextStyle(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.blue[700],
+                              const SizedBox(width: 2),
+                              Text(
+                                '${precipitationHours?[date] ?? 0}h',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.blue[700],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'max ',
-                              style: TextStyle(
-                                fontSize: 8,
-                                color: Colors.grey[600],
+                            ],
+                          ),
+                          // Show max hourly rate
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'max ',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.grey[600],
+                                ),
                               ),
-                            ),
-                            Text(
-                              '${dayMax.toStringAsFixed(1)}${widget.dataType == 'precipitation' ? 'mm/h' : ''}',
-                              style: TextStyle(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.red[700],
+                              Text(
+                                '${dayMax.toStringAsFixed(1)}mm/h',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.red[700],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ] else ...[
+                          // For other data types: show min/max
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'min ',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                dayMin.toStringAsFixed(1),
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.blue[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'max ',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                dayMax.toStringAsFixed(1),
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.red[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         if (isToday)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),

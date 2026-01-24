@@ -22,6 +22,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import 'package:geopod/models/hourly_weather_data.dart';
 import 'package:geopod/utils/ui_utils.dart';
+
 // Conditional import for platform-specific PDF download
 import 'pdf_download_stub.dart' if (dart.library.html) 'pdf_download_web.dart';
 import 'weather_chart_sampling.dart';

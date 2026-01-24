@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:geopod/models/hourly_weather_data.dart';
+
 import 'weather/weather_chart_helpers.dart';
 import 'weather/weather_chart_painter.dart';
 import 'weather/weather_chart_pdf.dart';

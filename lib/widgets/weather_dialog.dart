@@ -17,6 +17,7 @@ import 'package:geopod/models/weather_data.dart';
 import 'package:geopod/services/weather_service.dart';
 import 'package:geopod/utils/ui_utils.dart';
 import 'package:geopod/utils/widget_utils.dart';
+
 import 'weather/weather_date_selector.dart';
 import 'weather/weather_view_widgets.dart';
 

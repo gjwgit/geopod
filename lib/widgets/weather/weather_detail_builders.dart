@@ -14,7 +14,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../models/weather_data.dart';
+import 'package:geopod/models/weather_data.dart';
 
 /// Build a generic weather detail row.
 Widget buildWeatherDetail({

@@ -12,7 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../models/hourly_weather_data.dart';
+import 'package:geopod/models/hourly_weather_data.dart';
 
 /// Get data range based on data type.
 /// For precipitation, returns the range of daily totals, not hourly values.

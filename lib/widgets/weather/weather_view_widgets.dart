@@ -14,9 +14,9 @@ import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
 
-import '../../models/hourly_weather_data.dart';
-import '../../models/weather_data.dart';
-import '../hourly_weather_chart.dart';
+import 'package:geopod/models/hourly_weather_data.dart';
+import 'package:geopod/models/weather_data.dart';
+import 'package:geopod/widgets/hourly_weather_chart.dart';
 import 'weather_detail_builders.dart';
 
 /// Build error view for failed weather loading.

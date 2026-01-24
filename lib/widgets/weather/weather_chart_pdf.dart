@@ -161,20 +161,22 @@ Future<void> exportWeatherChartToPdf(
             headers: [
               'Date',
               dataType == 'precipitation' ? 'Total$unit' : 'Average$unit',
-              'Min$unit',
-              'Max$unit',
+              dataType == 'precipitation' ? 'Min mm/h' : 'Min$unit',
+              dataType == 'precipitation' ? 'Max mm/h' : 'Max$unit',
             ],
             data:
                 (dailyData.entries.toList()
                       ..sort((a, b) => a.key.compareTo(b.key)))
                     .map((entry) {
                       final date = entry.key;
-                      final avgValue = entry.value;
+                      // For precipitation: dailyData contains daily totals
+                      // For other types: dailyData contains daily averages
+                      final value = entry.value;
                       final (dayMin, dayMax) =
-                          dailyMinMax[date] ?? (avgValue, avgValue);
+                          dailyMinMax[date] ?? (value, value);
                       return [
                         dateFormat.format(date),
-                        avgValue.toStringAsFixed(1),
+                        value.toStringAsFixed(1),
                         dayMin.toStringAsFixed(1),
                         dayMax.toStringAsFixed(1),
                       ];

@@ -62,7 +62,7 @@ pw.Widget buildPdfChart(
               top: 20,
               bottom: 25,
               child: pw.SizedBox(
-                width: 40,
+                width: 25,
                 child: pw.Column(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: pw.CrossAxisAlignment.end,

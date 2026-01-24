@@ -7,7 +7,7 @@
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
-/// Licensed under the GNU General Public License, Version 3 (the "License").
+/// Licensed under the GNU General Public License, Version 3 (the 'License').
 ///
 /// License: https://opensource.org/license/gpl-3-0.
 
@@ -161,4 +161,44 @@ const List<Map<String, dynamic>> kExamplePlacesData = [
     'address':
         'Workshop Road, Yarrabah, Yarrabah Aboriginal Shire, Queensland, 4871, Australia',
   },
+  {
+    'id': 'world_001',
+    'lat': 27.9881,
+    'lng': 86.9250,
+    'note': 'Mount Everest',
+    'timestamp': '2026-01-24T10:00:00.000Z',
+    'address': 'Mahalangur Himal, Sagarmatha National Park, Solu-Khumbu, Nepal/China Border'
+  },
+  {
+    'id': 'world_002',
+    'lat': 29.9792,
+    'lng': 31.1342,
+    'note': 'Great Pyramid of Giza',
+    'timestamp': '2026-01-24T10:00:00.000Z',
+    'address': 'Al Haram, Giza Governorate, Egypt'
+  },
+  {
+    'id': 'world_003',
+    'lat': 40.7484,
+    'lng': -73.9857,
+    'note': 'Empire State Building',
+    'timestamp': '2026-01-24T10:00:00.000Z',
+    'address': '20 West 34th Street, Manhattan, New York City, NY 10001, USA'
+  },
+  {
+    'id': 'world_004',
+    'lat': 48.8584,
+    'lng': 2.2945,
+    'note': 'Eiffel Tower',
+    'timestamp': '2026-01-24T10:00:00.000Z',
+    'address': 'Champ de Mars, 5 Avenue Anatole France, 75007 Paris, France'
+  },
+  {
+    'id': 'world_005',
+    'lat': -22.9519,
+    'lng': -43.2105,
+    'note': 'Christ the Redeemer',
+    'timestamp': '2026-01-24T10:00:00.000Z',
+    'address': 'Parque Nacional da Tijuca, Rio de Janeiro, Brazil'
+  }
 ];

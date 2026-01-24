@@ -59,8 +59,8 @@ pw.Widget buildPdfChart(
             // Y-axis labels (from bottom to top: min to max)
             pw.Positioned(
               left: 0,
-              top: 20,
-              bottom: 25,
+              top: 17,
+              bottom: 22,
               child: pw.SizedBox(
                 width: 25,
                 child: pw.Column(
@@ -163,13 +163,25 @@ pw.Widget buildPdfChart(
                         ..drawEllipse(point.x, point.y, 2.5, 2.5)
                         ..fillPath();
                     }
+
+                    // Draw X-axis tick marks at the bottom
+                    canvas
+                      ..setStrokeColor(PdfColors.grey600)
+                      ..setLineWidth(1);
+                    for (var i = 0; i < sampledEntries.length; i++) {
+                      final x = i * xStep;
+                      canvas
+                        ..moveTo(x, 0)
+                        ..lineTo(x, 3)
+                        ..strokePath();
+                    }
                   }
                 },
               ),
             ),
             // X-axis date labels
             pw.Positioned(
-              left: 45,
+              left: 30,
               right: 5,
               bottom: 0,
               child: pw.SizedBox(
@@ -188,17 +200,10 @@ pw.Widget buildPdfChart(
 
                     for (var i = 0; i < sampledEntries.length; i += labelStep) {
                       final x = i * xStep;
-                      // Adjust position to prevent first label from being cut off
-                      final labelLeft = i == 0
-                          ? 0.0 // First label: align to left edge
-                          : (i == sampledEntries.length - 1)
-                          ? x -
-                                30 // Last label: align to right
-                          : x - 15; // Middle labels: center
 
                       labels.add(
                         pw.Positioned(
-                          left: labelLeft.clamp(0.0, chartWidth - 30),
+                          left: (x - 15).clamp(0.0, chartWidth - 30),
                           child: pw.Text(
                             DateFormat('MM/dd').format(sampledEntries[i].key),
                             style: const pw.TextStyle(fontSize: 7),
@@ -213,7 +218,7 @@ pw.Widget buildPdfChart(
                       final x = lastIndex * xStep;
                       labels.add(
                         pw.Positioned(
-                          left: (x - 30).clamp(0.0, chartWidth - 30),
+                          left: (x - 15).clamp(0.0, chartWidth - 30),
                           child: pw.Text(
                             DateFormat(
                               'MM/dd',

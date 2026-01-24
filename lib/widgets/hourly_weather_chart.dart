@@ -1,6 +1,6 @@
 /// Widget for displaying hourly weather chart.
 ///
-// Time-stamp: <Tuesday 2026-01-14 10:00:00 +1100>
+// Time-stamp: <Friday 2026-01-24 10:00:00 +1100>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -12,17 +12,17 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:intl/intl.dart';
-
 import 'package:geopod/models/hourly_weather_data.dart';
 
+import 'weather/weather_chart_config.dart';
+import 'weather/weather_chart_data_card.dart';
+import 'weather/weather_chart_empty_state.dart';
+import 'weather/weather_chart_header.dart';
 import 'weather/weather_chart_helpers.dart';
 import 'weather/weather_chart_painter.dart';
 import 'weather/weather_chart_pdf.dart';
+import 'weather/weather_chart_range_indicator.dart';
 import 'weather/weather_chart_sampling.dart';
-
-/// Maximum number of data points to display in the chart for better performance.
-const int maxChartDataPoints = 30;
 
 /// Displays hourly weather data as a simple line chart.
 class HourlyWeatherChart extends StatefulWidget {
@@ -101,32 +101,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
 
     // Check if we have any data
     if (dailyData.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.info_outline, size: 48, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(
-                'No ${getDataTitle(widget.dataType).toLowerCase()} data available',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'This might be because the data is not available for this time period.',
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.grey[500]),
-              ),
-            ],
-          ),
-        ),
-      );
+      return WeatherChartEmptyState(dataTitle: getDataTitle(widget.dataType));
     }
 
     // Sample data for chart if too many points (but keep full data for cards display)
@@ -135,7 +110,6 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       chartData = sampleData(dailyData, maxChartDataPoints);
     }
 
-    final dateFormat = DateFormat('MMM dd');
     final title = getDataTitle(widget.dataType);
     final unit = getDataUnit(widget.dataType);
     final icon = getDataIcon(widget.dataType);
@@ -144,48 +118,25 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Header with date range
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              '${dateFormat.format(widget.data.startDate)} - ${dateFormat.format(widget.data.endDate)}',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-            ),
-          ],
+        WeatherChartHeader(
+          title: title,
+          startDate: widget.data.startDate,
+          endDate: widget.data.endDate,
         ),
         const SizedBox(height: 12),
 
         // Data range indicator (shows actual data min/max)
-        Row(
-          children: [
-            Icon(icon, size: 16, color: Colors.blue[700]),
-            const SizedBox(width: 4),
-            Text(
-              'Min: ${dataMin.toStringAsFixed(1)}$unit',
-              style: TextStyle(fontSize: 12, color: Colors.blue[700]),
-            ),
-            const SizedBox(width: 16),
-            Icon(icon, size: 16, color: Colors.red[700]),
-            const SizedBox(width: 4),
-            Text(
-              'Max: ${dataMax.toStringAsFixed(1)}$unit',
-              style: TextStyle(fontSize: 12, color: Colors.red[700]),
-            ),
-          ],
+        WeatherChartRangeIndicator(
+          dataMin: dataMin,
+          dataMax: dataMax,
+          unit: unit,
+          icon: icon,
         ),
         const SizedBox(height: 16),
 
         // Simple chart using daily data
         Container(
-          height: 250, // Increased height to accommodate X-axis labels
+          height: chartHeight,
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey[300]!),
             borderRadius: BorderRadius.circular(8),
@@ -209,9 +160,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
             child: Row(
               children: [
                 Tooltip(
-                  message:
-                      'Catmull-Rom spline: Smooth curve algorithm that passes through data points\n'
-                      'Ramer-Douglas-Peucker: Smart sampling to preserve key features',
+                  message: chartSamplingTooltip,
                   child: Icon(
                     Icons.info_outline,
                     size: 12,
@@ -221,7 +170,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    'Curve fitting: Catmull-Rom spline | Data sampling: RDP algorithm',
+                    chartSamplingInfo,
                     style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                   ),
                 ),
@@ -301,151 +250,16 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                       date.month == DateTime.now().month &&
                       date.year == DateTime.now().year;
 
-                  return Container(
-                    width: 80,
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isToday
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                      border: isToday
-                          ? Border.all(
-                              color: Theme.of(context).colorScheme.primary,
-                              width: 2,
-                            )
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          DateFormat('MMM').format(date),
-                          style: TextStyle(
-                            fontSize: 9,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          DateFormat('dd').format(date),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${avgValue.toStringAsFixed(1)}${getDataUnit(widget.dataType)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: getValueColor(avgValue, dataMin, dataMax),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        // Show min/max or hours for precipitation
-                        if (widget.dataType == 'precipitation') ...[
-                          // For precipitation: show hours with rain
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.access_time,
-                                size: 10,
-                                color: Colors.grey[600],
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                '${precipitationHours?[date] ?? 0}h',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.blue[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Show max hourly rate
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'max ',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              Text(
-                                '${dayMax.toStringAsFixed(1)}mm/h',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.red[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ] else ...[
-                          // For other data types: show min/max
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'min ',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              Text(
-                                dayMin.toStringAsFixed(1),
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.blue[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'max ',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              Text(
-                                dayMax.toStringAsFixed(1),
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.red[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (isToday)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              'Today',
-                              style: TextStyle(
-                                fontSize: 8,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+                  return WeatherDataCard(
+                    date: date,
+                    avgValue: avgValue,
+                    dayMin: dayMin,
+                    dayMax: dayMax,
+                    dataMin: dataMin,
+                    dataMax: dataMax,
+                    dataType: widget.dataType,
+                    precipitationHours: precipitationHours?[date],
+                    isToday: isToday,
                   );
                 }).toList(),
               ),

@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:markdown_tooltip/markdown_tooltip.dart';
 
 import 'package:geopod/models/weather_data.dart';
 
@@ -49,7 +50,7 @@ Widget buildWindDirectionDetail(WeatherData weather) {
         const Expanded(
           child: Text('Wind Direction', style: TextStyle(fontSize: 15)),
         ),
-        Tooltip(
+        MarkdownTooltip(
           message:
               '''Wind Direction: ${weather.windDirectionFullName}
 Angle: ${weather.windDirection}° (clockwise from North)

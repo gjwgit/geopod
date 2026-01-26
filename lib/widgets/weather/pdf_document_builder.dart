@@ -18,6 +18,7 @@ import 'package:geopod/models/hourly_weather_data.dart';
 
 import 'pdf_chart_painter.dart';
 import 'pdf_data_table.dart';
+import 'pdf_dual_chart_painter.dart';
 import 'pdf_utils.dart';
 
 /// Build complete PDF document for weather data report.
@@ -25,6 +26,8 @@ pw.Document buildWeatherPdfDocument({
   required HourlyWeatherData data,
   required Map<DateTime, double> dailyData,
   required Map<DateTime, (double, double)> dailyMinMax,
+  Map<DateTime, double>? dailyMaxData,
+  Map<DateTime, double>? dailyMinData,
   required double minValue,
   required double maxValue,
   required String title,
@@ -149,7 +152,25 @@ pw.Document buildWeatherPdfDocument({
           style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 10),
-        buildPdfChart(dailyData, minValue, maxValue, unit),
+        // Use dual chart for temperature, single chart for others
+        if (dataType == 'temperature' &&
+            dailyMaxData != null &&
+            dailyMinData != null)
+          buildPdfDualChart(
+            dailyMaxData,
+            dailyMinData,
+            minValue,
+            maxValue,
+            unit,
+          )
+        else
+          buildPdfChart(
+            dailyData,
+            minValue,
+            maxValue,
+            unit,
+            isTemperature: dataType == 'temperature',
+          ),
         pw.SizedBox(height: 20),
 
         // Daily data table

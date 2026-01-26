@@ -21,8 +21,9 @@ pw.Widget buildPdfChart(
   Map<DateTime, double> data,
   double minValue,
   double maxValue,
-  String unit,
-) {
+  String unit, {
+  bool isTemperature = false,
+}) {
   if (data.isEmpty) return pw.SizedBox();
 
   // Always sort entries by date in ascending order for PDF
@@ -30,9 +31,11 @@ pw.Widget buildPdfChart(
   final entries = data.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
   final valueRange = maxValue - minValue;
 
+  // For temperature, use actual min value to show variation
   // For non-negative data (precipitation, wind, humidity), start from 0
-  // For temperature, use actual min value
-  final effectiveMin = minValue >= 0 ? 0.0 : minValue;
+  final effectiveMin = isTemperature
+      ? minValue
+      : (minValue >= 0 ? 0.0 : minValue);
 
   // Handle flat lines (all same values)
   final effectiveMax = valueRange < 0.01
@@ -141,9 +144,8 @@ pw.Widget buildPdfChart(
 
                         // Clamp control points Y to prevent curve going below chartHeight (value < 0)
                         // Important for non-negative values like precipitation and wind speed.
-                        // Only apply this clamping when the data domain is non-negative (minValue >= 0)
-                        // to avoid distorting curves for data types that can be negative (e.g. temperature).
-                        if (minValue >= 0) {
+                        // Only apply this clamping when the data is non-temperature to avoid distorting curves
+                        if (!isTemperature && minValue >= 0) {
                           if (cp1y > chartHeight) cp1y = chartHeight;
                           if (cp1y < 0) cp1y = 0;
                           if (cp2y > chartHeight) cp2y = chartHeight;

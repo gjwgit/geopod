@@ -16,6 +16,7 @@ import 'package:geopod/models/hourly_weather_data.dart';
 
 import 'weather/weather_chart_config.dart';
 import 'weather/weather_chart_data_card.dart';
+import 'weather/weather_chart_dual_painter.dart';
 import 'weather/weather_chart_empty_state.dart';
 import 'weather/weather_chart_header.dart';
 import 'weather/weather_chart_helpers.dart';
@@ -73,6 +74,18 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
     // Get daily min/max values for each day
     final dailyMinMax = widget.data.getDailyMinMax(widget.dataType);
 
+    // For temperature, extract separate max and min data
+    Map<DateTime, double>? dailyMaxData;
+    Map<DateTime, double>? dailyMinData;
+    if (widget.dataType == 'temperature') {
+      dailyMaxData = dailyMinMax.map(
+        (date, values) => MapEntry(date, values.$2),
+      );
+      dailyMinData = dailyMinMax.map(
+        (date, values) => MapEntry(date, values.$1),
+      );
+    }
+
     // Get precipitation hours for each day (only for precipitation data)
     final precipitationHours = widget.dataType == 'precipitation'
         ? widget.data.getDailyPrecipitationHours()
@@ -80,6 +93,8 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
 
     // Keep original unsorted data for PDF export
     final originalDailyData = dailyData;
+    final originalDailyMaxData = dailyMaxData;
+    final originalDailyMinData = dailyMinData;
 
     // Sort data based on sortAscending parameter for UI display
     final sortedEntries = dailyData.entries.toList()
@@ -90,10 +105,39 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       ); // Descending: new to old
     dailyData = Map.fromEntries(sortedEntries);
 
+    // Sort max/min data for temperature
+    if (dailyMaxData != null && dailyMinData != null) {
+      final sortedMaxEntries = dailyMaxData.entries.toList()
+        ..sort(
+          (a, b) => widget.sortAscending
+              ? a.key.compareTo(b.key)
+              : b.key.compareTo(a.key),
+        );
+      dailyMaxData = Map.fromEntries(sortedMaxEntries);
+
+      final sortedMinEntries = dailyMinData.entries.toList()
+        ..sort(
+          (a, b) => widget.sortAscending
+              ? a.key.compareTo(b.key)
+              : b.key.compareTo(a.key),
+        );
+      dailyMinData = Map.fromEntries(sortedMinEntries);
+    }
+
     // Calculate actual data range for display
     double dataMin = axisMin;
     double dataMax = axisMax;
-    if (dailyData.isNotEmpty) {
+    if (widget.dataType == 'temperature' &&
+        dailyMinData != null &&
+        dailyMaxData != null) {
+      // For temperature, use actual min of all daily minimums and max of all daily maximums
+      if (dailyMinData.isNotEmpty && dailyMaxData.isNotEmpty) {
+        final minValues = dailyMinData.values.toList();
+        final maxValues = dailyMaxData.values.toList();
+        dataMin = minValues.reduce((a, b) => a < b ? a : b);
+        dataMax = maxValues.reduce((a, b) => a > b ? a : b);
+      }
+    } else if (dailyData.isNotEmpty) {
       final values = dailyData.values.toList();
       dataMin = values.reduce((a, b) => a < b ? a : b);
       dataMax = values.reduce((a, b) => a > b ? a : b);
@@ -106,8 +150,15 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
 
     // Sample data for chart if too many points (but keep full data for cards display)
     Map<DateTime, double> chartData = dailyData;
+    Map<DateTime, double>? chartMaxData = dailyMaxData;
+    Map<DateTime, double>? chartMinData = dailyMinData;
+
     if (dailyData.length > maxChartDataPoints) {
       chartData = sampleData(dailyData, maxChartDataPoints);
+      if (dailyMaxData != null && dailyMinData != null) {
+        chartMaxData = sampleData(dailyMaxData, maxChartDataPoints);
+        chartMinData = sampleData(dailyMinData, maxChartDataPoints);
+      }
     }
 
     final title = getDataTitle(widget.dataType);
@@ -134,6 +185,24 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         ),
         const SizedBox(height: 16),
 
+        // Legend for temperature dual-line chart
+        if (widget.dataType == 'temperature')
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(width: 30, height: 3, color: Colors.red),
+                const SizedBox(width: 6),
+                const Text('Max Temp', style: TextStyle(fontSize: 11)),
+                const SizedBox(width: 16),
+                Container(width: 30, height: 3, color: Colors.blue),
+                const SizedBox(width: 6),
+                const Text('Min Temp', style: TextStyle(fontSize: 11)),
+              ],
+            ),
+          ),
+
         // Simple chart using daily data
         Container(
           height: chartHeight,
@@ -148,7 +217,18 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
               16,
               30,
             ), // More bottom padding for X-axis
-            child: _buildSimpleChart(context, chartData, axisMin, axisMax),
+            child:
+                widget.dataType == 'temperature' &&
+                    chartMaxData != null &&
+                    chartMinData != null
+                ? _buildDualLineChart(
+                    context,
+                    chartMaxData,
+                    chartMinData,
+                    axisMin,
+                    axisMax,
+                  )
+                : _buildSimpleChart(context, chartData, axisMin, axisMax),
           ),
         ),
         const SizedBox(height: 4),
@@ -211,6 +291,8 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
               data: widget.data,
               dailyData: originalDailyData,
               dailyMinMax: dailyMinMax,
+              dailyMaxData: originalDailyMaxData,
+              dailyMinData: originalDailyMinData,
               minValue: dataMin,
               maxValue: dataMax,
               title: title,
@@ -237,6 +319,8 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
             Text(
               widget.dataType == 'precipitation'
                   ? 'Daily Totals'
+                  : widget.dataType == 'temperature'
+                  ? 'Daily Max/Min'
                   : 'Daily Averages',
               style: Theme.of(
                 context,
@@ -290,6 +374,46 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDualLineChart(
+    BuildContext context,
+    Map<DateTime, double> dailyMaxValues,
+    Map<DateTime, double> dailyMinValues,
+    double minValue,
+    double maxValue,
+  ) {
+    if (dailyMaxValues.isEmpty || dailyMinValues.isEmpty) {
+      return const SizedBox();
+    }
+    final valueRange = maxValue - minValue;
+    // For flat lines, adjust range
+    if (valueRange < 0.01) {
+      final adjustedMax = minValue == 0 ? 1.0 : minValue * 1.1;
+      return CustomPaint(
+        painter: WeatherChartDualPainter(
+          dailyMaxValues: dailyMaxValues,
+          dailyMinValues: dailyMinValues,
+          minValue: 0,
+          maxValue: adjustedMax,
+          maxColor: Colors.red,
+          minColor: Colors.blue,
+        ),
+        child: Container(),
+      );
+    }
+
+    return CustomPaint(
+      painter: WeatherChartDualPainter(
+        dailyMaxValues: dailyMaxValues,
+        dailyMinValues: dailyMinValues,
+        minValue: minValue,
+        maxValue: maxValue,
+        maxColor: Colors.red,
+        minColor: Colors.blue,
+      ),
+      child: const SizedBox.expand(),
     );
   }
 

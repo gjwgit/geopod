@@ -10,12 +10,6 @@
 
 library;
 
-/// Maximum number of data points to display in the chart for better performance.
-const int maxChartDataPoints = 30;
-
-/// Chart container height.
-const double chartHeight = 250.0;
-
 /// Daily data card width.
 const double dailyCardWidth = 80.0;
 

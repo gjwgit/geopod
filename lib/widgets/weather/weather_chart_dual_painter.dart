@@ -173,31 +173,76 @@ class WeatherChartDualPainter extends CustomPainter {
   }
 
   void _drawYAxisAndGrid(Canvas canvas, Size size, double chartLeft) {
+    final chartHeight = size.height - 20; // Reserve space for X-axis labels
     final gridPaint = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.2)
-      ..strokeWidth = 1;
+      ..color = Colors.grey[300]!
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.right,
+    final axisPaint = Paint()
+      ..color = Colors.grey[600]!
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    // Calculate nice step size for Y-axis
+    final valueRange = maxValue - minValue;
+    final rawStep = valueRange / 5; // Aim for ~5 grid lines
+    final magnitude = pow(10, (log(rawStep) / ln10).floor()).toDouble();
+    final normalizedStep = rawStep / magnitude;
+
+    // Round to nice numbers (1, 2, 5, 10)
+    double niceStep;
+    if (normalizedStep <= 1) {
+      niceStep = magnitude.toDouble();
+    } else if (normalizedStep <= 2) {
+      niceStep = (2 * magnitude).toDouble();
+    } else if (normalizedStep <= 5) {
+      niceStep = (5 * magnitude).toDouble();
+    } else {
+      niceStep = (10 * magnitude).toDouble();
+    }
+
+    // Draw Y-axis
+    canvas.drawLine(
+      Offset(chartLeft, 0),
+      Offset(chartLeft, chartHeight),
+      axisPaint,
     );
 
-    // Draw 5 horizontal grid lines with labels
-    for (var i = 0; i <= 4; i++) {
-      final y = (size.height - 20) * i / 4;
+    // Draw grid lines and labels
+    final startValue = (minValue / niceStep).ceil() * niceStep;
+    var currentValue = startValue;
+
+    while (currentValue <= maxValue) {
+      final y =
+          chartHeight - ((currentValue - minValue) / valueRange) * chartHeight;
+
+      // Draw grid line
       canvas.drawLine(Offset(chartLeft, y), Offset(size.width, y), gridPaint);
 
-      // Y-axis label (reverse order: top = max, bottom = min)
-      final value = maxValue - ((maxValue - minValue) * i / 4);
-      textPainter.text = TextSpan(
-        text: value.toStringAsFixed(1),
-        style: const TextStyle(color: Colors.grey, fontSize: 10),
+      // Draw tick mark
+      canvas.drawLine(
+        Offset(chartLeft - 5, y),
+        Offset(chartLeft, y),
+        axisPaint,
+      );
+
+      // Draw label
+      final textSpan = TextSpan(
+        text: currentValue.toStringAsFixed(1),
+        style: TextStyle(color: Colors.grey[700], fontSize: 10),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
       );
       textPainter.layout();
       textPainter.paint(
         canvas,
-        Offset(chartLeft - textPainter.width - 5, y - 6),
+        Offset(chartLeft - textPainter.width - 8, y - textPainter.height / 2),
       );
+
+      currentValue += niceStep;
     }
   }
 
@@ -208,31 +253,66 @@ class WeatherChartDualPainter extends CustomPainter {
     double chartLeft,
     double xStep,
   ) {
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
+    final chartHeight = size.height - 20;
+    final axisPaint = Paint()
+      ..color = Colors.grey[600]!
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    // Draw X-axis line
+    canvas.drawLine(
+      Offset(chartLeft, chartHeight),
+      Offset(size.width, chartHeight),
+      axisPaint,
     );
 
-    // Show max 7 labels evenly distributed
-    final labelCount = min(7, entries.length);
-    final labelStep = entries.length > 1
-        ? (entries.length - 1) / (labelCount - 1)
-        : 1;
+    // Calculate label step based on number of points
+    // Allow showing 10-14 labels for better readability
+    int labelStep;
+    if (entries.length <= 14) {
+      labelStep = 1; // Show all labels (up to 14)
+    } else if (entries.length <= 28) {
+      labelStep = 2; // Show every 2nd label (~7-14 labels)
+    } else if (entries.length <= 42) {
+      labelStep = 3; // Show every 3rd label (~10-14 labels)
+    } else {
+      // For many points, aim for 10-14 labels
+      labelStep = (entries.length / 12).ceil();
+    }
 
-    for (var i = 0; i < labelCount; i++) {
-      final index = (i * labelStep).round().clamp(0, entries.length - 1);
-      final date = entries[index].key;
-      final x = chartLeft + (index * xStep);
+    // Draw date labels and tick marks
+    for (var i = 0; i < entries.length; i++) {
+      final date = entries[i].key;
+      final x = chartLeft + (i * xStep);
 
-      textPainter.text = TextSpan(
-        text: '${date.month}/${date.day}',
-        style: const TextStyle(color: Colors.grey, fontSize: 10),
+      // Always draw tick marks for all points
+      canvas.drawLine(
+        Offset(x, chartHeight),
+        Offset(x, chartHeight + 5),
+        axisPaint,
       );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(x - textPainter.width / 2, size.height - 15),
-      );
+
+      // Only draw labels at intervals
+      if (i % labelStep == 0 || i == entries.length - 1) {
+        // Format date as MM/DD
+        final dateText = '${date.month}/${date.day}';
+        final textSpan = TextSpan(
+          text: dateText,
+          style: TextStyle(color: Colors.grey[700], fontSize: 9),
+        );
+        final textPainter = TextPainter(
+          text: textSpan,
+          textDirection: TextDirection.ltr,
+        );
+        textPainter.layout();
+
+        // Draw label centered under the tick, with rotation for better fit
+        canvas.save();
+        canvas.translate(x, chartHeight + 8);
+        canvas.rotate(-0.3); // Slight rotation for better readability
+        textPainter.paint(canvas, Offset(-textPainter.width / 2, 0));
+        canvas.restore();
+      }
     }
   }
 

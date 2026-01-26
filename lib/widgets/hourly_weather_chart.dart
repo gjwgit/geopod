@@ -14,16 +14,15 @@ import 'package:flutter/material.dart';
 
 import 'package:geopod/models/hourly_weather_data.dart';
 
+import 'weather/weather_chart_builder.dart';
 import 'weather/weather_chart_config.dart';
 import 'weather/weather_chart_data_card.dart';
-import 'weather/weather_chart_dual_painter.dart';
+import 'weather/weather_chart_data_processor.dart';
 import 'weather/weather_chart_empty_state.dart';
 import 'weather/weather_chart_header.dart';
 import 'weather/weather_chart_helpers.dart';
-import 'weather/weather_chart_painter.dart';
 import 'weather/weather_chart_pdf.dart';
 import 'weather/weather_chart_range_indicator.dart';
-import 'weather/weather_chart_sampling.dart';
 
 /// Displays hourly weather data as a simple line chart.
 class HourlyWeatherChart extends StatefulWidget {
@@ -68,147 +67,41 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
 
   @override
   Widget build(BuildContext context) {
-    final (axisMin, axisMax) = getDataRange(widget.dataType, widget.data);
-    var dailyData = getDailyData(widget.dataType, widget.data);
+    // Get configuration for this data type
+    const maxChartDataPoints = 30;
 
-    // Get daily min/max values for each day
-    final dailyMinMax = widget.data.getDailyMinMax(widget.dataType);
+    // Process weather data
+    final processedData = processWeatherData(
+      data: widget.data,
+      dataType: widget.dataType,
+      sortAscending: widget.sortAscending,
+      maxChartDataPoints: maxChartDataPoints,
+    );
 
-    // For temperature and wind_speed, extract separate max and min/avg data
-    Map<DateTime, double>? dailyMaxData;
-    Map<DateTime, double>? dailyMinData;
-    if (widget.dataType == 'temperature') {
-      dailyMaxData = dailyMinMax.map(
-        (date, values) => MapEntry(date, values.$2),
-      );
-      dailyMinData = dailyMinMax.map(
-        (date, values) => MapEntry(date, values.$1),
-      );
-    } else if (widget.dataType == 'wind_speed') {
-      // For wind speed: max wind speed and average wind speed
-      dailyMaxData = dailyMinMax.map(
-        (date, values) => MapEntry(date, values.$2),
-      );
-      dailyMinData = dailyData; // Average wind speed
-    }
+    // Extract processed data
+    final dailyData = processedData.dailyData;
+    final originalDailyData = processedData.originalDailyData;
+    final originalDailyMaxData = processedData.originalDailyMaxData;
+    final originalDailyMinData = processedData.originalDailyMinData;
+    final chartData = processedData.chartData;
+    final chartMaxData = processedData.chartMaxData;
+    final chartMinData = processedData.chartMinData;
+    final dataMin = processedData.dataMin;
+    final dataMax = processedData.dataMax;
+    final minDate = processedData.minDate;
+    final maxDate = processedData.maxDate;
+    final dailyMinMax = processedData.dailyMinMax;
+    final precipitationHours = processedData.precipitationHours;
 
-    // Get precipitation hours for each day (only for precipitation data)
-    final precipitationHours = widget.dataType == 'precipitation'
-        ? widget.data.getDailyPrecipitationHours()
-        : null;
-
-    // Keep original unsorted data for PDF export
-    final originalDailyData = dailyData;
-    final originalDailyMaxData = dailyMaxData;
-    final originalDailyMinData = dailyMinData;
-
-    // Sort data based on sortAscending parameter for UI display
-    final sortedEntries = dailyData.entries.toList()
-      ..sort(
-        (a, b) => widget.sortAscending
-            ? a.key.compareTo(b.key) // Ascending: old to new
-            : b.key.compareTo(a.key),
-      ); // Descending: new to old
-    dailyData = Map.fromEntries(sortedEntries);
-
-    // Sort max/min data for temperature
-    if (dailyMaxData != null && dailyMinData != null) {
-      final sortedMaxEntries = dailyMaxData.entries.toList()
-        ..sort(
-          (a, b) => widget.sortAscending
-              ? a.key.compareTo(b.key)
-              : b.key.compareTo(a.key),
-        );
-      dailyMaxData = Map.fromEntries(sortedMaxEntries);
-
-      final sortedMinEntries = dailyMinData.entries.toList()
-        ..sort(
-          (a, b) => widget.sortAscending
-              ? a.key.compareTo(b.key)
-              : b.key.compareTo(a.key),
-        );
-      dailyMinData = Map.fromEntries(sortedMinEntries);
-    }
-
-    // Calculate actual data range for display and track dates
-    double dataMin = axisMin;
-    double dataMax = axisMax;
-    DateTime? minDate;
-    DateTime? maxDate;
-
-    if ((widget.dataType == 'temperature' || widget.dataType == 'wind_speed') &&
-        dailyMinData != null &&
-        dailyMaxData != null) {
-      // For temperature and wind_speed, use actual min/avg and max values
-      if (dailyMinData.isNotEmpty && dailyMaxData.isNotEmpty) {
-        // Find min value and its date
-        var minEntry = dailyMinData.entries.first;
-        for (final entry in dailyMinData.entries) {
-          if (entry.value < minEntry.value) {
-            minEntry = entry;
-          }
-        }
-        dataMin = minEntry.value;
-        minDate = minEntry.key;
-
-        // Find max value and its date
-        var maxEntry = dailyMaxData.entries.first;
-        for (final entry in dailyMaxData.entries) {
-          if (entry.value > maxEntry.value) {
-            maxEntry = entry;
-          }
-        }
-        dataMax = maxEntry.value;
-        maxDate = maxEntry.key;
-      }
-    } else if (dailyData.isNotEmpty) {
-      // Find min value and its date
-      var minEntry = dailyData.entries.first;
-      for (final entry in dailyData.entries) {
-        if (entry.value < minEntry.value) {
-          minEntry = entry;
-        }
-      }
-      dataMin = minEntry.value;
-      minDate = minEntry.key;
-
-      // Find max value and its date
-      var maxEntry = dailyData.entries.first;
-      for (final entry in dailyData.entries) {
-        if (entry.value > maxEntry.value) {
-          maxEntry = entry;
-        }
-      }
-      dataMax = maxEntry.value;
-      maxDate = maxEntry.key;
-    }
-
-    // Check if we have any data
-    if (dailyData.isEmpty) {
-      return WeatherChartEmptyState(dataTitle: getDataTitle(widget.dataType));
-    }
-
-    // Sample data for chart if too many points (but keep full data for cards display)
-    Map<DateTime, double> chartData = dailyData;
-    Map<DateTime, double>? chartMaxData = dailyMaxData;
-    Map<DateTime, double>? chartMinData = dailyMinData;
-
-    if (dailyData.length > maxChartDataPoints) {
-      chartData = sampleData(dailyData, maxChartDataPoints);
-      if (dailyMaxData != null && dailyMinData != null) {
-        chartMaxData = sampleData(dailyMaxData, maxChartDataPoints);
-        // For wind_speed, dailyMinData is already dailyData (average), so sample it
-        if (widget.dataType == 'wind_speed') {
-          chartMinData = chartData;
-        } else {
-          chartMinData = sampleData(dailyMinData, maxChartDataPoints);
-        }
-      }
-    }
-
+    // Get data metadata
     final title = getDataTitle(widget.dataType);
     final unit = getDataUnit(widget.dataType);
     final icon = getDataIcon(widget.dataType);
+
+    // Check if data is empty
+    if (dailyData.isEmpty) {
+      return WeatherChartEmptyState(dataTitle: title);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,7 +177,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
 
         // Simple chart using daily data
         Container(
-          height: chartHeight,
+          height: 250,
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey[300]!),
             borderRadius: BorderRadius.circular(8),
@@ -301,14 +194,19 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                         widget.dataType == 'wind_speed') &&
                     chartMaxData != null &&
                     chartMinData != null
-                ? _buildDualLineChart(
-                    context,
-                    chartMaxData,
-                    chartMinData,
-                    axisMin,
-                    axisMax,
+                ? buildDualLineChart(
+                    chartMaxData: chartMaxData,
+                    chartMinData: chartMinData,
+                    dataMin: dataMin,
+                    dataMax: dataMax,
+                    dataType: widget.dataType,
                   )
-                : _buildSimpleChart(context, chartData, axisMin, axisMax),
+                : buildSimpleChart(
+                    chartData: chartData,
+                    dataMin: dataMin,
+                    dataMax: dataMax,
+                    dataType: widget.dataType,
+                  ),
           ),
         ),
         const SizedBox(height: 4),
@@ -460,87 +358,6 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDualLineChart(
-    BuildContext context,
-    Map<DateTime, double> dailyMaxValues,
-    Map<DateTime, double> dailyMinValues,
-    double minValue,
-    double maxValue,
-  ) {
-    if (dailyMaxValues.isEmpty || dailyMinValues.isEmpty) {
-      return const SizedBox();
-    }
-    final valueRange = maxValue - minValue;
-    // For flat lines, adjust range
-    if (valueRange < 0.01) {
-      final adjustedMax = minValue == 0 ? 1.0 : minValue * 1.1;
-      return CustomPaint(
-        painter: WeatherChartDualPainter(
-          dailyMaxValues: dailyMaxValues,
-          dailyMinValues: dailyMinValues,
-          minValue: 0,
-          maxValue: adjustedMax,
-          maxColor: Colors.red,
-          minColor: Colors.blue,
-        ),
-        child: Container(),
-      );
-    }
-
-    return CustomPaint(
-      painter: WeatherChartDualPainter(
-        dailyMaxValues: dailyMaxValues,
-        dailyMinValues: dailyMinValues,
-        minValue: minValue,
-        maxValue: maxValue,
-        maxColor: Colors.red,
-        minColor: Colors.blue,
-      ),
-      child: const SizedBox.expand(),
-    );
-  }
-
-  Widget _buildSimpleChart(
-    BuildContext context,
-    Map<DateTime, double> dailyAverages,
-    double minValue,
-    double maxValue,
-  ) {
-    if (dailyAverages.isEmpty) return const SizedBox();
-
-    final valueRange = maxValue - minValue;
-    // For precipitation or any data with no variation, still show chart
-    if (valueRange < 0.01) {
-      // Use a small range to make the flat line visible
-      final adjustedMax = minValue == 0 ? 1.0 : minValue * 1.1;
-      return CustomPaint(
-        painter: WeatherChartPainter(
-          dailyAverages: dailyAverages,
-          minValue: 0, // Always start from 0 for flat lines
-          maxValue: adjustedMax,
-          color: widget.dataType == 'precipitation'
-              ? Colors.blue
-              : Theme.of(context).colorScheme.primary,
-        ),
-        child: Container(),
-      );
-    }
-
-    return CustomPaint(
-      painter: WeatherChartPainter(
-        dailyAverages: dailyAverages,
-        minValue: minValue,
-        maxValue: maxValue,
-        color: widget.dataType == 'humidity'
-            ? Colors.red
-            : widget.dataType == 'precipitation'
-            ? Colors.blue
-            : Theme.of(context).colorScheme.primary,
-      ),
-      child: const SizedBox.expand(),
     );
   }
 }

@@ -175,16 +175,17 @@ class WeatherData {
   }
 
   /// Get arrow icon for wind direction.
-  /// Arrow points in the direction the wind is blowing TO.
+  /// Wind direction follows meteorological convention: indicates where wind is coming FROM.
+  /// Arrow points in the direction the wind is blowing FROM (e.g., 90° = East wind = arrow points ← from east).
   String get windDirectionArrow {
-    if (windDirection >= 337.5 || windDirection < 22.5) return '↑';
-    if (windDirection >= 22.5 && windDirection < 67.5) return '↗';
-    if (windDirection >= 67.5 && windDirection < 112.5) return '→';
-    if (windDirection >= 112.5 && windDirection < 157.5) return '↘';
-    if (windDirection >= 157.5 && windDirection < 202.5) return '↓';
-    if (windDirection >= 202.5 && windDirection < 247.5) return '↙';
-    if (windDirection >= 247.5 && windDirection < 292.5) return '←';
-    if (windDirection >= 292.5 && windDirection < 337.5) return '↖';
-    return '↑';
+    if (windDirection >= 337.5 || windDirection < 22.5) return '↓';
+    if (windDirection >= 22.5 && windDirection < 67.5) return '↙';
+    if (windDirection >= 67.5 && windDirection < 112.5) return '←';
+    if (windDirection >= 112.5 && windDirection < 157.5) return '↖';
+    if (windDirection >= 157.5 && windDirection < 202.5) return '↑';
+    if (windDirection >= 202.5 && windDirection < 247.5) return '↗';
+    if (windDirection >= 247.5 && windDirection < 292.5) return '→';
+    if (windDirection >= 292.5 && windDirection < 337.5) return '↘';
+    return '↓';
   }
 }

@@ -54,7 +54,7 @@ Widget buildWindDirectionDetail(WeatherData weather) {
               '''Wind Direction: ${weather.windDirectionFullName}
 Angle: ${weather.windDirection}° (clockwise from North)
 Wind is blowing FROM the ${weather.windDirectionFullName.toLowerCase()}
-Arrow shows where wind is blowing TO''',
+Arrow points to where wind is coming FROM''',
           child: Row(
             children: [
               Text(

@@ -11,7 +11,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:markdown_tooltip/markdown_tooltip.dart';
 
 import 'package:geopod/models/hourly_weather_data.dart';
 
@@ -160,12 +159,35 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(
               children: [
-                MarkdownTooltip(
-                  message: chartSamplingTooltip,
-                  child: Icon(
-                    Icons.info_outline,
-                    size: 12,
-                    color: Colors.grey[600],
+                Builder(
+                  builder: (context) => GestureDetector(
+                    onTap: () {
+                      // Show info dialog when tapped
+                      showDialog<void>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Chart Sampling Info'),
+                          content: const Text(chartSamplingTooltip),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.help,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 4),

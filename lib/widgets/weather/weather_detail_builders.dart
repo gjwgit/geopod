@@ -13,7 +13,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:markdown_tooltip/markdown_tooltip.dart';
 
 import 'package:geopod/models/weather_data.dart';
 
@@ -50,32 +49,57 @@ Widget buildWindDirectionDetail(WeatherData weather) {
         const Expanded(
           child: Text('Wind Direction', style: TextStyle(fontSize: 15)),
         ),
-        MarkdownTooltip(
-          message:
-              '''Wind Direction: ${weather.windDirectionFullName}
-Angle: ${weather.windDirection}° (clockwise from North)
-Wind is blowing FROM the ${weather.windDirectionFullName.toLowerCase()}
-Arrow points to where wind is coming FROM''',
-          child: Row(
-            children: [
-              Text(
-                weather.windDirectionArrow,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+        Builder(
+          builder: (context) => GestureDetector(
+            onTap: () {
+              // Show info dialog when tapped
+              showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Wind Direction Info'),
+                  content: Text(
+                    'Wind Direction: ${weather.windDirectionFullName}\n'
+                    'Angle: ${weather.windDirection}° (clockwise from North)\n'
+                    'Wind is blowing FROM the ${weather.windDirectionFullName.toLowerCase()}\n'
+                    'Arrow points to where wind is coming FROM',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: MouseRegion(
+              cursor: SystemMouseCursors.help,
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      weather.windDirectionArrow,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      weather.windDirectionDescription,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.info_outline, size: 16, color: Colors.grey[500]),
+                  ],
                 ),
               ),
-              const SizedBox(width: 4),
-              Text(
-                weather.windDirectionDescription,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(Icons.info_outline, size: 16, color: Colors.grey[500]),
-            ],
+            ),
           ),
         ),
       ],

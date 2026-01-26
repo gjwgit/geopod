@@ -74,7 +74,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
     // Get daily min/max values for each day
     final dailyMinMax = widget.data.getDailyMinMax(widget.dataType);
 
-    // For temperature, extract separate max and min data
+    // For temperature and wind_speed, extract separate max and min/avg data
     Map<DateTime, double>? dailyMaxData;
     Map<DateTime, double>? dailyMinData;
     if (widget.dataType == 'temperature') {
@@ -84,6 +84,12 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       dailyMinData = dailyMinMax.map(
         (date, values) => MapEntry(date, values.$1),
       );
+    } else if (widget.dataType == 'wind_speed') {
+      // For wind speed: max wind speed and average wind speed
+      dailyMaxData = dailyMinMax.map(
+        (date, values) => MapEntry(date, values.$2),
+      );
+      dailyMinData = dailyData; // Average wind speed
     }
 
     // Get precipitation hours for each day (only for precipitation data)
@@ -124,23 +130,57 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       dailyMinData = Map.fromEntries(sortedMinEntries);
     }
 
-    // Calculate actual data range for display
+    // Calculate actual data range for display and track dates
     double dataMin = axisMin;
     double dataMax = axisMax;
-    if (widget.dataType == 'temperature' &&
+    DateTime? minDate;
+    DateTime? maxDate;
+
+    if ((widget.dataType == 'temperature' || widget.dataType == 'wind_speed') &&
         dailyMinData != null &&
         dailyMaxData != null) {
-      // For temperature, use actual min of all daily minimums and max of all daily maximums
+      // For temperature and wind_speed, use actual min/avg and max values
       if (dailyMinData.isNotEmpty && dailyMaxData.isNotEmpty) {
-        final minValues = dailyMinData.values.toList();
-        final maxValues = dailyMaxData.values.toList();
-        dataMin = minValues.reduce((a, b) => a < b ? a : b);
-        dataMax = maxValues.reduce((a, b) => a > b ? a : b);
+        // Find min value and its date
+        var minEntry = dailyMinData.entries.first;
+        for (final entry in dailyMinData.entries) {
+          if (entry.value < minEntry.value) {
+            minEntry = entry;
+          }
+        }
+        dataMin = minEntry.value;
+        minDate = minEntry.key;
+
+        // Find max value and its date
+        var maxEntry = dailyMaxData.entries.first;
+        for (final entry in dailyMaxData.entries) {
+          if (entry.value > maxEntry.value) {
+            maxEntry = entry;
+          }
+        }
+        dataMax = maxEntry.value;
+        maxDate = maxEntry.key;
       }
     } else if (dailyData.isNotEmpty) {
-      final values = dailyData.values.toList();
-      dataMin = values.reduce((a, b) => a < b ? a : b);
-      dataMax = values.reduce((a, b) => a > b ? a : b);
+      // Find min value and its date
+      var minEntry = dailyData.entries.first;
+      for (final entry in dailyData.entries) {
+        if (entry.value < minEntry.value) {
+          minEntry = entry;
+        }
+      }
+      dataMin = minEntry.value;
+      minDate = minEntry.key;
+
+      // Find max value and its date
+      var maxEntry = dailyData.entries.first;
+      for (final entry in dailyData.entries) {
+        if (entry.value > maxEntry.value) {
+          maxEntry = entry;
+        }
+      }
+      dataMax = maxEntry.value;
+      maxDate = maxEntry.key;
     }
 
     // Check if we have any data
@@ -157,7 +197,12 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       chartData = sampleData(dailyData, maxChartDataPoints);
       if (dailyMaxData != null && dailyMinData != null) {
         chartMaxData = sampleData(dailyMaxData, maxChartDataPoints);
-        chartMinData = sampleData(dailyMinData, maxChartDataPoints);
+        // For wind_speed, dailyMinData is already dailyData (average), so sample it
+        if (widget.dataType == 'wind_speed') {
+          chartMinData = chartData;
+        } else {
+          chartMinData = sampleData(dailyMinData, maxChartDataPoints);
+        }
       }
     }
 
@@ -176,16 +221,19 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         ),
         const SizedBox(height: 12),
 
-        // Data range indicator (shows actual data min/max)
+        // Data range indicator (shows actual data min/max with dates)
         WeatherChartRangeIndicator(
           dataMin: dataMin,
           dataMax: dataMax,
+          minDate: minDate,
+          maxDate: maxDate,
           unit: unit,
           icon: icon,
+          dataType: widget.dataType,
         ),
         const SizedBox(height: 16),
 
-        // Legend for temperature dual-line chart
+        // Legend for temperature and wind speed dual-line chart
         if (widget.dataType == 'temperature')
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -199,6 +247,37 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                 Container(width: 30, height: 3, color: Colors.blue),
                 const SizedBox(width: 6),
                 const Text('Min Temp', style: TextStyle(fontSize: 11)),
+              ],
+            ),
+          )
+        else if (widget.dataType == 'wind_speed')
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(width: 30, height: 3, color: Colors.red),
+                const SizedBox(width: 6),
+                const Text('Max Wind', style: TextStyle(fontSize: 11)),
+                const SizedBox(width: 16),
+                Container(width: 30, height: 3, color: Colors.blue),
+                const SizedBox(width: 6),
+                const Text('Avg Wind', style: TextStyle(fontSize: 11)),
+              ],
+            ),
+          )
+        else if (widget.dataType == 'humidity')
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(width: 30, height: 3, color: Colors.red),
+                const SizedBox(width: 6),
+                const Text(
+                  'Daily Average Humidity',
+                  style: TextStyle(fontSize: 11),
+                ),
               ],
             ),
           ),
@@ -218,7 +297,8 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
               30,
             ), // More bottom padding for X-axis
             child:
-                widget.dataType == 'temperature' &&
+                (widget.dataType == 'temperature' ||
+                        widget.dataType == 'wind_speed') &&
                     chartMaxData != null &&
                     chartMinData != null
                 ? _buildDualLineChart(
@@ -295,6 +375,8 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
               dailyMinData: originalDailyMinData,
               minValue: dataMin,
               maxValue: dataMax,
+              minDate: minDate,
+              maxDate: maxDate,
               title: title,
               unit: unit,
               dataType: widget.dataType,
@@ -321,6 +403,10 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                   ? 'Daily Totals'
                   : widget.dataType == 'temperature'
                   ? 'Daily Max/Min'
+                  : widget.dataType == 'wind_speed'
+                  ? 'Daily Max/Avg'
+                  : widget.dataType == 'humidity'
+                  ? 'Daily Averages'
                   : 'Daily Averages',
               style: Theme.of(
                 context,
@@ -448,7 +534,11 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         dailyAverages: dailyAverages,
         minValue: minValue,
         maxValue: maxValue,
-        color: Theme.of(context).colorScheme.primary,
+        color: widget.dataType == 'humidity'
+            ? Colors.red
+            : widget.dataType == 'precipitation'
+            ? Colors.blue
+            : Theme.of(context).colorScheme.primary,
       ),
       child: const SizedBox.expand(),
     );

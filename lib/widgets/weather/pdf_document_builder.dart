@@ -30,6 +30,8 @@ pw.Document buildWeatherPdfDocument({
   Map<DateTime, double>? dailyMinData,
   required double minValue,
   required double maxValue,
+  DateTime? minDate,
+  DateTime? maxDate,
   required String title,
   required String unit,
   String? dataType,
@@ -107,11 +109,65 @@ pw.Document buildWeatherPdfDocument({
         ),
         pw.SizedBox(height: 5),
 
-        // Data range
-        pw.Text(
-          'Min: ${minValue.toStringAsFixed(1)}$unit  Max: ${maxValue.toStringAsFixed(1)}$unit',
-          style: const pw.TextStyle(fontSize: 12),
-        ),
+        // Data range with dates (for wind_speed, only show max)
+        if (dataType == 'wind_speed')
+          pw.RichText(
+            text: pw.TextSpan(
+              children: [
+                const pw.TextSpan(
+                  text: 'Max Wind: ',
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+                pw.TextSpan(
+                  text: '${maxValue.toStringAsFixed(1)}$unit',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+                if (maxDate != null)
+                  pw.TextSpan(
+                    text: ' (${DateFormat('MM/dd').format(maxDate)})',
+                    style: const pw.TextStyle(
+                      fontSize: 10,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+              ],
+            ),
+          )
+        else
+          pw.RichText(
+            text: pw.TextSpan(
+              children: [
+                pw.TextSpan(
+                  text: 'Min: ${minValue.toStringAsFixed(1)}$unit',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+                if (minDate != null)
+                  pw.TextSpan(
+                    text: ' (${DateFormat('MM/dd').format(minDate)})',
+                    style: const pw.TextStyle(
+                      fontSize: 10,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                const pw.TextSpan(
+                  text: '  ',
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+                pw.TextSpan(
+                  text: 'Max: ${maxValue.toStringAsFixed(1)}$unit',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+                if (maxDate != null)
+                  pw.TextSpan(
+                    text: ' (${DateFormat('MM/dd').format(maxDate)})',
+                    style: const pw.TextStyle(
+                      fontSize: 10,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
         pw.SizedBox(height: 20),
 
         // Algorithm explanation
@@ -152,8 +208,8 @@ pw.Document buildWeatherPdfDocument({
           style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 10),
-        // Use dual chart for temperature, single chart for others
-        if (dataType == 'temperature' &&
+        // Use dual chart for temperature and wind_speed, single chart for others
+        if ((dataType == 'temperature' || dataType == 'wind_speed') &&
             dailyMaxData != null &&
             dailyMinData != null)
           buildPdfDualChart(
@@ -169,7 +225,7 @@ pw.Document buildWeatherPdfDocument({
             minValue,
             maxValue,
             unit,
-            isTemperature: dataType == 'temperature',
+            useActualRange: dataType == 'temperature' || dataType == 'humidity',
           ),
         pw.SizedBox(height: 20),
 

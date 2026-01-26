@@ -50,16 +50,16 @@ pw.Widget buildPdfDualChart(
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.start,
     children: [
-      // Legend
+      // Legend (for both temperature and wind speed)
       pw.Row(
         children: [
           pw.Container(width: 20, height: 2, color: PdfColors.red700),
           pw.SizedBox(width: 5),
-          pw.Text('Max Temperature', style: const pw.TextStyle(fontSize: 9)),
+          pw.Text('Maximum', style: const pw.TextStyle(fontSize: 9)),
           pw.SizedBox(width: 15),
           pw.Container(width: 20, height: 2, color: PdfColors.blue700),
           pw.SizedBox(width: 5),
-          pw.Text('Min Temperature', style: const pw.TextStyle(fontSize: 9)),
+          pw.Text('Minimum/Average', style: const pw.TextStyle(fontSize: 9)),
         ],
       ),
       pw.SizedBox(height: 10),

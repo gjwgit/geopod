@@ -22,7 +22,7 @@ pw.Widget buildPdfChart(
   double minValue,
   double maxValue,
   String unit, {
-  bool isTemperature = false,
+  bool useActualRange = false,
 }) {
   if (data.isEmpty) return pw.SizedBox();
 
@@ -31,9 +31,9 @@ pw.Widget buildPdfChart(
   final entries = data.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
   final valueRange = maxValue - minValue;
 
-  // For temperature, use actual min value to show variation
-  // For non-negative data (precipitation, wind, humidity), start from 0
-  final effectiveMin = isTemperature
+  // For temperature and humidity, use actual min value to show variation
+  // For precipitation and wind, start from 0
+  final effectiveMin = useActualRange
       ? minValue
       : (minValue >= 0 ? 0.0 : minValue);
 
@@ -144,8 +144,8 @@ pw.Widget buildPdfChart(
 
                         // Clamp control points Y to prevent curve going below chartHeight (value < 0)
                         // Important for non-negative values like precipitation and wind speed.
-                        // Only apply this clamping when the data is non-temperature to avoid distorting curves
-                        if (!isTemperature && minValue >= 0) {
+                        // Only apply this clamping when using actual range to avoid distorting curves
+                        if (!useActualRange && minValue >= 0) {
                           if (cp1y > chartHeight) cp1y = chartHeight;
                           if (cp1y < 0) cp1y = 0;
                           if (cp2y > chartHeight) cp2y = chartHeight;

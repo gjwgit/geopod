@@ -69,17 +69,46 @@ class WeatherDataCard extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          Text(
-            '${avgValue.toStringAsFixed(1)}${getDataUnit(dataType)}',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: getValueColor(avgValue, dataMin, dataMax),
+          // For wind_speed: show max wind in main position
+          if (dataType == 'wind_speed') ...[
+            Text(
+              '${dayMax.toStringAsFixed(1)}${getDataUnit(dataType)}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.red[700],
+              ),
             ),
-          ),
+          ] else
+            Text(
+              '${avgValue.toStringAsFixed(1)}${getDataUnit(dataType)}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: getValueColor(avgValue, dataMin, dataMax),
+              ),
+            ),
           const SizedBox(height: 2),
-          // Show min/max or hours for precipitation
-          if (dataType == 'precipitation') ...[
+          // Show average wind speed for wind_speed type
+          if (dataType == 'wind_speed') ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'avg ',
+                  style: TextStyle(fontSize: 8, color: Colors.grey[600]),
+                ),
+                Text(
+                  avgValue.toStringAsFixed(1),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.blue[700],
+                  ),
+                ),
+              ],
+            ),
+          ] else if (dataType == 'precipitation') ...[
             // For precipitation: show hours with rain
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -114,8 +143,8 @@ class WeatherDataCard extends StatelessWidget {
                 ),
               ],
             ),
-          ] else ...[
-            // For other data types: show min/max
+          ] else if (dataType == 'temperature' || dataType == 'humidity') ...[
+            // For temperature and humidity: show min/max
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

@@ -3,7 +3,7 @@
 /// Encrypted places are stored in the 'encryption data' directory
 /// using the solidpod encryption mechanisms.
 ///
-// Time-stamp: <2026-01-14>
+// Time-stamp: <Wednesday 2026-01-28 09:06:21 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025-2026, Software Innovation Institute, ANU.
 ///
@@ -154,9 +154,12 @@ class EncryptedPlacesService {
       _securityKeyAvailableCache = true; // Update cache
       // Notify the status bar that security key is now available
       if (context.mounted) {
-        const SecurityKeyStatusChangedNotification(
-          isKeySaved: true,
-        ).dispatch(context);
+        // 20260128 gjw Comment out while miduo666 updates are reconciled with
+        // anusii release.
+        //
+        // const SecurityKeyStatusChangedNotification(
+        //   isKeySaved: true,
+        // ).dispatch(context);
         debugPrint('Security key status notification dispatched');
       }
     }
@@ -211,9 +214,12 @@ class EncryptedPlacesService {
       if (dirCreated) {
         _securityKeyAvailableCache = true; // Keys are now known to be available
         if (context.mounted) {
-          const SecurityKeyStatusChangedNotification(
-            isKeySaved: true,
-          ).dispatch(context);
+          // 20260128 gjw Comment out while miduo666 updates are reconciled with
+          // anusii release.
+          //
+          // const SecurityKeyStatusChangedNotification(
+          //   isKeySaved: true,
+          // ).dispatch(context);
           debugPrint(
             'Directory created, security key status notification dispatched',
           );

@@ -1,6 +1,6 @@
 /// PDF export functionality for weather chart.
 ///
-// Time-stamp: <Tuesday 2026-01-14 10:00:00 +1100>
+// Time-stamp: <Wednesday 2026-01-28 09:04:09 +1100 Graham Williams>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -193,7 +193,7 @@ Future<void> exportWeatherChartToPdf(
           'weather_report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
 
       // Ask user to choose save location
-      final outputPath = await FilePicker.platform.saveFile(
+      final outputPath = await FilePicker.saveFile(
         dialogTitle: 'Save PDF Report',
         fileName: '$filename.pdf',
         type: FileType.custom,

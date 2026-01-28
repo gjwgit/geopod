@@ -1,6 +1,6 @@
 /// Platform-specific PDF export handling.
 ///
-// Time-stamp: <Friday 2026-01-24 10:00:00 +1100>
+// Time-stamp: <Wednesday 2026-01-28 17:07:24 +1100 Graham Williams>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -42,7 +42,7 @@ Future<void> handlePdfExport(BuildContext context, Uint8List pdfBytes) async {
     }
   } else {
     // For mobile/desktop: Let user choose save location
-    final outputPath = await FilePicker.platform.saveFile(
+    final outputPath = await FilePicker.saveFile(
       dialogTitle: 'Save PDF Report',
       fileName: '$filename.pdf',
       type: FileType.custom,

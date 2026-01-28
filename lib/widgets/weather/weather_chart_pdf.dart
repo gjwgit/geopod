@@ -1,6 +1,6 @@
 /// PDF export functionality for weather chart.
 ///
-// Time-stamp: <Friday 2026-01-24 18:36:00 +1100>
+// Time-stamp: <Wednesday 2026-01-28 09:04:09 +1100 Graham Williams>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///

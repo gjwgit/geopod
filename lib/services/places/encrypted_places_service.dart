@@ -3,7 +3,7 @@
 /// Encrypted places are stored in the 'encryption data' directory
 /// using the solidpod encryption mechanisms.
 ///
-// Time-stamp: <Wednesday 2026-01-28 09:11:34 +1100 Graham Williams>
+// Time-stamp: <Thursday 2026-01-29 09:30:56 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025-2026, Software Innovation Institute, ANU.
 ///
@@ -15,13 +15,14 @@
 
 library;
 
+// 20260128 gjw Temporary fix on moving back to anusii solidui dev.
+//
+// import 'package:solidui/solidui.dart' show SecurityKeyStatusChangedNotification;
+
 import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solidpod/solidpod.dart';
-// 20260128 gjw Temporary fix on moving back to anusiss solidui dev.
-//
-// import 'package:solidui/solidui.dart' show SecurityKeyStatusChangedNotification;
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places/encrypted_places_io.dart';

@@ -12,9 +12,10 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../models/hourly_weather_data.dart';
+import 'package:geopod/models/hourly_weather_data.dart';
 
 /// Get data range based on data type.
+/// For precipitation, returns the range of daily totals, not hourly values.
 (double, double) getDataRange(String dataType, HourlyWeatherData data) {
   switch (dataType) {
     case 'humidity':
@@ -22,7 +23,7 @@ import '../../models/hourly_weather_data.dart';
     case 'wind_speed':
       return data.getWindSpeedRange();
     case 'precipitation':
-      return data.getPrecipitationRange();
+      return data.getDailyTotalPrecipitationRange();
     case 'temperature':
     default:
       return data.getTemperatureRange();
@@ -37,7 +38,7 @@ Map<DateTime, double> getDailyData(String dataType, HourlyWeatherData data) {
     case 'wind_speed':
       return data.getDailyAverageWindSpeed();
     case 'precipitation':
-      return data.getDailyAveragePrecipitation();
+      return data.getDailyTotalPrecipitation();
     case 'temperature':
     default:
       return data.getDailyAverages();
@@ -52,7 +53,7 @@ String getDataTitle(String dataType) {
     case 'wind_speed':
       return 'Wind Speed Range';
     case 'precipitation':
-      return 'Precipitation Range';
+      return 'Daily Total Precipitation Range';
     case 'temperature':
     default:
       return 'Temperature Range';

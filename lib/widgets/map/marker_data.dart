@@ -76,6 +76,9 @@ List<MarkerData> buildFilteredMarkers({
   required MapSettings mapSettings,
   required Set<String> savingPlaceIds,
 }) {
+  // If hideAllMarkers is enabled, return empty list
+  if (mapSettings.hideAllMarkers) return [];
+
   final visible = allPlaces.where((p) {
     // Filter out local places if disabled
     if (p.isLocal && !mapSettings.showLocalPlaces) return false;

@@ -14,7 +14,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../models/weather_data.dart';
+import 'package:geopod/models/weather_data.dart';
 
 /// Build a generic weather detail row.
 Widget buildWeatherDetail({
@@ -49,32 +49,57 @@ Widget buildWindDirectionDetail(WeatherData weather) {
         const Expanded(
           child: Text('Wind Direction', style: TextStyle(fontSize: 15)),
         ),
-        Tooltip(
-          message:
-              '''Wind Direction: ${weather.windDirectionFullName}
-Angle: ${weather.windDirection}° (clockwise from North)
-Wind is blowing FROM the ${weather.windDirectionFullName.toLowerCase()}
-Arrow shows where wind is blowing TO''',
-          child: Row(
-            children: [
-              Text(
-                weather.windDirectionArrow,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+        Builder(
+          builder: (context) => GestureDetector(
+            onTap: () {
+              // Show info dialog when tapped
+              showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Wind Direction Info'),
+                  content: Text(
+                    'Wind Direction: ${weather.windDirectionFullName}\n'
+                    'Angle: ${weather.windDirection}° (clockwise from North)\n'
+                    'Wind is blowing FROM the ${weather.windDirectionFullName.toLowerCase()}\n'
+                    'Arrow points to where wind is coming FROM',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: MouseRegion(
+              cursor: SystemMouseCursors.help,
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      weather.windDirectionArrow,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      weather.windDirectionDescription,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.info_outline, size: 16, color: Colors.grey[500]),
+                  ],
                 ),
               ),
-              const SizedBox(width: 4),
-              Text(
-                weather.windDirectionDescription,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(Icons.info_outline, size: 16, color: Colors.grey[500]),
-            ],
+            ),
           ),
         ),
       ],
@@ -88,42 +113,42 @@ Widget buildPrecipitationDetail({
   required bool showDailyPrecipitation,
   required VoidCallback onToggle,
 }) {
+  // API returns precipitation for the past hour (mm)
+  // User can toggle to see today's accumulated total
   final precipValue = showDailyPrecipitation
-      ? weather.precipitation *
-            24 // Approximate daily total
-      : weather.precipitation;
-  final unit = showDailyPrecipitation ? 'mm/day' : 'mm/h';
+      ? (weather.todayTotalPrecipitation ??
+            weather.precipitation) // Today's total accumulated
+      : weather.precipitation; // Past hour
+  final unit = showDailyPrecipitation ? 'mm' : 'mm';
 
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Row(
-      children: [
-        Icon(Icons.umbrella, size: 24, color: Colors.grey[600]),
-        const SizedBox(width: 16),
-        const Expanded(
-          child: Text('Precipitation', style: TextStyle(fontSize: 15)),
-        ),
-        InkWell(
-          onTap: onToggle,
-          borderRadius: BorderRadius.circular(4),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+  return InkWell(
+    onTap: onToggle,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(Icons.umbrella, size: 24, color: Colors.grey[600]),
+          const SizedBox(width: 16),
+          Expanded(
             child: Row(
               children: [
                 Text(
-                  '${precipValue.toStringAsFixed(1)} $unit',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  showDailyPrecipitation
+                      ? 'Precipitation (Today Total)'
+                      : 'Precipitation (Past Hour)',
+                  style: const TextStyle(fontSize: 15),
                 ),
-                const SizedBox(width: 4),
-                Icon(Icons.swap_horiz, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 8),
+                Icon(Icons.swap_horiz, size: 16, color: Colors.grey[400]),
               ],
             ),
           ),
-        ),
-      ],
+          Text(
+            '${precipValue.toStringAsFixed(1)} $unit',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     ),
   );
 }

@@ -1,6 +1,6 @@
-/// Custom painter for weather chart.
+/// Custom painter for dual-line weather chart (e.g., max/min temperature).
 ///
-// Time-stamp: <Tuesday 2026-01-14 10:00:00 +1100>
+// Time-stamp: <Sunday 2026-01-26 10:00:00 +1100>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -11,37 +11,41 @@
 library;
 
 import 'dart:math';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-/// Custom painter for temperature/weather chart.
-class WeatherChartPainter extends CustomPainter {
-  WeatherChartPainter({
-    required this.dailyAverages,
+/// Custom painter for temperature chart with max and min lines.
+class WeatherChartDualPainter extends CustomPainter {
+  WeatherChartDualPainter({
+    required this.dailyMaxValues,
+    required this.dailyMinValues,
     required this.minValue,
     required this.maxValue,
-    required this.color,
+    required this.maxColor,
+    required this.minColor,
   });
 
-  final Map<DateTime, double> dailyAverages;
+  final Map<DateTime, double> dailyMaxValues;
+  final Map<DateTime, double> dailyMinValues;
   final double minValue;
   final double maxValue;
-  final Color color;
+  final Color maxColor;
+  final Color minColor;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (dailyAverages.isEmpty) return;
+    if (dailyMaxValues.isEmpty || dailyMinValues.isEmpty) return;
 
     final valueRange = maxValue - minValue;
     if (valueRange == 0) return;
 
-    final entries = dailyAverages.entries.toList();
+    final maxEntries = dailyMaxValues.entries.toList();
+    final minEntries = dailyMinValues.entries.toList();
 
     // Reserve space for Y-axis labels (40px on left)
     final chartLeft = 40.0;
     final chartWidth = size.width - chartLeft;
-    final xStep = chartWidth / (entries.length - 1);
+    final xStep = chartWidth / (maxEntries.length - 1);
 
     // Draw Y-axis grid lines and labels
     _drawYAxisAndGrid(canvas, size, chartLeft);
@@ -49,18 +53,68 @@ class WeatherChartPainter extends CustomPainter {
     // Reserve space for X-axis labels at bottom
     final chartHeight = size.height - 20; // Reserve 20px for X-axis labels
 
-    // Draw smooth curve using cubic Bezier interpolation
+    // Draw max temperature line
+    _drawCurveLine(
+      canvas,
+      maxEntries,
+      chartLeft,
+      chartHeight,
+      xStep,
+      maxColor,
+      valueRange,
+    );
+
+    // Draw min temperature line
+    _drawCurveLine(
+      canvas,
+      minEntries,
+      chartLeft,
+      chartHeight,
+      xStep,
+      minColor,
+      valueRange,
+    );
+
+    // Draw points for both lines
+    _drawPoints(
+      canvas,
+      maxEntries,
+      chartLeft,
+      chartHeight,
+      xStep,
+      maxColor,
+      valueRange,
+    );
+    _drawPoints(
+      canvas,
+      minEntries,
+      chartLeft,
+      chartHeight,
+      xStep,
+      minColor,
+      valueRange,
+    );
+
+    // Draw X-axis labels (dates)
+    _drawXAxisLabels(canvas, size, maxEntries, chartLeft, xStep);
+  }
+
+  void _drawCurveLine(
+    Canvas canvas,
+    List<MapEntry<DateTime, double>> entries,
+    double chartLeft,
+    double chartHeight,
+    double xStep,
+    Color color,
+    double valueRange,
+  ) {
     final curvePaint = Paint()
       ..color = color.withValues(alpha: 0.8)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    final pointPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    // Calculate control points for smooth curve
+    // Calculate points
     final points = <Offset>[];
     for (var i = 0; i < entries.length; i++) {
       final value = entries[i].value;
@@ -69,13 +123,12 @@ class WeatherChartPainter extends CustomPainter {
       points.add(Offset(x, y));
     }
 
-    // Draw smooth curve using Catmull-Rom spline
+    // Draw smooth curve
     if (points.length >= 2) {
       final path = Path();
       path.moveTo(points[0].dx, points[0].dy);
 
       if (points.length == 2) {
-        // Simple line for 2 points
         path.lineTo(points[1].dx, points[1].dy);
       } else {
         // Catmull-Rom spline for smooth curves
@@ -85,60 +138,45 @@ class WeatherChartPainter extends CustomPainter {
           final p2 = points[i + 1];
           final p3 = i < points.length - 2 ? points[i + 2] : points[i + 1];
 
-          // Calculate control points using Catmull-Rom to Bezier conversion
-          var cp1x = p1.dx + (p2.dx - p0.dx) / 6;
-          var cp1y = p1.dy + (p2.dy - p0.dy) / 6;
-          var cp2x = p2.dx - (p3.dx - p1.dx) / 6;
-          var cp2y = p2.dy - (p3.dy - p1.dy) / 6;
-
-          // Clamp control points to prevent curve going below chartHeight (value < 0)
-          // Important for non-negative values like precipitation and wind speed.
-          // Only apply this clamping when the data domain is non-negative (minValue >= 0)
-          // to avoid distorting curves for data types that can be negative (e.g. temperature).
-          if (minValue >= 0) {
-            cp1y = cp1y.clamp(0.0, chartHeight);
-            cp2y = cp2y.clamp(0.0, chartHeight);
-          }
+          final cp1x = p1.dx + (p2.dx - p0.dx) / 6;
+          final cp1y = p1.dy + (p2.dy - p0.dy) / 6;
+          final cp2x = p2.dx - (p3.dx - p1.dx) / 6;
+          final cp2y = p2.dy - (p3.dy - p1.dy) / 6;
 
           path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.dx, p2.dy);
         }
       }
 
-      // Clip the path to ensure it doesn't go below the chart area
-      canvas.save();
-      canvas.clipRect(
-        Rect.fromLTWH(chartLeft, 0, size.width - chartLeft, chartHeight),
-      );
       canvas.drawPath(path, curvePaint);
-      canvas.restore();
     }
+  }
 
-    // Draw data points
-    for (final point in points) {
-      canvas.drawCircle(point, 4, pointPaint);
-      // Draw white border for better visibility
-      canvas.drawCircle(
-        point,
-        4,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
+  void _drawPoints(
+    Canvas canvas,
+    List<MapEntry<DateTime, double>> entries,
+    double chartLeft,
+    double chartHeight,
+    double xStep,
+    Color color,
+    double valueRange,
+  ) {
+    final pointPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    for (var i = 0; i < entries.length; i++) {
+      final value = entries[i].value;
+      final x = chartLeft + (i * xStep);
+      final y = chartHeight - ((value - minValue) / valueRange) * chartHeight;
+      canvas.drawCircle(Offset(x, y), 3, pointPaint);
     }
-
-    // Draw function info
-    _drawFunctionInfo(canvas, size, chartLeft);
-
-    // Draw X-axis labels (dates)
-    _drawXAxisLabels(canvas, size, chartLeft, chartHeight, xStep);
   }
 
   void _drawYAxisAndGrid(Canvas canvas, Size size, double chartLeft) {
     final chartHeight = size.height - 20; // Reserve space for X-axis labels
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5
+      ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 
     final axisPaint = Paint()
@@ -196,7 +234,7 @@ class WeatherChartPainter extends CustomPainter {
       );
       final textPainter = TextPainter(
         text: textSpan,
-        textDirection: ui.TextDirection.ltr,
+        textDirection: TextDirection.ltr,
       );
       textPainter.layout();
       textPainter.paint(
@@ -208,36 +246,14 @@ class WeatherChartPainter extends CustomPainter {
     }
   }
 
-  void _drawFunctionInfo(Canvas canvas, Size size, double chartLeft) {
-    // Draw function info at top-right
-    final infoText = 'f(x) = Catmull-Rom spline';
-    final textSpan = TextSpan(
-      text: infoText,
-      style: TextStyle(
-        color: Colors.grey[600],
-        fontSize: 10,
-        fontStyle: FontStyle.italic,
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
-      ),
-    );
-    final textPainter = TextPainter(
-      text: textSpan,
-      textDirection: ui.TextDirection.ltr,
-    );
-    textPainter.layout();
-
-    // Position at top-right with padding
-    textPainter.paint(canvas, Offset(size.width - textPainter.width - 8, 4));
-  }
-
   void _drawXAxisLabels(
     Canvas canvas,
     Size size,
+    List<MapEntry<DateTime, double>> entries,
     double chartLeft,
-    double chartHeight,
     double xStep,
   ) {
-    final entries = dailyAverages.entries.toList();
+    final chartHeight = size.height - 20;
     final axisPaint = Paint()
       ..color = Colors.grey[600]!
       ..strokeWidth = 1
@@ -286,7 +302,7 @@ class WeatherChartPainter extends CustomPainter {
         );
         final textPainter = TextPainter(
           text: textSpan,
-          textDirection: ui.TextDirection.ltr,
+          textDirection: TextDirection.ltr,
         );
         textPainter.layout();
 
@@ -301,8 +317,9 @@ class WeatherChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(WeatherChartPainter oldDelegate) {
-    return dailyAverages != oldDelegate.dailyAverages ||
+  bool shouldRepaint(WeatherChartDualPainter oldDelegate) {
+    return dailyMaxValues != oldDelegate.dailyMaxValues ||
+        dailyMinValues != oldDelegate.dailyMinValues ||
         minValue != oldDelegate.minValue ||
         maxValue != oldDelegate.maxValue;
   }

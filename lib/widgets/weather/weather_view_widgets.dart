@@ -1,6 +1,6 @@
 /// Weather view widgets for weather dialog.
 ///
-// Time-stamp: <Tuesday 2026-01-14 10:00:00 +1100>
+// Time-stamp: <Saturday 2026-01-24 06:34:56 +1100 Graham Williams>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -14,9 +14,10 @@ import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
 
-import '../../models/hourly_weather_data.dart';
-import '../../models/weather_data.dart';
-import '../hourly_weather_chart.dart';
+import 'package:geopod/models/hourly_weather_data.dart';
+import 'package:geopod/models/weather_data.dart';
+import 'package:geopod/widgets/hourly_weather_chart.dart';
+
 import 'weather_detail_builders.dart';
 
 /// Build error view for failed weather loading.
@@ -93,6 +94,17 @@ Widget buildCurrentWeatherView({
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              // Show today's high/low if available
+              if (weatherData.dailyMaxTemp != null &&
+                  weatherData.dailyMinTemp != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'L: ${weatherData.dailyMinTemp!.toStringAsFixed(1)}° H: ${weatherData.dailyMaxTemp!.toStringAsFixed(1)}°',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                ),
+              ],
             ],
           ),
         ),
@@ -179,9 +191,11 @@ Widget buildPastWeatherView({
         HourlyWeatherChart(
           data: pastWeatherData,
           dataType: selectedDataType,
+          sortAscending: false, // Past: newest to oldest
           latitude: latitude,
           longitude: longitude,
           address: address,
+          dataSource: 'Past 10 Days',
         ),
       ],
     ),
@@ -238,9 +252,11 @@ Widget buildForecastWeatherView({
         HourlyWeatherChart(
           data: forecastWeatherData,
           dataType: selectedDataType,
+          sortAscending: true, // Forecast: oldest to newest (today to future)
           latitude: latitude,
           longitude: longitude,
           address: address,
+          dataSource: 'Forecast (7 Days)',
         ),
       ],
     ),
@@ -331,9 +347,11 @@ Widget buildHistoricalWeatherView({
         HourlyWeatherChart(
           data: historicalWeatherData,
           dataType: selectedDataType,
+          sortAscending: false, // Historical: newest to oldest
           latitude: latitude,
           longitude: longitude,
           address: address,
+          dataSource: 'Historical Weather Data',
         ),
       ],
     ),

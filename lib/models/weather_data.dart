@@ -20,10 +20,53 @@ class WeatherData {
     required this.humidity,
     required this.precipitation,
     required this.time,
+    this.dailyMaxTemp,
+    this.dailyMinTemp,
+    this.todayTotalPrecipitation,
   });
 
   factory WeatherData.fromJson(Map<String, dynamic> json) {
     final current = json['current'] as Map<String, dynamic>;
+
+    // Get today's min/max temperature from daily data if available
+    double? maxTemp;
+    double? minTemp;
+    if (json.containsKey('daily')) {
+      final daily = json['daily'] as Map<String, dynamic>;
+      if (daily.containsKey('temperature_2m_max')) {
+        final maxList = daily['temperature_2m_max'] as List;
+        if (maxList.isNotEmpty) maxTemp = (maxList[0] as num).toDouble();
+      }
+      if (daily.containsKey('temperature_2m_min')) {
+        final minList = daily['temperature_2m_min'] as List;
+        if (minList.isNotEmpty) minTemp = (minList[0] as num).toDouble();
+      }
+    }
+
+    // Calculate today's total precipitation from hourly data
+    double? todayTotal;
+    if (json.containsKey('hourly')) {
+      final hourly = json['hourly'] as Map<String, dynamic>;
+      if (hourly.containsKey('precipitation') && hourly.containsKey('time')) {
+        final times = (hourly['time'] as List).cast<String>();
+        final precips = (hourly['precipitation'] as List).cast<num>();
+        final now = DateTime.parse(current['time'] as String);
+
+        double sum = 0.0;
+        for (var i = 0; i < times.length; i++) {
+          final time = DateTime.parse(times[i]);
+          // Only sum precipitation for hours up to current time today
+          if (time.year == now.year &&
+              time.month == now.month &&
+              time.day == now.day &&
+              time.isBefore(now.add(const Duration(hours: 1)))) {
+            sum += precips[i].toDouble();
+          }
+        }
+        todayTotal = sum;
+      }
+    }
+
     return WeatherData(
       temperature: (current['temperature_2m'] as num).toDouble(),
       weatherCode: current['weather_code'] as int,
@@ -32,6 +75,9 @@ class WeatherData {
       humidity: (current['relative_humidity_2m'] as num).toInt(),
       precipitation: (current['precipitation'] as num).toDouble(),
       time: DateTime.parse(current['time'] as String),
+      dailyMaxTemp: maxTemp,
+      dailyMinTemp: minTemp,
+      todayTotalPrecipitation: todayTotal,
     );
   }
 
@@ -42,6 +88,10 @@ class WeatherData {
   final int humidity;
   final double precipitation;
   final DateTime time;
+  final double? dailyMaxTemp;
+  final double? dailyMinTemp;
+  final double?
+  todayTotalPrecipitation; // Total precipitation accumulated today
 
   /// Get weather description from WMO weather code.
   String get weatherDescription {
@@ -125,7 +175,8 @@ class WeatherData {
   }
 
   /// Get arrow icon for wind direction.
-  /// Arrow points in the direction the wind is blowing TO.
+  /// Wind direction follows meteorological convention: indicates where wind is coming FROM.
+  /// Arrow points toward the direction the wind is coming FROM (e.g., 90° = East wind = arrow points → toward east).
   String get windDirectionArrow {
     if (windDirection >= 337.5 || windDirection < 22.5) return '↑';
     if (windDirection >= 22.5 && windDirection < 67.5) return '↗';

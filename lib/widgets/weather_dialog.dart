@@ -12,11 +12,12 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../models/hourly_weather_data.dart';
-import '../models/weather_data.dart';
-import '../services/weather_service.dart';
-import '../utils/ui_utils.dart';
-import '../utils/widget_utils.dart';
+import 'package:geopod/models/hourly_weather_data.dart';
+import 'package:geopod/models/weather_data.dart';
+import 'package:geopod/services/weather_service.dart';
+import 'package:geopod/utils/ui_utils.dart';
+import 'package:geopod/utils/widget_utils.dart';
+
 import 'weather/weather_date_selector.dart';
 import 'weather/weather_view_widgets.dart';
 
@@ -67,7 +68,7 @@ class _WeatherDialogState extends State<WeatherDialog>
   bool _isLoadingForecast = false;
   bool _isLoadingHistorical = false;
   String? _errorMessage;
-  bool _showDailyPrecipitation = false; // false = hourly, true = daily
+  bool _showDailyPrecipitation = false; // false = hourly, true = daily total
   String _selectedDataType = 'temperature'; // temperature, humidity, wind_speed
   DateTime? _historicalStartDate;
   DateTime? _historicalEndDate;

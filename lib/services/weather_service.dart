@@ -14,8 +14,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../models/hourly_weather_data.dart';
-import '../models/weather_data.dart';
+import 'package:geopod/models/hourly_weather_data.dart';
+import 'package:geopod/models/weather_data.dart';
 
 /// Service for fetching weather data from Open-Meteo API.
 class WeatherService {
@@ -46,7 +46,10 @@ class WeatherService {
           'wind_speed_10m',
           'wind_direction_10m',
         ].join(','),
+        'hourly': ['precipitation'].join(','),
+        'daily': ['temperature_2m_max', 'temperature_2m_min'].join(','),
         'timezone': 'Australia/Sydney',
+        'forecast_days': '1',
       },
     );
 

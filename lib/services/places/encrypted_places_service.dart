@@ -15,14 +15,11 @@
 
 library;
 
-// 20260128 gjw Temporary fix on moving back to anusii solidui dev.
-//
-// import 'package:solidui/solidui.dart' show SecurityKeyStatusChangedNotification;
-
 import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solidpod/solidpod.dart';
+import 'package:solidui/src/utils/solid_notifications.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places/encrypted_places_io.dart';
@@ -157,12 +154,9 @@ class EncryptedPlacesService {
       _securityKeyAvailableCache = true; // Update cache
       // Notify the status bar that security key is now available
       if (context.mounted) {
-        // 20260128 gjw Comment out while miduo666 updates are reconciled with
-        // anusii release.
-        //
-        // const SecurityKeyStatusChangedNotification(
-        //   isKeySaved: true,
-        // ).dispatch(context);
+        const SecurityKeyStatusChangedNotification(
+          isKeySaved: true,
+        ).dispatch(context);
         debugPrint('Security key status notification dispatched');
       }
     }
@@ -217,12 +211,9 @@ class EncryptedPlacesService {
       if (dirCreated) {
         _securityKeyAvailableCache = true; // Keys are now known to be available
         if (context.mounted) {
-          // 20260128 gjw Comment out while miduo666 updates are reconciled with
-          // anusii release.
-          //
-          // const SecurityKeyStatusChangedNotification(
-          //   isKeySaved: true,
-          // ).dispatch(context);
+          const SecurityKeyStatusChangedNotification(
+            isKeySaved: true,
+          ).dispatch(context);
           debugPrint(
             'Directory created, security key status notification dispatched',
           );

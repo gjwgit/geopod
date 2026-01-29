@@ -1,6 +1,6 @@
 /// State management for GeoMap widget.
 ///
-// Time-stamp: <Tuesday 2026-01-14 +1100>
+// Time-stamp: <Tuesday 2026-01-29 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -71,6 +71,9 @@ mixin MarkerCacheMixin {
   bool _lastShowLocalPlaces = true;
   bool _lastShowEncryptedPlaces = false;
   bool _lastHideAllMarkers = false;
+  Color _lastUserPlacesColor = Colors.blue;
+  Color _lastLocalPlacesColor = Colors.red;
+  Color _lastEncryptedPlacesColor = Colors.purple;
 
   /// Get filtered markers with caching to avoid expensive rebuilds.
   List<MarkerData> getCachedFilteredMarkers({
@@ -85,6 +88,9 @@ mixin MarkerCacheMixin {
     final showLocal = mapSettings.showLocalPlaces;
     final showEncrypted = mapSettings.showEncryptedPlaces;
     final hideMarkers = mapSettings.hideAllMarkers;
+    final userColor = mapSettings.userPlacesColor;
+    final localColor = mapSettings.localPlacesColor;
+    final encryptedColor = mapSettings.encryptedPlacesColor;
 
     // Return cached if nothing changed
     if (_cachedFilteredMarkers != null &&
@@ -92,7 +98,10 @@ mixin MarkerCacheMixin {
         savingHash == _lastSavingIdsHash &&
         showLocal == _lastShowLocalPlaces &&
         showEncrypted == _lastShowEncryptedPlaces &&
-        hideMarkers == _lastHideAllMarkers) {
+        hideMarkers == _lastHideAllMarkers &&
+        userColor == _lastUserPlacesColor &&
+        localColor == _lastLocalPlacesColor &&
+        encryptedColor == _lastEncryptedPlacesColor) {
       return _cachedFilteredMarkers!;
     }
 
@@ -102,6 +111,9 @@ mixin MarkerCacheMixin {
     _lastShowLocalPlaces = showLocal;
     _lastShowEncryptedPlaces = showEncrypted;
     _lastHideAllMarkers = hideMarkers;
+    _lastUserPlacesColor = userColor;
+    _lastLocalPlacesColor = localColor;
+    _lastEncryptedPlacesColor = encryptedColor;
     _cachedFilteredMarkers = builder();
     return _cachedFilteredMarkers!;
   }

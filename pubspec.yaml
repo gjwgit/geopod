@@ -1,7 +1,7 @@
 name: geopod
 description: "Map interface to Solid Server Data Vault Pods."
 publish_to: 'none'
-version: 0.0.11+17
+version: 0.0.12+18
 
 environment:
   sdk: ^3.10.0
@@ -16,7 +16,7 @@ environment:
 
 dependencies:
   cupertino_icons: ^1.0.8
-  file_picker: ^10.3.7
+  file_picker: 10.3.10
   file_saver: ^0.3.1
   flutter:
     sdk: flutter
@@ -43,7 +43,7 @@ dependency_overrides:
   solidpod:
     git:
       url: https://github.com/miduo666/solidpod.git
-      # url: https://github.com/anusii/solidpod.git
+      #url: https://github.com/anusii/solidpod.git
       ref: dev
   solidui:
     git:

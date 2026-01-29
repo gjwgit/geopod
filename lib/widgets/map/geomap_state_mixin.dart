@@ -1,6 +1,6 @@
 /// State management for GeoMap widget.
 ///
-// Time-stamp: <Tuesday 2026-01-14 +1100>
+// Time-stamp: <Tuesday 2026-01-29 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///

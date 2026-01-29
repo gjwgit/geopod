@@ -26,6 +26,8 @@ a Pull Request. Thanks.
 
 ## 0.1 First beta release
 
++ Fine tune weather [0.0.12 20260129 miduo]
++ Add weather feature [0.0.11 20260129 miduo]
 + Fix encrypted file saving [0.0.10 20260123 miduo]
 + Cleanup [0.0.9 20260122 miduo]
 + Add LOCATE ME button [0.0.8 20260121 miduo]

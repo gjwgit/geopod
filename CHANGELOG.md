@@ -26,6 +26,7 @@ a Pull Request. Thanks.
 
 ## 0.1 First beta release
 
++ Update sample point colour on SETTINGS change [0.0.13 20260130 miduo]
 + Fine tune weather [0.0.12 20260129 miduo]
 + Add weather feature [0.0.11 20260129 miduo]
 + Fix encrypted file saving [0.0.10 20260123 miduo]

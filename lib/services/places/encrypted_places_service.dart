@@ -11,7 +11,7 @@
 ///
 /// License: https://opensource.org/license/gpl-3-0.
 
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, implementation_imports
 
 library;
 
@@ -19,7 +19,7 @@ import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solidpod/solidpod.dart';
-import 'package:solidui/solidui.dart' show SecurityKeyStatusChangedNotification;
+import 'package:solidui/src/utils/solid_notifications.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places/encrypted_places_io.dart';

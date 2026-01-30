@@ -1,5 +1,5 @@
 name: geopod
-version: 0.0.12
+version: 0.0.13
 summary: Interactive map points of interest managed by Pods.
 description: |
   Geopod displays points of interest on a map. The points of interest

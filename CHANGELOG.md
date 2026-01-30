@@ -26,6 +26,7 @@ a Pull Request. Thanks.
 
 ## 0.1 First beta release
 
++ Move to latest solidui dev from anusii [0.0.14 20260130 miduo]
 + Update sample point colour on SETTINGS change [0.0.13 20260130 miduo]
 + Fine tune weather [0.0.12 20260129 miduo]
 + Add weather feature [0.0.11 20260129 miduo]

@@ -42,8 +42,7 @@ dependencies:
 dependency_overrides:
   solidpod:
     git:
-      url: https://github.com/miduo666/solidpod.git
-      #url: https://github.com/anusii/solidpod.git
+      url: https://github.com/anusii/solidpod.git
       ref: dev
   solidui:
     git:

@@ -1,6 +1,6 @@
 /// App-wide constants.
 ///
-// Time-stamp: <Friday 2025-11-21 08:33:21 +1100 Graham Williams>
+// Time-stamp: <Wednesday 2026-02-04 07:55:32 +1100 Graham Williams>
 ///
 /// Copyright (C) 2023, Software Innovation Institute
 ///
@@ -26,4 +26,4 @@
 
 library;
 
-const String appTitle = 'GeoPod - Points of Interest on your Map';
+const String appTitle = 'GeoPod - Capture Points of Interest on a Map';

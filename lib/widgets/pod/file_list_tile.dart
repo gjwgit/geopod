@@ -16,6 +16,7 @@ import 'package:geopod/models/pod_file_item.dart';
 import 'package:geopod/widgets/pod/file_type_helpers.dart';
 
 /// Animated file/directory list tile with delete animation.
+
 class AnimatedFileListTile extends StatefulWidget {
   /// The file item to display.
   final PodFileItem item;
@@ -83,7 +84,7 @@ class _AnimatedFileListTileState extends State<AnimatedFileListTile>
 
   @override
   Widget build(BuildContext context) {
-    // Use single AnimatedBuilder for better performance
+    // Use single AnimatedBuilder for better performance.
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
@@ -108,6 +109,7 @@ class _AnimatedFileListTileState extends State<AnimatedFileListTile>
 }
 
 /// Single file/directory list tile content.
+
 class FileListTileContent extends StatelessWidget {
   /// The file item to display.
   final PodFileItem item;
@@ -151,7 +153,7 @@ class FileListTileContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                // Icon
+                // Icon.
                 Container(
                   width: 40,
                   height: 40,
@@ -167,7 +169,7 @@ class FileListTileContent extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
 
-                // File info
+                // File info.
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,7 +195,7 @@ class FileListTileContent extends StatelessWidget {
                   ),
                 ),
 
-                // Actions
+                // Actions.
                 if (item.isDirectory)
                   Icon(Icons.chevron_right, color: colorScheme.outline)
                 else ...[
@@ -225,6 +227,7 @@ class FileListTileContent extends StatelessWidget {
 }
 
 /// Section header widget for grouping files/folders.
+
 class SectionHeader extends StatelessWidget {
   /// The title of the section.
   final String title;

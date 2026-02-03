@@ -27,7 +27,8 @@ import 'package:geopod/widgets/map/user_location_marker_layer.dart';
 ///
 /// Performance optimizations:
 /// - Uses RepaintBoundary to isolate map repaints from overlay UI
-/// - Defers marker layer updates when not animating
+/// - Defers marker layer updates when not animating.
+
 Widget buildFlutterMapWidget({
   required MapController mapController,
   required Animation<double> fadeAnimation,
@@ -53,15 +54,16 @@ Widget buildFlutterMapWidget({
       opacity: fadeAnimation,
       child: FlutterMap(
         // Remove key to allow FlutterMap to properly handle tileProvider changes
-        // The TileLayer's ObjectKey will handle proper recreation when needed
+        // The TileLayer's ObjectKey will handle proper recreation when needed.
         mapController: mapController,
         options: MapOptions(
           initialCenter: initialCenter,
           initialZoom: initialZoom,
           minZoom: 3.0,
           maxZoom: maxZoom ?? mapSettings.mapSource.maxNativeZoom.toDouble(),
+
           // Constrain latitude to ±85.11° (Web Mercator projection limits)
-          // Longitude is unrestricted to allow horizontal map wrapping
+          // Longitude is unrestricted to allow horizontal map wrapping.
           cameraConstraint: const CameraConstraint.containLatitude(
             85.051129,
             -85.051129,
@@ -76,7 +78,8 @@ Widget buildFlutterMapWidget({
             tileProvider: tileProvider,
             applyFilter: applyFilter,
           ),
-          // Wrap marker layer in RepaintBoundary to isolate marker animations
+
+          // Wrap marker layer in RepaintBoundary to isolate marker animations.
           RepaintBoundary(
             child: buildPlacesMarkerLayer(
               context: context,
@@ -92,6 +95,7 @@ Widget buildFlutterMapWidget({
                 newsMarkers: visibleNewsMarkers,
               ),
             ),
+
           // User location marker layer (always on top)
           ...() {
             final userLocationLayer = buildUserLocationMarkerLayer(
@@ -107,6 +111,7 @@ Widget buildFlutterMapWidget({
 }
 
 /// Builds the loading indicator overlay.
+
 Widget buildLoadingIndicator({required bool isLoading}) {
   if (!isLoading) return const SizedBox.shrink();
   return const Positioned(

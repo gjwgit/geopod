@@ -22,33 +22,41 @@ import 'package:geopod/widgets/map/geomap_news_logic.dart';
 import 'package:geopod/widgets/map/news_operations.dart';
 
 /// Mixin that provides news-related functionality for GeoMapWidget.
+
 mixin GeoMapNewsMixin<T extends StatefulWidget> on State<T> {
   /// News service instance - must be initialized in initState.
   GdeltNewsService get newsService;
 
   /// Map controller for bounds calculations.
+
   MapController get mapController;
 
   /// Current news markers list.
+
   List<NewsMarker> get newsMarkers;
   set newsMarkers(List<NewsMarker> value);
 
   /// Whether news markers are currently shown.
+
   bool get showNewsMarkers;
   set showNewsMarkers(bool value);
 
   /// Whether news is currently loading.
+
   bool get isLoadingNews;
   set isLoadingNews(bool value);
 
   /// Track last position to avoid unnecessary cache updates.
+
   LatLng? lastNewsUpdatePosition;
   double? lastNewsUpdateZoom;
 
   /// Toggles news markers visibility by showing the news list dialog.
+
   void toggleNewsMarkers() => showNewsListDialogAsyncImpl();
 
   /// Shows the news list dialog.
+
   Future<void> showNewsListDialogAsyncImpl() async {
     if (!mounted) return;
     await showNewsListDialogAsync(
@@ -69,6 +77,7 @@ mixin GeoMapNewsMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Handles map position changes for news updates.
+
   void onMapPositionChangedForNews(MapCamera pos, bool gesture) {
     if (showNewsMarkers && gesture) {
       if (shouldUpdateNewsCacheImpl(pos.center, pos.zoom)) {
@@ -78,6 +87,7 @@ mixin GeoMapNewsMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Checks if news cache should be updated based on position change.
+
   bool shouldUpdateNewsCacheImpl(LatLng newPosition, double newZoom) {
     final result = shouldUpdateNewsCache(
       newPosition: newPosition,
@@ -95,6 +105,7 @@ mixin GeoMapNewsMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Updates news markers from cache.
+
   void updateNewsFromCacheImpl() {
     if (!mounted) return;
     updateNewsFromCacheForBounds(
@@ -106,6 +117,7 @@ mixin GeoMapNewsMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Fetches news for current map bounds.
+
   Future<void> fetchNewsForCurrentBoundsImpl() async {
     if (!mounted) return;
     await fetchNewsForBounds(
@@ -124,6 +136,7 @@ mixin GeoMapNewsMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Gets visible news markers within current map bounds.
+
   List<NewsMarker> getVisibleNewsMarkersImpl() => getVisibleNewsInBounds(
     mapController: mapController,
     newsMarkers: newsMarkers,

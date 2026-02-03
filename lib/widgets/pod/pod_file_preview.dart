@@ -17,6 +17,7 @@ import 'package:geopod/models/pod_file_item.dart';
 import 'package:geopod/services/pod/pod.dart';
 
 /// Widget for previewing file contents from the POD.
+
 class PodFilePreview extends StatefulWidget {
   /// The file item to preview.
   final PodFileItem file;
@@ -48,7 +49,9 @@ class _PodFilePreviewState extends State<PodFilePreview> {
   void initState() {
     super.initState();
     _loadContent();
-    // Listen for file changes to auto-refresh
+
+    // Listen for file changes to auto-refresh.
+
     podFilesChangeNotifier.addListener(_onFilesChanged);
   }
 
@@ -59,7 +62,7 @@ class _PodFilePreviewState extends State<PodFilePreview> {
   }
 
   void _onFilesChanged() {
-    // Reload content when files change
+    // Reload content when files change.
     if (mounted) {
       _loadContent();
     }
@@ -192,12 +195,13 @@ class _PodFilePreviewState extends State<PodFilePreview> {
       return const Center(child: Text('No content available'));
     }
 
-    // Check if it's JSON and format it nicely
+    // Check if it's JSON and format it nicely.
+
     if (widget.file.extension == 'json') {
       return _buildJsonPreview();
     }
 
-    // Default text preview
+    // Default text preview.
     return _buildTextPreview();
   }
 
@@ -213,7 +217,7 @@ class _PodFilePreviewState extends State<PodFilePreview> {
 
   Widget _buildJsonPreview() {
     try {
-      // Try to format JSON nicely
+      // Try to format JSON nicely.
       final formatted = _formatJson(_content!);
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -228,7 +232,7 @@ class _PodFilePreviewState extends State<PodFilePreview> {
   }
 
   String _formatJson(String json) {
-    // Simple JSON formatting
+    // Simple JSON formatting.
     var indent = 0;
     final result = StringBuffer();
     var inString = false;
@@ -263,7 +267,9 @@ class _PodFilePreviewState extends State<PodFilePreview> {
           case '\n':
           case '\r':
           case '\t':
-            // Skip whitespace
+
+            // Skip whitespace.
+
             break;
           default:
             result.write(char);

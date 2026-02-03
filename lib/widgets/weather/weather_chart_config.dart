@@ -11,16 +11,20 @@
 library;
 
 /// Daily data card width.
+
 const double dailyCardWidth = 80.0;
 
 /// Daily data card spacing.
+
 const double dailyCardSpacing = 6.0;
 
 /// Chart tooltip message for sampling algorithms.
+
 const String chartSamplingTooltip =
     'Catmull-Rom spline: Smooth curve algorithm that passes through data points\n'
     'Ramer-Douglas-Peucker: Smart sampling to preserve key features';
 
 /// Chart sampling info text.
+
 const String chartSamplingInfo =
     'Curve fitting: Catmull-Rom spline | Data sampling: RDP algorithm';

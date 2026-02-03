@@ -16,6 +16,7 @@ import 'package:geopod/models/hourly_weather_data.dart';
 
 /// Get data range based on data type.
 /// For precipitation, returns the range of daily totals, not hourly values.
+
 (double, double) getDataRange(String dataType, HourlyWeatherData data) {
   switch (dataType) {
     case 'humidity':
@@ -31,6 +32,7 @@ import 'package:geopod/models/hourly_weather_data.dart';
 }
 
 /// Get daily data based on data type.
+
 Map<DateTime, double> getDailyData(String dataType, HourlyWeatherData data) {
   switch (dataType) {
     case 'humidity':
@@ -46,6 +48,7 @@ Map<DateTime, double> getDailyData(String dataType, HourlyWeatherData data) {
 }
 
 /// Get data title based on data type.
+
 String getDataTitle(String dataType) {
   switch (dataType) {
     case 'humidity':
@@ -61,6 +64,7 @@ String getDataTitle(String dataType) {
 }
 
 /// Get data unit based on data type.
+
 String getDataUnit(String dataType) {
   switch (dataType) {
     case 'humidity':
@@ -76,6 +80,7 @@ String getDataUnit(String dataType) {
 }
 
 /// Get data icon based on data type.
+
 IconData getDataIcon(String dataType) {
   switch (dataType) {
     case 'humidity':
@@ -91,6 +96,7 @@ IconData getDataIcon(String dataType) {
 }
 
 /// Get color based on value position in range.
+
 Color getValueColor(double value, double min, double max) {
   final range = max - min;
   if (range == 0) return Colors.blue;

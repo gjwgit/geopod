@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:geopod/models/weather_data.dart';
 
 /// Build a generic weather detail row.
+
 Widget buildWeatherDetail({
   required IconData icon,
   required String label,
@@ -39,6 +40,7 @@ Widget buildWeatherDetail({
 }
 
 /// Build wind direction detail with tooltip.
+
 Widget buildWindDirectionDetail(WeatherData weather) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
@@ -52,7 +54,7 @@ Widget buildWindDirectionDetail(WeatherData weather) {
         Builder(
           builder: (context) => GestureDetector(
             onTap: () {
-              // Show info dialog when tapped
+              // Show info dialog when tapped.
               showDialog<void>(
                 context: context,
                 builder: (context) => AlertDialog(
@@ -108,13 +110,14 @@ Widget buildWindDirectionDetail(WeatherData weather) {
 }
 
 /// Build precipitation detail with hourly/daily toggle.
+
 Widget buildPrecipitationDetail({
   required WeatherData weather,
   required bool showDailyPrecipitation,
   required VoidCallback onToggle,
 }) {
   // API returns precipitation for the past hour (mm)
-  // User can toggle to see today's accumulated total
+  // User can toggle to see today's accumulated total.
   final precipValue = showDailyPrecipitation
       ? (weather.todayTotalPrecipitation ??
             weather.precipitation) // Today's total accumulated
@@ -154,6 +157,7 @@ Widget buildPrecipitationDetail({
 }
 
 /// Build data type selector (temperature, humidity, wind, rain).
+
 Widget buildDataTypeSelector({
   required String selectedDataType,
   required void Function(String) onSelectionChanged,

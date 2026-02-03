@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Predefined viewport presets for quick selection.
+
 enum ViewportPreset {
   australia('Australia', -25.2744, 133.7751, 4.0),
   sydney('Sydney', -33.8688, 151.2093, 11.0),
@@ -35,6 +36,7 @@ enum ViewportPreset {
 }
 
 /// Widget for selecting initial viewport location.
+
 class InitialViewportSelector extends StatelessWidget {
   const InitialViewportSelector({
     super.key,
@@ -50,7 +52,7 @@ class InitialViewportSelector extends StatelessWidget {
   final void Function(double lat, double lng, double zoom) onChanged;
 
   String get _currentLocationName {
-    // Find matching preset
+    // Find matching preset.
     for (final preset in ViewportPreset.values) {
       if ((preset.lat - lat).abs() < 0.01 &&
           (preset.lng - lng).abs() < 0.01 &&

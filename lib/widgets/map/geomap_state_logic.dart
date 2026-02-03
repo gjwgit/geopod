@@ -17,6 +17,7 @@ import 'package:geopod/services/places_service.dart'
     show PlacesService, PlacesCacheManager;
 
 /// Verifies login state and returns appropriate places.
+
 Future<VerifyLoginResult> verifyLoginStateAndLoadData({
   required bool currentIsLoggedIn,
 }) async {
@@ -53,6 +54,7 @@ Future<VerifyLoginResult> verifyLoginStateAndLoadData({
 }
 
 /// Result of login state verification.
+
 class VerifyLoginResult {
   final bool actuallyLoggedIn;
   final bool loginStateChanged;
@@ -68,6 +70,7 @@ class VerifyLoginResult {
 }
 
 /// Loads all places with optional force refresh.
+
 Future<List<Place>> loadAllPlaces({
   bool forceRefresh = false,
   bool includeEncrypted = false,

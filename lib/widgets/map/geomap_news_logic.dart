@@ -18,24 +18,26 @@ import 'package:latlong2/latlong.dart';
 ///
 /// Returns true if position/zoom changed significantly enough to warrant
 /// a cache update. This prevents excessive updates during small movements.
+
 bool shouldUpdateNewsCache({
   required LatLng newPosition,
   required double newZoom,
   required LatLng? lastPosition,
   required double? lastZoom,
 }) {
-  // First time or no previous position
+  // First time or no previous position.
   if (lastPosition == null || lastZoom == null) {
     return true;
   }
 
-  // Calculate position change in degrees
+  // Calculate position change in degrees.
   final latDiff = (newPosition.latitude - lastPosition.latitude).abs();
   final lngDiff = (newPosition.longitude - lastPosition.longitude).abs();
   final zoomDiff = (newZoom - lastZoom).abs();
 
   // Thresholds: ~1km movement or 1 zoom level change
-  // At zoom 12, 0.01 degrees ≈ 1.1 km
+  // At zoom 12, 0.01 degrees ≈ 1.1 km.
+
   const positionThreshold = 0.01;
   const zoomThreshold = 1.0;
 

@@ -18,6 +18,7 @@ import 'package:solidpod/solidpod.dart';
 
 /// Shows a dialog to prompt user for security key.
 /// Returns true if key was successfully entered and verified.
+
 Future<bool> showSecurityKeyDialog(BuildContext context) async {
   final keyController = TextEditingController();
   bool result = false;
@@ -131,6 +132,7 @@ Future<bool> showSecurityKeyDialog(BuildContext context) async {
 }
 
 /// Verify security key and set it if valid.
+
 Future<void> _verifyAndSetKey(
   String key,
   void Function(void Function()) setState,
@@ -155,6 +157,7 @@ Future<void> _verifyAndSetKey(
 }
 
 /// Shows a dialog when encryption is not set up.
+
 Future<void> showEncryptionNotSetupDialog(BuildContext context) async {
   await showDialog(
     context: context,

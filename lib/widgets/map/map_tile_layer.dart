@@ -17,6 +17,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geopod/services/map_settings_service.dart';
 
 /// Midnight color matrix for dark mode.
+
 const midnightMatrix = <double>[
   -0.33,
   -0.33,
@@ -41,6 +42,7 @@ const midnightMatrix = <double>[
 ];
 
 /// Builds the tile layer with optional dark mode filter.
+
 Widget buildMapTileLayer({
   required MapSettings mapSettings,
   required TileProvider tileProvider,
@@ -52,7 +54,7 @@ Widget buildMapTileLayer({
         : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
     child: TileLayer(
       // Use ObjectKey with tileProvider to ensure fresh TileLayer when provider changes
-      // This prevents widget reuse issues when app resumes with a new provider
+      // This prevents widget reuse issues when app resumes with a new provider.
       key: ObjectKey(tileProvider),
       urlTemplate: mapSettings.mapSource.urlTemplate,
       subdomains: mapSettings.mapSource.subdomains,

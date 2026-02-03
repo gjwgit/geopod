@@ -22,6 +22,7 @@ import 'weather/weather_date_selector.dart';
 import 'weather/weather_view_widgets.dart';
 
 /// Shows a weather info dialog for the specified location.
+
 Future<void> showWeatherDialog({
   required BuildContext context,
   required double latitude,
@@ -39,6 +40,7 @@ Future<void> showWeatherDialog({
 }
 
 /// Dialog displaying current weather information.
+
 class WeatherDialog extends StatefulWidget {
   const WeatherDialog({
     required this.latitude,
@@ -175,7 +177,7 @@ class _WeatherDialogState extends State<WeatherDialog>
     });
 
     try {
-      // ERA5 archive data has 5-7 days delay, so end date must be at least 7 days ago
+      // ERA5 archive data has 5-7 days delay, so end date must be at least 7 days ago.
       final now = DateTime.now();
       final selectedEndDate = endDate ?? now.subtract(const Duration(days: 7));
       final selectedStartDate =
@@ -249,20 +251,20 @@ class _WeatherDialogState extends State<WeatherDialog>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // Current weather tab
+                  // Current weather tab.
                   _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : _errorMessage != null
                       ? _buildErrorView()
                       : _buildWeatherView(),
 
-                  // Past weather tab
+                  // Past weather tab.
                   _buildPastWeatherView(),
 
-                  // Forecast weather tab
+                  // Forecast weather tab.
                   _buildForecastWeatherView(),
 
-                  // Historical weather tab
+                  // Historical weather tab.
                   _buildHistoricalWeatherView(),
                 ],
               ),

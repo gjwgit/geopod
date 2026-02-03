@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Column of floating action buttons for map controls.
+
 class MapFloatingButtons extends StatelessWidget {
   final bool isLoadingPlaces;
   final VoidCallback onZoomIn;

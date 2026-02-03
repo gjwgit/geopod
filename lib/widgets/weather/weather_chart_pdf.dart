@@ -25,6 +25,7 @@ export 'pdf_export_handler.dart';
 export 'pdf_utils.dart';
 
 /// Export weather data to PDF.
+
 Future<void> exportWeatherChartToPdf(
   BuildContext context, {
   required HourlyWeatherData data,
@@ -46,7 +47,7 @@ Future<void> exportWeatherChartToPdf(
   String? dataSource,
 }) async {
   try {
-    // Build PDF document
+    // Build PDF document.
     final pdf = buildWeatherPdfDocument(
       data: data,
       dailyData: dailyData,
@@ -67,15 +68,16 @@ Future<void> exportWeatherChartToPdf(
       dataSource: dataSource,
     );
 
-    // Save PDF and get bytes
+    // Save PDF and get bytes.
     final bytes = await pdf.save();
 
-    // Handle platform-specific export
+    // Handle platform-specific export.
+
     if (context.mounted) {
       await handlePdfExport(context, bytes);
     }
   } catch (e) {
-    // Show error message if PDF export fails
+    // Show error message if PDF export fails.
     if (context.mounted) {
       SnackBarHelper.showError(
         context,

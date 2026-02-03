@@ -28,36 +28,38 @@ library;
 import 'package:flutter/material.dart';
 
 /// Available map tile sources.
+
 enum MapSource {
   /// OpenStreetMap - Standard street map (day default)
   openStreetMap,
 
-  /// CartoDB Voyager - Colorful detailed map
+  /// CartoDB Voyager - Colorful detailed map.
   cartoVoyager,
 
-  /// CartoDB Dark Matter - Night-optimized dark map
+  /// CartoDB Dark Matter - Night-optimized dark map.
   cartoDarkMatter,
 
-  /// CartoDB Positron - Light grayscale map
+  /// CartoDB Positron - Light grayscale map.
   cartoPositron,
 
-  /// Esri World Street Map - Professional street map
+  /// Esri World Street Map - Professional street map.
   esriWorldStreetMap,
 
-  /// Esri World Imagery - Satellite imagery
+  /// Esri World Imagery - Satellite imagery.
   esriWorldImagery,
 
-  /// Esri World Topo - Topographic map
+  /// Esri World Topo - Topographic map.
   esriWorldTopo,
 
-  /// OpenTopoMap - Free topographic map
+  /// OpenTopoMap - Free topographic map.
   openTopoMap,
 
-  /// CyclOSM - Optimized for cycling
+  /// CyclOSM - Optimized for cycling.
   cyclOSM,
 }
 
 /// Extension for MapSource to get tile URLs and metadata.
+
 extension MapSourceExtension on MapSource {
   /// Returns the tile URL template for this map source.
   String get urlTemplate {
@@ -84,6 +86,7 @@ extension MapSourceExtension on MapSource {
   }
 
   /// Returns subdomains if applicable (for load balancing).
+
   List<String> get subdomains {
     switch (this) {
       case MapSource.cartoVoyager:
@@ -99,6 +102,7 @@ extension MapSourceExtension on MapSource {
   }
 
   /// Display name.
+
   String get displayName {
     switch (this) {
       case MapSource.openStreetMap:
@@ -123,6 +127,7 @@ extension MapSourceExtension on MapSource {
   }
 
   /// Short description.
+
   String get description {
     switch (this) {
       case MapSource.openStreetMap:
@@ -147,6 +152,7 @@ extension MapSourceExtension on MapSource {
   }
 
   /// Icon for this map source.
+
   IconData get icon {
     switch (this) {
       case MapSource.openStreetMap:
@@ -166,18 +172,21 @@ extension MapSourceExtension on MapSource {
   }
 
   /// Whether this is a priority source (preload on startup).
+
   bool get isPriority {
     return this == MapSource.openStreetMap || this == MapSource.cartoDarkMatter;
   }
 
   /// Whether this is a dark/night-optimized map source.
   /// Dark sources don't need color matrix filter in dark mode.
+
   bool get isDarkSource {
     return this == MapSource.cartoDarkMatter;
   }
 
   /// Returns the maximum native zoom level for this map source.
   /// Beyond this level, tiles are upscaled from the max available.
+
   int get maxNativeZoom {
     switch (this) {
       case MapSource.openStreetMap:

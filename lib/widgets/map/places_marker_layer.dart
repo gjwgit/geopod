@@ -19,6 +19,7 @@ import 'package:geopod/widgets/map/marker_details_sheet.dart';
 import 'package:geopod/widgets/map/marker_with_animation.dart';
 
 /// Builds a marker layer for places.
+
 MarkerLayer buildPlacesMarkerLayer({
   required BuildContext context,
   required List<MarkerData> markers,
@@ -40,6 +41,7 @@ MarkerLayer buildPlacesMarkerLayer({
 }
 
 /// Builds a single marker widget.
+
 Marker _buildMarker({
   required BuildContext context,
   required MarkerData marker,
@@ -76,6 +78,7 @@ Marker _buildMarker({
 }
 
 /// Builds marker with encryption indicator.
+
 Widget _buildEncryptedMarker(Color color) {
   return Stack(
     alignment: Alignment.center,
@@ -90,6 +93,7 @@ Widget _buildEncryptedMarker(Color color) {
 }
 
 /// Builds the saving state marker with rotating animation.
+
 class _SavingMarker extends StatefulWidget {
   const _SavingMarker();
 
@@ -123,7 +127,8 @@ class _SavingMarkerState extends State<_SavingMarker>
       children: [
         // Base marker icon - cyan color to distinguish from examples (orange)
         Icon(Icons.location_on, size: 40, color: Colors.cyan.shade400),
-        // Rotating ring around the marker
+
+        // Rotating ring around the marker.
         Positioned(
           top: 2,
           child: AnimatedBuilder(
@@ -155,7 +160,8 @@ class _SavingMarkerState extends State<_SavingMarker>
             ),
           ),
         ),
-        // Cloud upload icon in center
+
+        // Cloud upload icon in center.
         const Positioned(
           top: 6,
           child: Icon(Icons.cloud_upload, size: 12, color: Colors.white),

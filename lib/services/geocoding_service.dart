@@ -33,18 +33,21 @@ import 'package:http/http.dart' as http;
 ///
 /// Uses OpenStreetMap's Nominatim API which is free and works on both
 /// Web and Desktop platforms without requiring any API keys.
+
 class GeocodingService {
   /// Nominatim API endpoint for reverse geocoding.
   static const String _nominatimEndpoint =
       'https://nominatim.openstreetmap.org/reverse';
 
   /// User-Agent header required by Nominatim API.
+
   static const String _userAgent = 'GeopodApp/1.0 (Flutter)';
 
   /// Converts latitude/longitude coordinates to a human-readable address.
   ///
   /// Returns "Address not found" if the request fails or no address is found.
   /// Always returns addresses in English.
+
   static Future<String> getAddress(double lat, double lng) async {
     try {
       final uri = Uri.parse(
@@ -80,6 +83,7 @@ class GeocodingService {
   /// Gets a shortened version of the address (city, state, country).
   ///
   /// This extracts key parts from the full address for display in limited space.
+
   static Future<String> getShortAddress(double lat, double lng) async {
     try {
       final uri = Uri.parse(

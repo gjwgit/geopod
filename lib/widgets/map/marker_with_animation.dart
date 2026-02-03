@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Maximum number of markers to animate simultaneously to prevent jank.
+
 const int _maxAnimatedMarkers = 20;
 
 /// Animated marker widget with delayed entrance animation.
@@ -36,7 +37,8 @@ const int _maxAnimatedMarkers = 20;
 /// - Only animates first [_maxAnimatedMarkers] markers to reduce overhead
 /// - Uses lightweight easeOutBack curve instead of elasticOut
 /// - Minimal stagger delay (max 200ms total)
-/// - Returns child directly when animation not needed
+/// - Returns child directly when animation not needed.
+
 class MarkerWithAnimation extends StatefulWidget {
   const MarkerWithAnimation({
     super.key,
@@ -65,12 +67,12 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
   void initState() {
     super.initState();
 
-    // Skip animation for markers beyond threshold to reduce jank
+    // Skip animation for markers beyond threshold to reduce jank.
     final shouldActuallyAnimate =
         widget.shouldAnimate && widget.index < _maxAnimatedMarkers;
 
     if (shouldActuallyAnimate) {
-      // Defer controller creation to avoid blocking initState
+      // Defer controller creation to avoid blocking initState.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _isDisposed) return;
         _setupAnimation();
@@ -79,7 +81,7 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
   }
 
   void _setupAnimation() {
-    // Double-check that widget hasn't been disposed
+    // Double-check that widget hasn't been disposed.
     if (_isDisposed || !mounted) return;
 
     _controller = AnimationController(
@@ -87,7 +89,8 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
       vsync: this,
     );
 
-    // Use lighter curves
+    // Use lighter curves.
+
     _scaleAnimation = CurvedAnimation(
       parent: _controller!,
       curve: Curves.easeOutCubic, // Lighter than easeOutBack
@@ -98,13 +101,15 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
       curve: Curves.easeOut,
     );
 
-    // Reduced stagger: max 200ms total delay for better perceived performance
+    // Reduced stagger: max 200ms total delay for better perceived performance.
     final delay = (widget.index * 25).clamp(0, 200);
     Future.delayed(Duration(milliseconds: delay), () {
       if (mounted && _controller != null) {
         _animationStarted = true;
         _controller!.forward();
-        // Trigger rebuild to show animation
+
+        // Trigger rebuild to show animation.
+
         if (mounted) setState(() {});
       }
     });
@@ -119,12 +124,13 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
 
   @override
   Widget build(BuildContext context) {
-    // Fast path: no animation needed
+    // Fast path: no animation needed.
     if (!widget.shouldAnimate || widget.index >= _maxAnimatedMarkers) {
       return widget.child;
     }
 
-    // Animation not yet set up - show child directly without opacity reduction
+    // Animation not yet set up - show child directly without opacity reduction.
+
     if (_controller == null || !_animationStarted) {
       return widget.child;
     }

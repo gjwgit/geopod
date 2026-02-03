@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:geopod/models/pod_file_item.dart';
 
 /// Returns the appropriate icon for a file item based on its type and extension.
+
 IconData getFileIcon(PodFileItem item) {
   if (item.isDirectory) return Icons.folder_rounded;
 
@@ -55,6 +56,7 @@ IconData getFileIcon(PodFileItem item) {
 }
 
 /// Returns the icon color for a file item based on its type.
+
 Color getFileIconColor(BuildContext context, PodFileItem item) {
   final colorScheme = Theme.of(context).colorScheme;
 
@@ -68,11 +70,13 @@ Color getFileIconColor(BuildContext context, PodFileItem item) {
 }
 
 /// Returns the background color for the file icon.
+
 Color getFileIconBackgroundColor(BuildContext context, PodFileItem item) {
   return getFileIconColor(context, item).withValues(alpha: 0.1);
 }
 
 /// Returns a human-readable type description for a file item.
+
 String getFileTypeDescription(PodFileItem item) {
   if (item.isDirectory) return 'Folder';
 

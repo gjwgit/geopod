@@ -18,6 +18,7 @@ import 'weather_chart_config.dart';
 import 'weather_chart_helpers.dart';
 
 /// A card widget displaying daily weather data summary.
+
 class WeatherDataCard extends StatelessWidget {
   const WeatherDataCard({
     required this.date,
@@ -69,7 +70,8 @@ class WeatherDataCard extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          // For wind_speed: show max wind in main position
+
+          // For wind_speed: show max wind in main position.
           if (dataType == 'wind_speed') ...[
             Text(
               '${dayMax.toStringAsFixed(1)}${getDataUnit(dataType)}',
@@ -89,7 +91,8 @@ class WeatherDataCard extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 2),
-          // Show average wind speed for wind_speed type
+
+          // Show average wind speed for wind_speed type.
           if (dataType == 'wind_speed') ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -109,7 +112,7 @@ class WeatherDataCard extends StatelessWidget {
               ],
             ),
           ] else if (dataType == 'precipitation') ...[
-            // For precipitation: show hours with rain
+            // For precipitation: show hours with rain.
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -125,7 +128,8 @@ class WeatherDataCard extends StatelessWidget {
                 ),
               ],
             ),
-            // Show max hourly rate
+
+            // Show max hourly rate.
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -144,7 +148,7 @@ class WeatherDataCard extends StatelessWidget {
               ],
             ),
           ] else if (dataType == 'temperature' || dataType == 'humidity') ...[
-            // For temperature and humidity: show min/max
+            // For temperature and humidity: show min/max.
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

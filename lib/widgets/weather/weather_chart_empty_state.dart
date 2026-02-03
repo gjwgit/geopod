@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Widget displayed when there is no data available for the chart.
+
 class WeatherChartEmptyState extends StatelessWidget {
   const WeatherChartEmptyState({required this.dataTitle, super.key});
 

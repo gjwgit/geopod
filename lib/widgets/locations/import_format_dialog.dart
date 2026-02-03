@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Dialog showing the expected JSON format for importing places.
+
 class ImportFormatDialog extends StatelessWidget {
   const ImportFormatDialog({super.key});
 

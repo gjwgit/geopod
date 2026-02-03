@@ -33,6 +33,7 @@ import 'package:geopod/models/place.dart';
 import 'package:geopod/services/map_settings_service.dart';
 
 /// Data model for a map marker.
+
 class MarkerData {
   final LatLng position;
   final String title;
@@ -71,6 +72,7 @@ class MarkerData {
 }
 
 /// Converts places to filtered marker data based on settings.
+
 List<MarkerData> buildFilteredMarkers({
   required List<Place> allPlaces,
   required MapSettings mapSettings,
@@ -80,9 +82,11 @@ List<MarkerData> buildFilteredMarkers({
   if (mapSettings.hideAllMarkers) return [];
 
   final visible = allPlaces.where((p) {
-    // Filter out local places if disabled
+    // Filter out local places if disabled.
     if (p.isLocal && !mapSettings.showLocalPlaces) return false;
-    // Filter out encrypted places if disabled
+
+    // Filter out encrypted places if disabled.
+
     if (p.isEncrypted && !mapSettings.showEncryptedPlaces) return false;
     return true;
   }).toList();

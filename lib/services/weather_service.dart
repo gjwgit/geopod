@@ -18,11 +18,13 @@ import 'package:geopod/models/hourly_weather_data.dart';
 import 'package:geopod/models/weather_data.dart';
 
 /// Service for fetching weather data from Open-Meteo API.
+
 class WeatherService {
   /// Base URL for Open-Meteo forecast API.
   static const String _forecastUrl = 'https://api.open-meteo.com/v1/forecast';
 
   /// Base URL for Open-Meteo archive API.
+
   static const String _archiveUrl =
       'https://archive-api.open-meteo.com/v1/era5';
 
@@ -30,6 +32,7 @@ class WeatherService {
   ///
   /// Returns [WeatherData] for the specified [latitude] and [longitude].
   /// Throws an exception if the request fails.
+
   Future<WeatherData> getCurrentWeather({
     required double latitude,
     required double longitude,
@@ -72,6 +75,7 @@ class WeatherService {
   /// Returns [HourlyWeatherData] with hourly data for the past [days].
   /// Uses the archive API to get actual past weather, not forecasts.
   /// Maximum [days] is 10 to ensure data is available (ERA5 has ~5-7 day delay).
+
   Future<HourlyWeatherData> getPastWeather({
     required double latitude,
     required double longitude,
@@ -127,6 +131,7 @@ class WeatherService {
   ///
   /// Returns [HourlyWeatherData] with hourly forecast data for the next [days].
   /// Maximum [days] is 16 (Open-Meteo forecast limit).
+
   Future<HourlyWeatherData> getForecastWeather({
     required double latitude,
     required double longitude,
@@ -174,17 +179,19 @@ class WeatherService {
   ///
   /// **Important**: ERA5 archive data has a delay of about 5-7 days.
   /// The end date must be at least 7 days before today.
+
   Future<HourlyWeatherData> getHistoricalWeather({
     required double latitude,
     required double longitude,
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    // ERA5 data has approximately 5-7 days delay
+    // ERA5 data has approximately 5-7 days delay.
     final now = DateTime.now();
     final maxEndDate = now.subtract(const Duration(days: 7));
 
-    // Validate date range
+    // Validate date range.
+
     if (endDate.isBefore(startDate)) {
       throw ArgumentError('endDate must be after startDate');
     }

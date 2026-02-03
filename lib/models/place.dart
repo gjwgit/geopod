@@ -26,6 +26,7 @@
 library;
 
 /// Data model representing a saved place.
+
 class Place {
   final String id;
   final double lat;
@@ -56,6 +57,7 @@ class Place {
   /// Creates a Place from JSON map.
   ///
   /// [isLocalSource] indicates if the JSON comes from local assets.
+
   factory Place.fromJson(
     Map<String, dynamic> json, {
     bool isLocalSource = false,
@@ -77,6 +79,7 @@ class Place {
 
   /// Converts Place to JSON map.
   /// Note: isLocal is not serialized as it's determined by source.
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -90,18 +93,22 @@ class Place {
 
   /// Returns a formatted display string for the place.
   /// Now returns the full note without truncation.
+
   String get displayTitle {
     return note.isNotEmpty ? note : '(No title)';
   }
 
   /// Returns formatted coordinates string.
+
   String get coordinates =>
       '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
 
   /// Returns the address or coordinates if address is not available.
+
   String get displayAddress => address ?? coordinates;
 
   /// Returns a short version of the address for display in limited space.
+
   String get shortAddress {
     if (address == null || address!.isEmpty) {
       return coordinates;
@@ -113,6 +120,7 @@ class Place {
   }
 
   /// Returns formatted date string.
+
   String get formattedDate {
     try {
       final date = DateTime.parse(timestamp);
@@ -124,6 +132,7 @@ class Place {
   }
 
   /// Creates a copy of this Place with optional field overrides.
+
   Place copyWith({
     String? id,
     double? lat,

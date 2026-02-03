@@ -31,6 +31,7 @@ import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
 
 /// Dialog for editing a place's lat, lng, and note.
+
 class EditPlaceDialog extends StatefulWidget {
   const EditPlaceDialog({super.key, required this.place});
 
@@ -70,6 +71,7 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
   }
 
   /// Previews the address for current coordinates.
+
   Future<void> _previewAddressForCoordinates() async {
     final lat = double.tryParse(_latController.text);
     final lng = double.tryParse(_lngController.text);
@@ -195,6 +197,7 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
                 ],
               ),
               const SizedBox(height: 12),
+
               // Preview address button.
               SizedBox(
                 width: double.infinity,
@@ -214,6 +217,7 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
                 ),
               ),
               const SizedBox(height: 12),
+
               // Address preview.
               Container(
                 width: double.infinity,

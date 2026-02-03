@@ -20,6 +20,7 @@ import 'package:geopod/widgets/geomap.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 
 /// Result of a delete operation.
+
 class DeletePlaceResult {
   final bool success;
   final int? removedIndex;
@@ -33,6 +34,7 @@ class DeletePlaceResult {
 }
 
 /// Prepares a place for deletion by finding it in the list.
+
 DeletePlaceResult prepareDeletePlace({
   required MarkerData marker,
   required List<Place> allPlaces,
@@ -49,6 +51,7 @@ DeletePlaceResult prepareDeletePlace({
 }
 
 /// Restores a place after failed deletion.
+
 void restorePlace({
   required List<Place> allPlaces,
   required int originalIndex,
@@ -62,26 +65,28 @@ void restorePlace({
 }
 
 /// Updates cache after successful deletion.
+
 void updateCacheAfterDelete(List<Place> allPlaces) {
   PlacesCacheManager().cacheAllPlaces(allPlaces);
 }
 
 /// Performs the delete operation on the server.
 /// Routes to appropriate service based on whether the place is encrypted.
+
 Future<bool> performDeleteOnServer({
   required String placeId,
   required BuildContext context,
   required bool isEncrypted,
 }) async {
   if (isEncrypted) {
-    // Delete from encrypted places service
+    // Delete from encrypted places service.
     return await EncryptedPlacesService.deleteEncryptedPlace(
       placeId,
       context,
       const GeoMapWidget(),
     );
   } else {
-    // Delete from regular places service
+    // Delete from regular places service.
     return await PlacesService.deletePlace(
       placeId,
       context,
@@ -91,6 +96,7 @@ Future<bool> performDeleteOnServer({
 }
 
 /// Shows a confirmation dialog for deleting a place.
+
 Future<bool> showDeleteConfirmationDialog(
   BuildContext context,
   MarkerData marker,
@@ -125,6 +131,7 @@ Future<bool> showDeleteConfirmationDialog(
 }
 
 /// Shows a snackbar indicating place not found.
+
 void showPlaceNotFoundSnackbar(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
@@ -135,6 +142,7 @@ void showPlaceNotFoundSnackbar(BuildContext context) {
 }
 
 /// Shows a snackbar indicating deletion in progress.
+
 void showDeletingSnackbar(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
@@ -145,6 +153,7 @@ void showDeletingSnackbar(BuildContext context) {
 }
 
 /// Shows a success snackbar after place is deleted.
+
 void showDeleteSuccessSnackbar(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -162,6 +171,7 @@ void showDeleteSuccessSnackbar(BuildContext context) {
 }
 
 /// Shows an error snackbar when delete fails.
+
 void showDeleteErrorSnackbar(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(

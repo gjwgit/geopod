@@ -56,15 +56,16 @@ void main() async {
 
   // CRITICAL: Set app directory name BEFORE any Pod operations
   // This must be called early to prevent double-slash bug in file paths
-  // Without this, paths become //data/places.json instead of geopod/data/places.json
+  // Without this, paths become //data/places.json instead of geopod/data/places.json.
   await setAppDirName('geopod');
 
   // Initialize encrypted places service to load persistent flags
-  // This improves performance by avoiding repeated checks
+  // This improves performance by avoiding repeated checks.
   await EncryptedPlacesService.initialize();
 
   // Configure SolidAuthHandler with app-specific settings
-  // This ensures proper login page navigation when guest users want to authenticate
+  // This ensures proper login page navigation when guest users want to authenticate.
+
   SolidAuthHandler.instance.configure(
     SolidAuthConfig(
       appTitle: appTitle,
@@ -73,7 +74,8 @@ void main() async {
       appImage: const AssetImage('assets/images/app_image.png'),
       appLogo: const AssetImage('assets/images/app_icon.png'),
       loginSuccessWidget: appScaffold,
-      // Clear security key on logout to ensure clean state
+
+      // Clear security key on logout to ensure clean state.
       onSecurityKeyReset: () async {
         await KeyManager.clear();
         debugPrint('GeoPod: Security key cleared on logout');

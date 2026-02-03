@@ -37,10 +37,12 @@ import 'widgets/geomap.dart';
 import 'widgets/locations_page.dart';
 
 /// App scaffold widget that responds to fullscreen mode changes.
+
 class AppScaffoldWidget extends StatelessWidget {
   const AppScaffoldWidget({super.key});
 
   /// Global key to access the GeoMap state for settings dialog.
+
   static final GlobalKey<GeoMapWidgetState> geoMapKey =
       GlobalKey<GeoMapWidgetState>();
 
@@ -50,10 +52,11 @@ class AppScaffoldWidget extends StatelessWidget {
       valueListenable: fullscreenModeNotifier,
       builder: (context, isFullscreen, child) {
         if (isFullscreen) {
-          // Fullscreen mode: show only the Home content without navigation
+          // Fullscreen mode: show only the Home content without navigation.
           return Home(title: appTitle, geoMapKey: geoMapKey);
         }
-        // Normal mode: show full scaffold with navigation
+
+        // Normal mode: show full scaffold with navigation.
         return _buildFullScaffold();
       },
     );
@@ -61,7 +64,7 @@ class AppScaffoldWidget extends StatelessWidget {
 
   Widget _buildFullScaffold() {
     return SolidScaffold(
-      // MENU
+      // MENU.
       menu: [
         SolidMenuItem(
           icon: Icons.home,
@@ -130,11 +133,11 @@ class AppScaffoldWidget extends StatelessWidget {
         ),
       ],
 
-      // APP BAR
+      // APP BAR.
       appBar: SolidAppBarConfig(
         title: appTitle.split('-')[0],
 
-        // VERSION
+        // VERSION.
         versionConfig: const SolidVersionConfig(
           changelogUrl:
               'https://github.com/gjwgit/geopod/blob/dev/'
@@ -146,7 +149,7 @@ class AppScaffoldWidget extends StatelessWidget {
           SolidAppBarAction(
             icon: Icons.settings,
             onPressed: () {
-              // Call the GeoMap's settings dialog
+              // Call the GeoMap's settings dialog.
               AppScaffoldWidget.geoMapKey.currentState?.showSettingsDialog();
             },
             tooltip: 'Settings',
@@ -155,7 +158,7 @@ class AppScaffoldWidget extends StatelessWidget {
         overflowItems: [],
       ),
 
-      // STATUS BAR
+      // STATUS BAR.
       statusBar: const SolidStatusBarConfig(
         serverInfo: SolidServerInfo(
           serverUri: 'https://pods.solidcommunity.au',
@@ -165,7 +168,7 @@ class AppScaffoldWidget extends StatelessWidget {
         showOnNarrowScreens: true, // Show status bar on Android/mobile
       ),
 
-      // ABOUT
+      // ABOUT.
       aboutConfig: SolidAboutConfig(
         applicationName: appTitle.split(' - ')[0],
         applicationIcon: Image.asset(
@@ -185,7 +188,7 @@ class AppScaffoldWidget extends StatelessWidget {
           ''',
       ),
 
-      // THEME DARK/LIGHT Mode
+      // THEME DARK/LIGHT Mode.
       themeToggle: const SolidThemeToggleConfig(
         enabled: true,
         showInAppBarActions: true,
@@ -197,4 +200,5 @@ class AppScaffoldWidget extends StatelessWidget {
 }
 
 /// Convenience variable for backward compatibility.
+
 final appScaffold = const AppScaffoldWidget();

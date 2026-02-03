@@ -17,9 +17,11 @@ import 'package:solid_auth/solid_auth.dart' show genDpopToken;
 import 'package:solidpod/solidpod.dart' show AuthDataManager, authStateNotifier;
 
 /// Authentication token pair for POD requests.
+
 typedef TokenPair = ({String accessToken, String dPopToken});
 
 /// Provides authentication utilities for POD access.
+
 class PodAuth {
   PodAuth._();
 
@@ -27,6 +29,7 @@ class PodAuth {
   ///
   /// [resourceUrl] - The URL of the resource to access.
   /// [method] - HTTP method (GET, PUT, POST, DELETE).
+
   static Future<TokenPair> getTokens(String resourceUrl, String method) async {
     final authData = await AuthDataManager.loadAuthData();
     if (authData == null) {
@@ -49,22 +52,26 @@ class PodAuth {
   }
 
   /// Get the current user's WebID.
+
   static Future<String?> getWebId() async {
     return await AuthDataManager.getWebId();
   }
 
   /// Check if user is currently logged in.
+
   static Future<bool> isLoggedIn() async {
     final webId = await AuthDataManager.getWebId();
     return webId != null && webId.isNotEmpty;
   }
 
   /// Check if user is logged in (synchronous, uses cached data).
+
   static bool isLoggedInSync() {
     return authStateNotifier.value;
   }
 
   /// Profile card path constant (same as solidpod).
+
   static const String _profCard = 'profile/card#me';
 
   /// Extract POD base URL from WebID.
@@ -73,14 +80,16 @@ class PodAuth {
   /// Returns: `https://pods.solidcommunity.au/`
   ///
   /// Uses the same approach as solidpod to handle ports and custom paths.
+
   static Future<String?> getPodBaseUrl() async {
     final webId = await getWebId();
     if (webId == null) return null;
 
     // Same method as solidpod: replace profile/card#me with empty string
-    // This preserves ports and any other URL components
+    // This preserves ports and any other URL components.
+
     if (!webId.contains(_profCard)) {
-      // Fallback to URI parsing if WebID doesn't have standard format
+      // Fallback to URI parsing if WebID doesn't have standard format.
       final uri = Uri.parse(webId);
       final port = uri.hasPort ? ':${uri.port}' : '';
       return '${uri.scheme}://${uri.host}$port/';
@@ -93,6 +102,7 @@ class PodAuth {
   ///
   /// [resourcePath] - Path to the resource (e.g., 'geopod/data/places').
   /// [isContainer] - Whether this is a directory (adds trailing slash).
+
   static Future<String> getResourceUrl(
     String resourcePath, {
     bool isContainer = false,

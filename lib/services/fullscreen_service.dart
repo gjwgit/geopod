@@ -14,9 +14,11 @@ import 'package:flutter/foundation.dart';
 
 /// Global notifier for fullscreen mode state.
 /// When true, sidebars and navigation elements should be hidden.
+
 final ValueNotifier<bool> fullscreenModeNotifier = ValueNotifier<bool>(false);
 
 /// Toggles the fullscreen mode on/off.
+
 void toggleFullscreenMode() {
   fullscreenModeNotifier.value = !fullscreenModeNotifier.value;
 }

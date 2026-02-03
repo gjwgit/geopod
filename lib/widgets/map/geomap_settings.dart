@@ -23,6 +23,7 @@ import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
 
 /// Result of loading map settings.
+
 class LoadSettingsResult {
   final MapSettings settings;
   final LatLng? initialCenter;
@@ -38,6 +39,7 @@ class LoadSettingsResult {
 }
 
 /// Loads map settings synchronously from SharedPreferences.
+
 Future<LoadSettingsResult> loadMapSettingsSync({
   required bool viewportInitialized,
 }) async {
@@ -51,7 +53,8 @@ Future<LoadSettingsResult> loadMapSettingsSync({
       );
     }
 
-    // Load viewport separately
+    // Load viewport separately.
+
     try {
       final viewport = await MapSettingsService.getStartupViewport(settings);
       return LoadSettingsResult(
@@ -76,6 +79,7 @@ Future<LoadSettingsResult> loadMapSettingsSync({
 
 /// Validates the saved encrypted places setting.
 /// Returns true if validation passed and encrypted places should be loaded.
+
 Future<bool> validateSavedEncryptedSetting({
   required MapSettings mapSettings,
   required bool isLoggedIn,
@@ -84,11 +88,11 @@ Future<bool> validateSavedEncryptedSetting({
   if (!mapSettings.showEncryptedPlaces) return false;
 
   if (!isLoggedIn) {
-    // Not logged in, setting should be reset
+    // Not logged in, setting should be reset.
     return false;
   }
 
-  // Check if encrypted places are already loaded
+  // Check if encrypted places are already loaded.
   final hasEncryptedPlaces = allPlaces.any((p) => p.isEncrypted);
   if (hasEncryptedPlaces) {
     debugPrint(
@@ -97,7 +101,7 @@ Future<bool> validateSavedEncryptedSetting({
     return false;
   }
 
-  // Check if security key is already available
+  // Check if security key is already available.
   final hasKey = await EncryptedPlacesService.isSecurityKeyAvailable();
   debugPrint(
     'validateSavedEncryptedSetting: hasKey=$hasKey, will load encrypted places',
@@ -108,6 +112,7 @@ Future<bool> validateSavedEncryptedSetting({
 }
 
 /// Saves current viewport position if rememberViewport is enabled.
+
 void saveViewportIfEnabled({
   required MapController mapController,
   required MapSettings mapSettings,
@@ -119,11 +124,12 @@ void saveViewportIfEnabled({
     final zoom = mapController.camera.zoom;
     saveLastViewport(lat: center.latitude, lng: center.longitude, zoom: zoom);
   } catch (_) {
-    // Ignore errors during viewport saving
+    // Ignore errors during viewport saving.
   }
 }
 
 /// Handles settings dialog changes.
+
 class SettingsChangeResult {
   final bool mapSourceChanged;
   final bool encryptedToggled;
@@ -137,6 +143,7 @@ class SettingsChangeResult {
 }
 
 /// Computes what changed when settings are updated.
+
 SettingsChangeResult computeSettingsChanges({
   required MapSettings oldSettings,
   required MapSettings newSettings,

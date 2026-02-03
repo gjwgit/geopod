@@ -21,6 +21,7 @@ import 'package:geopod/services/places_service.dart'
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
 
 /// Result of loading places.
+
 class LoadPlacesResult {
   final List<Place> places;
   final bool showLoading;
@@ -34,6 +35,7 @@ class LoadPlacesResult {
 }
 
 /// Loads all places (local and pod) with optional encrypted places.
+
 Future<LoadPlacesResult> loadPlacesWithState({
   required List<Place> currentPlaces,
   required bool forceRefresh,
@@ -47,7 +49,7 @@ Future<LoadPlacesResult> loadPlacesWithState({
     includeEncrypted: includeEncrypted,
   );
 
-  // Check if data actually changed to avoid unnecessary rebuild
+  // Check if data actually changed to avoid unnecessary rebuild.
   final hasChanges =
       currentPlaces.length != places.length ||
       !currentPlaces.every((p) => places.any((np) => np.id == p.id));
@@ -60,6 +62,7 @@ Future<LoadPlacesResult> loadPlacesWithState({
 }
 
 /// Result of loading encrypted places.
+
 class LoadEncryptedPlacesResult {
   final List<Place> encryptedPlaces;
   final bool cancelled;
@@ -74,6 +77,7 @@ class LoadEncryptedPlacesResult {
 
 /// Load encrypted places on demand when user enables the setting.
 /// If [skipKeyVerification] is true, assumes security key is already verified.
+
 Future<LoadEncryptedPlacesResult> loadEncryptedPlacesData({
   required BuildContext context,
   required Widget widget,
@@ -91,7 +95,7 @@ Future<LoadEncryptedPlacesResult> loadEncryptedPlacesData({
       widget,
     );
     if (!hasKey) {
-      // User cancelled or key not available
+      // User cancelled or key not available.
       return LoadEncryptedPlacesResult(encryptedPlaces: [], cancelled: true);
     }
   }
@@ -108,18 +112,22 @@ Future<LoadEncryptedPlacesResult> loadEncryptedPlacesData({
 }
 
 /// Merges encrypted places into all places list.
+
 List<Place> mergeEncryptedPlaces({
   required List<Place> allPlaces,
   required List<Place> encryptedPlaces,
 }) {
-  // Remove any existing encrypted places first
+  // Remove any existing encrypted places first.
   final result = allPlaces.where((p) => !p.isEncrypted).toList();
-  // Add newly loaded encrypted places
+
+  // Add newly loaded encrypted places.
+
   result.addAll(encryptedPlaces);
   return result;
 }
 
 /// Removes encrypted places from all places list.
+
 List<Place> removeEncryptedPlaces({required List<Place> allPlaces}) {
   return allPlaces.where((p) => !p.isEncrypted).toList();
 }

@@ -25,6 +25,7 @@ import 'weather/weather_chart_pdf.dart';
 import 'weather/weather_chart_range_indicator.dart';
 
 /// Displays hourly weather data as a simple line chart.
+
 class HourlyWeatherChart extends StatefulWidget {
   const HourlyWeatherChart({
     required this.data,
@@ -67,10 +68,10 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
 
   @override
   Widget build(BuildContext context) {
-    // Get configuration for this data type
+    // Get configuration for this data type.
     const maxChartDataPoints = 30;
 
-    // Process weather data
+    // Process weather data.
     final processedData = processWeatherData(
       data: widget.data,
       dataType: widget.dataType,
@@ -78,7 +79,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
       maxChartDataPoints: maxChartDataPoints,
     );
 
-    // Extract processed data
+    // Extract processed data.
     final dailyData = processedData.dailyData;
     final originalDailyData = processedData.originalDailyData;
     final originalDailyMaxData = processedData.originalDailyMaxData;
@@ -93,12 +94,13 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
     final dailyMinMax = processedData.dailyMinMax;
     final precipitationHours = processedData.precipitationHours;
 
-    // Get data metadata
+    // Get data metadata.
     final title = getDataTitle(widget.dataType);
     final unit = getDataUnit(widget.dataType);
     final icon = getDataIcon(widget.dataType);
 
-    // Check if data is empty
+    // Check if data is empty.
+
     if (dailyData.isEmpty) {
       return WeatherChartEmptyState(dataTitle: title);
     }
@@ -106,7 +108,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header with date range
+        // Header with date range.
         WeatherChartHeader(
           title: title,
           startDate: widget.data.startDate,
@@ -126,7 +128,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         ),
         const SizedBox(height: 16),
 
-        // Legend for temperature and wind speed dual-line chart
+        // Legend for temperature and wind speed dual-line chart.
         if (widget.dataType == 'temperature')
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -175,7 +177,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
             ),
           ),
 
-        // Simple chart using daily data
+        // Simple chart using daily data.
         Container(
           height: 250,
           decoration: BoxDecoration(
@@ -211,7 +213,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         ),
         const SizedBox(height: 4),
 
-        // Chart info with tooltip
+        // Chart info with tooltip.
         if (widget.data.getDailyAverages().length > maxChartDataPoints)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -220,7 +222,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
                 Builder(
                   builder: (context) => GestureDetector(
                     onTap: () {
-                      // Show info dialog when tapped
+                      // Show info dialog when tapped.
                       showDialog<void>(
                         context: context,
                         builder: (context) => AlertDialog(
@@ -260,7 +262,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
           ),
         const SizedBox(height: 8),
 
-        // Export PDF button
+        // Export PDF button.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: OutlinedButton.icon(
@@ -293,7 +295,7 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         ),
         const SizedBox(height: 12),
 
-        // Daily data list with scrollbar
+        // Daily data list with scrollbar.
         Row(
           children: [
             Text(

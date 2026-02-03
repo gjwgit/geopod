@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// A simple detail row widget.
+
 class DetailRow extends StatelessWidget {
   const DetailRow({super.key, required this.label, required this.value});
 

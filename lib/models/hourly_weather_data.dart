@@ -11,6 +11,7 @@
 library;
 
 /// Hourly weather data point.
+
 class HourlyWeatherPoint {
   HourlyWeatherPoint({
     required this.time,
@@ -28,6 +29,7 @@ class HourlyWeatherPoint {
 }
 
 /// Hourly weather data series.
+
 class HourlyWeatherData {
   HourlyWeatherData({
     required this.data,
@@ -74,6 +76,7 @@ class HourlyWeatherData {
   final DateTime endDate;
 
   /// Get daily average temperatures.
+
   Map<DateTime, double> getDailyAverages() {
     final dailyTemps = <DateTime, List<double>>{};
 
@@ -89,6 +92,7 @@ class HourlyWeatherData {
   }
 
   /// Get daily average humidity.
+
   Map<DateTime, double> getDailyAverageHumidity() {
     final dailyHumidity = <DateTime, List<double>>{};
 
@@ -107,6 +111,7 @@ class HourlyWeatherData {
   }
 
   /// Get daily average wind speed.
+
   Map<DateTime, double> getDailyAverageWindSpeed() {
     final dailyWindSpeed = <DateTime, List<double>>{};
 
@@ -124,6 +129,7 @@ class HourlyWeatherData {
 
   /// Get daily min/max values for a specific data type.
   /// Returns a map where each date maps to (min, max) tuple.
+
   Map<DateTime, (double, double)> getDailyMinMax(String dataType) {
     final dailyValues = <DateTime, List<double>>{};
 
@@ -159,6 +165,7 @@ class HourlyWeatherData {
   }
 
   /// Get temperature range (min, max).
+
   (double min, double max) getTemperatureRange() {
     var min = data.first.temperature;
     var max = data.first.temperature;
@@ -172,6 +179,7 @@ class HourlyWeatherData {
   }
 
   /// Get humidity range (min, max).
+
   (double min, double max) getHumidityRange() {
     final validPoints = data.where((p) => p.humidity != null).toList();
     if (validPoints.isEmpty) return (0, 100);
@@ -189,6 +197,7 @@ class HourlyWeatherData {
   }
 
   /// Get wind speed range (min, max).
+
   (double min, double max) getWindSpeedRange() {
     final validPoints = data.where((p) => p.windSpeed != null).toList();
     if (validPoints.isEmpty) return (0, 30);
@@ -206,11 +215,12 @@ class HourlyWeatherData {
 
   /// Get daily total precipitation.
   /// Sums all hourly precipitation values for each day.
+
   Map<DateTime, double> getDailyTotalPrecipitation() {
     final dailyPrecipitation = <DateTime, List<double>>{};
 
     for (final point in data) {
-      // Include 0 values, skip only null
+      // Include 0 values, skip only null.
       if (point.precipitation == null) continue;
       final date = DateTime(point.time.year, point.time.month, point.time.day);
       dailyPrecipitation.putIfAbsent(date, () => []).add(point.precipitation!);
@@ -218,6 +228,7 @@ class HourlyWeatherData {
 
     // Return empty map ONLY if no precipitation data exists at all
     // If all values are 0, we still return the data (not empty map)
+
     if (dailyPrecipitation.isEmpty) return {};
 
     return dailyPrecipitation.map(
@@ -230,6 +241,7 @@ class HourlyWeatherData {
 
   /// Get count of hours with precipitation for each day.
   /// Counts hours where precipitation > 0.
+
   Map<DateTime, int> getDailyPrecipitationHours() {
     final dailyHours = <DateTime, int>{};
 
@@ -238,10 +250,11 @@ class HourlyWeatherData {
       final date = DateTime(point.time.year, point.time.month, point.time.day);
 
       // Count hours with measurable precipitation (> 0)
+
       if (point.precipitation! > 0) {
         dailyHours[date] = (dailyHours[date] ?? 0) + 1;
       } else {
-        // Ensure date exists in map even if no precipitation
+        // Ensure date exists in map even if no precipitation.
         dailyHours.putIfAbsent(date, () => 0);
       }
     }
@@ -250,6 +263,7 @@ class HourlyWeatherData {
   }
 
   /// Get precipitation range (min, max) for hourly data.
+
   (double min, double max) getPrecipitationRange() {
     final validPoints = data.where((p) => p.precipitation != null).toList();
     if (validPoints.isEmpty) return (0, 2); // Smaller default range
@@ -262,7 +276,8 @@ class HourlyWeatherData {
       if (point.precipitation! > max) max = point.precipitation!;
     }
 
-    // If all values are 0 or very close, set a small visible range
+    // If all values are 0 or very close, set a small visible range.
+
     if (max < 0.1) {
       return (0, 1.0); // Show 0-1mm range for very small/zero precipitation
     }
@@ -277,6 +292,7 @@ class HourlyWeatherData {
   /// Get daily total precipitation range (min, max).
   /// Used for chart axis scaling when displaying daily totals.
   /// Min is always 0 (precipitation cannot be negative).
+
   (double min, double max) getDailyTotalPrecipitationRange() {
     final dailyTotals = getDailyTotalPrecipitation();
     if (dailyTotals.isEmpty) return (0, 10); // Default range for no data
@@ -288,7 +304,8 @@ class HourlyWeatherData {
       if (value > maxValue) maxValue = value;
     }
 
-    // If all values are 0 or very close, set a visible range
+    // If all values are 0 or very close, set a visible range.
+
     if (maxValue < 0.5) {
       return (0, 5.0); // Show 0-5mm range for very small/zero precipitation
     }
@@ -297,7 +314,7 @@ class HourlyWeatherData {
       return (0, maxValue + 5.0);
     }
 
-    // Add some padding to the max for better visualization
+    // Add some padding to the max for better visualization.
     return (0, maxValue * 1.1);
   }
 }

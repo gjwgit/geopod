@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Helper for showing snackbars with consistent styling.
+
 class SnackBarHelper {
   /// Shows a loading snackbar with a progress indicator.
   static void showLoading(
@@ -46,6 +47,7 @@ class SnackBarHelper {
   }
 
   /// Shows a success snackbar with a checkmark icon.
+
   static void showSuccess(
     BuildContext context,
     String message, {
@@ -68,6 +70,7 @@ class SnackBarHelper {
   }
 
   /// Shows an error snackbar with an error icon.
+
   static void showError(
     BuildContext context,
     String message, {
@@ -90,6 +93,7 @@ class SnackBarHelper {
   }
 
   /// Shows a warning snackbar with a warning icon.
+
   static void showWarning(
     BuildContext context,
     String message, {
@@ -112,6 +116,7 @@ class SnackBarHelper {
   }
 
   /// Shows an info snackbar.
+
   static void showInfo(
     BuildContext context,
     String message, {
@@ -128,6 +133,7 @@ class SnackBarHelper {
 }
 
 /// Helper for showing confirmation dialogs.
+
 class DialogHelper {
   /// Shows a confirmation dialog with customizable title, content, and buttons.
   ///
@@ -177,6 +183,7 @@ class DialogHelper {
   }
 
   /// Shows a destructive confirmation dialog (for delete operations).
+
   static Future<bool> showDestructiveConfirmation(
     BuildContext context, {
     required String title,

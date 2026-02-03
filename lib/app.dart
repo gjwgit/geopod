@@ -40,6 +40,7 @@ import 'package:geopod/services/places_service.dart';
 /// The root application widget.
 ///
 /// Uses SolidLogin from solidui for authentication UI.
+
 class App extends StatelessWidget {
   const App({super.key});
 
@@ -47,14 +48,15 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     // Register global callback for clearing caches during logout
     // This is called once at app startup to ensure caches are cleared
-    // BEFORE any blocking network operations during logout
+    // BEFORE any blocking network operations during logout.
     registerLogoutCacheCallback(() async {
       await PlacesService.clearCache();
+
       // Note: MapSettings are user preferences, not user data,
-      // so we don't clear them during logout
+      // so we don't clear them during logout.
     });
 
-    // Wrap appScaffold to ensure preload happens on navigation
+    // Wrap appScaffold to ensure preload happens on navigation.
     final appWithPreload = _AppScaffoldWrapper(child: appScaffold);
 
     final loginWidget = SolidLogin(
@@ -76,6 +78,7 @@ class App extends StatelessWidget {
 
 /// Preloads data on app startup for instant map page access.
 /// All platforms use this for initial data preloading.
+
 class _StartupPreloader extends StatefulWidget {
   const _StartupPreloader({required this.child});
 
@@ -91,7 +94,8 @@ class _StartupPreloaderState extends State<_StartupPreloader> {
     super.initState();
 
     // Preload map settings on app startup (both guests and logged-in users)
-    // Places data is now loaded on-demand by the map page
+    // Places data is now loaded on-demand by the map page.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(preloadMapSettings());
     });
@@ -106,6 +110,7 @@ class _StartupPreloaderState extends State<_StartupPreloader> {
 /// Wrapper that triggers preload when navigated to (for Continue button).
 /// This ensures data is preloaded even when user navigates via Continue button
 /// after the initial app startup preload.
+
 class _AppScaffoldWrapper extends StatefulWidget {
   const _AppScaffoldWrapper({required this.child});
 
@@ -121,10 +126,13 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
     super.initState();
 
     // Trigger preload when this widget is mounted (after login)
-    // Only preload local settings, network data will be loaded by pages themselves
+    // Only preload local settings, network data will be loaded by pages themselves.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(preloadMapSettings());
-      // Sync settings from POD with delay to avoid network congestion
+
+      // Sync settings from POD with delay to avoid network congestion.
+
       unawaited(syncSettingsFromPod());
     });
   }

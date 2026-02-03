@@ -18,6 +18,7 @@ import 'package:solidui/solidui.dart';
 import 'package:geopod/widgets/settings/encryption_key_operations.dart';
 
 /// Builds the reset to defaults button.
+
 Widget buildResetButton({required VoidCallback onReset}) {
   return Center(
     child: TextButton.icon(
@@ -31,6 +32,7 @@ Widget buildResetButton({required VoidCallback onReset}) {
 
 /// Builds the logout and debug buttons section.
 /// Only visible when user is logged in.
+
 Widget buildUserActionsSection(BuildContext context) {
   return FutureBuilder<String?>(
     future: getWebId(),
@@ -43,9 +45,10 @@ Widget buildUserActionsSection(BuildContext context) {
           Center(
             child: TextButton.icon(
               onPressed: () async {
-                // Close settings dialog first
+                // Close settings dialog first.
                 Navigator.pop(context);
-                // Then handle logout
+
+                // Then handle logout.
                 await SolidAuthHandler.instance.handleLogout(context);
               },
               icon: const Icon(Icons.logout, size: 18),
@@ -54,7 +57,8 @@ Widget buildUserActionsSection(BuildContext context) {
             ),
           ),
           const SizedBox(height: 8),
-          // DEBUG: Delete encryption keys from server
+
+          // DEBUG: Delete encryption keys from server.
           Center(
             child: TextButton.icon(
               onPressed: () => deleteEncryptionKeys(context),

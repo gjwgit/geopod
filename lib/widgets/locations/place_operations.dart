@@ -17,6 +17,7 @@ import 'package:geopod/utils/ui_utils.dart';
 import 'package:geopod/widgets/locations_page.dart';
 
 /// Shows delete confirmation dialog.
+
 Future<bool> showDeletePlaceConfirmation(BuildContext context, Place place) {
   return DialogHelper.showDestructiveConfirmation(
     context,
@@ -27,6 +28,7 @@ Future<bool> showDeletePlaceConfirmation(BuildContext context, Place place) {
 }
 
 /// Shows clear all confirmation dialog.
+
 Future<bool> showClearAllConfirmation(BuildContext context, int count) {
   return DialogHelper.showDestructiveConfirmation(
     context,
@@ -38,6 +40,7 @@ Future<bool> showClearAllConfirmation(BuildContext context, int count) {
 }
 
 /// Deletes a place and shows appropriate snackbars.
+
 Future<bool> deletePlaceWithFeedback(BuildContext context, Place place) async {
   SnackBarHelper.showInfo(
     context,
@@ -62,6 +65,7 @@ Future<bool> deletePlaceWithFeedback(BuildContext context, Place place) async {
 }
 
 /// Clears all places and shows appropriate snackbars.
+
 Future<bool> clearAllPlacesWithFeedback(BuildContext context, int count) async {
   SnackBarHelper.showInfo(
     context,
@@ -85,6 +89,7 @@ Future<bool> clearAllPlacesWithFeedback(BuildContext context, int count) async {
 }
 
 /// Shows export success/failure snackbar.
+
 void showExportResultSnackbar(BuildContext context, bool success, int count) {
   if (success) {
     SnackBarHelper.showSuccess(context, 'Exported $count places successfully');
@@ -94,6 +99,7 @@ void showExportResultSnackbar(BuildContext context, bool success, int count) {
 }
 
 /// Shows updating place snackbar.
+
 void showUpdatingPlaceSnackbar(BuildContext context, bool coordsChanged) {
   SnackBarHelper.showLoading(
     context,
@@ -104,11 +110,13 @@ void showUpdatingPlaceSnackbar(BuildContext context, bool coordsChanged) {
 }
 
 /// Shows update success snackbar.
+
 void showUpdateSuccessSnackbar(BuildContext context) {
   SnackBarHelper.showSuccess(context, 'Place updated successfully');
 }
 
 /// Shows update failure snackbar.
+
 void showUpdateFailureSnackbar(BuildContext context) {
   SnackBarHelper.showError(context, 'Failed to update place');
 }

@@ -11,6 +11,7 @@
 library;
 
 /// Format timezone offset for PDF display (e.g., "+1100", "-0500", "+0000").
+
 String formatTimeZoneOffset(Duration offset) {
   final hours = offset.inHours;
   final minutes = offset.inMinutes.remainder(60).abs();

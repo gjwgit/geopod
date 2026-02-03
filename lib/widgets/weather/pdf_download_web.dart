@@ -16,8 +16,9 @@ import 'dart:typed_data';
 import 'package:web/web.dart' as web;
 
 /// Download PDF file on web platform.
+
 void downloadPdfWeb(List<int> bytes, String filename) {
-  // Convert Uint8List to JSUint8Array
+  // Convert Uint8List to JSUint8Array.
   final jsBytes = (bytes as Uint8List).toJS;
   final blob = web.Blob(
     [jsBytes].toJS,

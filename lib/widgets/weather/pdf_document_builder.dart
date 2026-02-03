@@ -22,6 +22,7 @@ import 'pdf_dual_chart_painter.dart';
 import 'pdf_utils.dart';
 
 /// Build complete PDF document for weather data report.
+
 pw.Document buildWeatherPdfDocument({
   required HourlyWeatherData data,
   required Map<DateTime, double> dailyData,
@@ -49,7 +50,7 @@ pw.Document buildWeatherPdfDocument({
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(32),
       build: (context) => [
-        // Title
+        // Title.
         pw.Header(
           level: 0,
           child: pw.Text(
@@ -59,7 +60,7 @@ pw.Document buildWeatherPdfDocument({
         ),
         pw.SizedBox(height: 20),
 
-        // Location info
+        // Location info.
         if (address != null && address.isNotEmpty) ...[
           pw.Text(
             'Location: $address',
@@ -95,14 +96,14 @@ pw.Document buildWeatherPdfDocument({
           pw.SizedBox(height: 10),
         ],
 
-        // Date range
+        // Date range.
         pw.Text(
           'Date Range: ${dateFormat.format(data.startDate)} - ${dateFormat.format(data.endDate)}',
           style: const pw.TextStyle(fontSize: 12),
         ),
         pw.SizedBox(height: 10),
 
-        // Data type
+        // Data type.
         pw.Text(
           'Data Type: $title',
           style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
@@ -170,7 +171,7 @@ pw.Document buildWeatherPdfDocument({
           ),
         pw.SizedBox(height: 20),
 
-        // Algorithm explanation
+        // Algorithm explanation.
         pw.Container(
           padding: const pw.EdgeInsets.all(12),
           decoration: pw.BoxDecoration(
@@ -202,13 +203,14 @@ pw.Document buildWeatherPdfDocument({
         ),
         pw.SizedBox(height: 20),
 
-        // Chart visualization
+        // Chart visualization.
         pw.Text(
           'Data Visualization',
           style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 10),
-        // Use dual chart for temperature and wind_speed, single chart for others
+
+        // Use dual chart for temperature and wind_speed, single chart for others.
         if ((dataType == 'temperature' || dataType == 'wind_speed') &&
             dailyMaxData != null &&
             dailyMinData != null)
@@ -229,7 +231,7 @@ pw.Document buildWeatherPdfDocument({
           ),
         pw.SizedBox(height: 20),
 
-        // Daily data table
+        // Daily data table.
         pw.Text(
           dataType == 'precipitation'
               ? 'Daily Total Data'
@@ -246,7 +248,7 @@ pw.Document buildWeatherPdfDocument({
         ),
         pw.SizedBox(height: 20),
 
-        // Footer
+        // Footer.
         pw.Text(
           'Generated: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())} UTC${formatTimeZoneOffset(DateTime.now().timeZoneOffset)}',
           style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),

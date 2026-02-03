@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 /// Header widget for the weather chart showing title and date range.
+
 class WeatherChartHeader extends StatelessWidget {
   const WeatherChartHeader({
     required this.title,

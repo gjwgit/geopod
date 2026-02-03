@@ -15,6 +15,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 /// Build data table for PDF showing daily weather statistics.
+
 pw.Widget buildPdfDataTable({
   required Map<DateTime, double> dailyData,
   required Map<DateTime, (double, double)> dailyMinMax,
@@ -44,12 +45,13 @@ pw.Widget buildPdfDataTable({
     data: (dailyData.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))
         .map((entry) {
           final date = entry.key;
+
           // For precipitation: dailyData contains daily totals
-          // For other types: dailyData contains daily averages
+          // For other types: dailyData contains daily averages.
           final value = entry.value;
           final (dayMin, dayMax) = dailyMinMax[date] ?? (value, value);
 
-          // For precipitation, show hours with rain and max hourly rate
+          // For precipitation, show hours with rain and max hourly rate.
           final secondCol = dataType == 'precipitation'
               ? (precipitationHours?[date] ?? 0).toString()
               : dayMin.toStringAsFixed(1);

@@ -19,6 +19,7 @@ import 'package:geopod/widgets/settings/color_picker_tile.dart';
 import 'package:geopod/widgets/settings/viewport_selector.dart';
 
 /// Shows color picker dialog for selecting a color.
+
 Future<void> showColorPickerDialog({
   required BuildContext context,
   required String title,
@@ -78,6 +79,7 @@ Future<void> showColorPickerDialog({
 }
 
 /// Builds the visibility section of settings.
+
 Widget buildVisibilitySection({
   required bool showLocalPlaces,
   required bool showEncryptedPlaces,
@@ -121,7 +123,8 @@ Widget buildVisibilitySection({
           color: showLocalPlaces ? Colors.green : Colors.grey,
         ),
       ),
-      // Only show encrypted places option when logged in
+
+      // Only show encrypted places option when logged in.
       if (isLoggedIn) ...[
         const SizedBox(height: 8),
         SwitchListTile(
@@ -152,6 +155,7 @@ Widget buildVisibilitySection({
 }
 
 /// Builds the viewport section of settings.
+
 Widget buildViewportSection({
   required bool rememberViewport,
   required double initialLat,
@@ -196,6 +200,7 @@ Widget buildViewportSection({
 }
 
 /// Builds the map source selection section.
+
 Widget buildMapSourceSection({
   required MapSource mapSource,
   required void Function(MapSource) onMapSourceChanged,
@@ -268,6 +273,7 @@ Widget buildMapSourceSection({
 }
 
 /// Builds the marker colors section.
+
 Widget buildMarkerColorsSection({
   required BuildContext context,
   required Color userPlacesColor,

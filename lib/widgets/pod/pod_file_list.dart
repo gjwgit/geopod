@@ -19,6 +19,7 @@ import 'package:geopod/models/pod_file_item.dart';
 import 'package:geopod/widgets/pod/file_list_tile.dart';
 
 /// Widget for displaying a list of POD files and directories with animations.
+
 class PodFileList extends StatefulWidget {
   /// List of file items to display.
   final List<PodFileItem> items;
@@ -71,14 +72,14 @@ class _PodFileListState extends State<PodFileList> {
       return _buildEmptyState(context);
     }
 
-    // Separate directories and files
+    // Separate directories and files.
     final directories = widget.items.where((i) => i.isDirectory).toList();
     final files = widget.items.where((i) => !i.isDirectory).toList();
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        // Directories section
+        // Directories section.
         if (directories.isNotEmpty)
           ...[
               const SectionHeader(
@@ -94,7 +95,7 @@ class _PodFileListState extends State<PodFileList> {
               icon: Icons.folder,
             ),
 
-        // Files section
+        // Files section.
         if (files.isNotEmpty) ...[
           if (directories.isNotEmpty) const SizedBox(height: 8),
           SectionHeader(
@@ -210,17 +211,20 @@ class _PodFileListState extends State<PodFileList> {
   }
 
   /// Performs delete with animation.
+
   void _performDelete(PodFileItem item) {
-    // Start delete animation
+    // Start delete animation.
     setState(() => _deletingItems.add(item.path));
 
-    // Schedule cleanup and delete after animation frame
+    // Schedule cleanup and delete after animation frame.
+
     SchedulerBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 200), () {
         if (mounted) {
           setState(() => _deletingItems.remove(item.path));
         }
-        // Fire and forget - don't block on the async delete
+
+        // Fire and forget - don't block on the async delete.
         final onDelete = widget.onDelete;
         if (onDelete != null) {
           unawaited(Future(() => onDelete(item)));

@@ -28,6 +28,7 @@ import 'package:geopod/widgets/map/place_save_handler.dart';
 /// Updates UI immediately, then performs background save.
 /// If [encrypted] is true, the place will be marked as encrypted for
 /// immediate purple marker display.
+
 void handleOptimisticPlaceSave({
   required Place place,
   required List<Place> allPlaces,
@@ -37,24 +38,31 @@ void handleOptimisticPlaceSave({
   required Future<void> Function(Place) performBackgroundSave,
   bool encrypted = false,
 }) {
-  // Mark place as encrypted if saving to encrypted storage
+  // Mark place as encrypted if saving to encrypted storage.
   final placeToSave = encrypted ? place.copyWith(isEncrypted: true) : place;
-  // Update state first
+
+  // Update state first.
+
   setState(() {
     allPlaces.insert(0, placeToSave);
     savingPlaceIds.add(placeToSave.id);
   });
-  // Show snackbar after frame to avoid jank
+
+  // Show snackbar after frame to avoid jank.
+
   SchedulerBinding.instance.addPostFrameCallback((_) {
     if (context.mounted) {
       showSavingSnackbar(context, placeToSave);
     }
   });
-  // Start background save
+
+  // Start background save.
+
   unawaited(performBackgroundSave(placeToSave));
 }
 
 /// Performs background save and updates UI on completion.
+
 Future<void> performPlaceBackgroundSave({
   required Place originalPlace,
   required BuildContext context,
@@ -71,7 +79,7 @@ Future<void> performPlaceBackgroundSave({
     );
     if (!context.mounted) return;
     if (updatedPlace != null) {
-      // Schedule state update after current frame to avoid animation jank
+      // Schedule state update after current frame to avoid animation jank.
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         setState(() {
@@ -85,7 +93,9 @@ Future<void> performPlaceBackgroundSave({
     }
   } catch (e) {
     if (!context.mounted) return;
-    // Schedule error handling after current frame
+
+    // Schedule error handling after current frame.
+
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!context.mounted) return;
       setState(() {
@@ -98,6 +108,7 @@ Future<void> performPlaceBackgroundSave({
 }
 
 /// Confirms and deletes a place with optimistic UI updates.
+
 Future<void> confirmAndDeletePlace({
   required MarkerData marker,
   required BuildContext context,
@@ -118,6 +129,7 @@ Future<void> confirmAndDeletePlace({
 
   // Update cache BEFORE server delete to prevent race condition
   // (placesChangeNotifier triggers _loadAllPlaces which would restore old data)
+
   updateCacheAfterDelete(allPlaces);
 
   showDeletingSnackbar(context);

@@ -12,18 +12,23 @@
 
 library;
 
-// Core authentication
+// Core authentication.
+
 export 'pod_auth.dart';
 
-// Path utilities
+// Path utilities.
+
 export 'pod_path.dart';
 
-// HTTP client
+// HTTP client.
+
 export 'pod_http.dart'
     show PodResponse, ResourceStatus, PodContentType, PodHttp;
 
-// High-level file system API
+// High-level file system API.
+
 export 'pod_file_system.dart';
 
-// Directory listing service
+// Directory listing service.
+
 export 'pod_directory_service.dart';

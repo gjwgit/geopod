@@ -19,6 +19,7 @@ import 'package:geopod/widgets/locations/import_preview_dialog.dart';
 import 'package:geopod/widgets/locations_page.dart';
 
 /// Shows import failed dialog with errors.
+
 Future<void> showImportFailedDialog(
   BuildContext context,
   List<String> errors,
@@ -81,6 +82,7 @@ Future<void> showImportFailedDialog(
 }
 
 /// Shows importing progress dialog.
+
 void showImportingProgressDialog(
   BuildContext context,
   ValueNotifier<String> progress,
@@ -107,6 +109,7 @@ void showImportingProgressDialog(
 }
 
 /// Shows import success snackbar.
+
 void showImportSuccessSnackbar(BuildContext context, int count) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -123,6 +126,7 @@ void showImportSuccessSnackbar(BuildContext context, int count) {
 }
 
 /// Shows import failure snackbar.
+
 void showImportFailureSnackbar(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
@@ -133,6 +137,7 @@ void showImportFailureSnackbar(BuildContext context) {
 }
 
 /// Shows no places to export snackbar.
+
 void showNoPlacesToExportSnackbar(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
@@ -143,6 +148,7 @@ void showNoPlacesToExportSnackbar(BuildContext context) {
 }
 
 /// Shows no places found snackbar.
+
 void showNoPlacesFoundSnackbar(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
@@ -153,6 +159,7 @@ void showNoPlacesFoundSnackbar(BuildContext context) {
 }
 
 /// Performs the full import flow.
+
 Future<bool> performImportFlow(
   BuildContext context,
   Future<void> Function() onSuccess,
@@ -195,7 +202,8 @@ Future<bool> performImportFlow(
 
   if (!context.mounted) return false;
 
-  // If encrypted, check security key first
+  // If encrypted, check security key first.
+
   if (encrypted) {
     final hasKey = await EncryptedPlacesService.ensureSecurityKey(
       context,
@@ -222,7 +230,7 @@ Future<bool> performImportFlow(
 
   bool success;
   if (encrypted) {
-    // Import to encrypted storage
+    // Import to encrypted storage.
     success = await EncryptedPlacesService.mergeImportedEncryptedPlaces(
       edited,
       context,
@@ -231,7 +239,7 @@ Future<bool> performImportFlow(
           'Importing ${edited.length} places (encrypted)...\nFetching addresses ($c/$t)...',
     );
   } else {
-    // Import to regular storage
+    // Import to regular storage.
     success = await PlacesService.mergeImportedPlaces(
       edited,
       context,

@@ -14,6 +14,7 @@ library;
 ///
 /// This function is not used on non-web platforms as PDF handling
 /// is done through the printing package.
+
 void downloadPdfWeb(List<int> bytes, String filename) {
   throw UnsupportedError('downloadPdfWeb is only supported on web platform');
 }

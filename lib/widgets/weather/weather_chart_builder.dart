@@ -16,6 +16,7 @@ import 'weather_chart_dual_painter.dart';
 import 'weather_chart_painter.dart';
 
 /// Build a dual-line chart widget.
+
 Widget buildDualLineChart({
   required Map<DateTime, double> chartMaxData,
   required Map<DateTime, double> chartMinData,
@@ -23,7 +24,7 @@ Widget buildDualLineChart({
   required double dataMax,
   required String dataType,
 }) {
-  // Handle flat data: if max == min for all points, don't draw chart
+  // Handle flat data: if max == min for all points, don't draw chart.
   final allFlat =
       chartMaxData.values.every((v) => v == dataMax) &&
       chartMinData.values.every((v) => v == dataMin) &&
@@ -58,13 +59,14 @@ Widget buildDualLineChart({
 }
 
 /// Build a simple single-line chart widget.
+
 Widget buildSimpleChart({
   required Map<DateTime, double> chartData,
   required double dataMin,
   required double dataMax,
   required String dataType,
 }) {
-  // Determine color based on data type
+  // Determine color based on data type.
   Color lineColor = Colors.blue; // Default color
   if (dataType == 'humidity') {
     lineColor = Colors.red; // Red for humidity

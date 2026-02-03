@@ -15,6 +15,7 @@ library;
 
 /// Raw example places data as a constant list.
 /// This data is compiled into the binary, ensuring zero-latency access.
+
 const List<Map<String, dynamic>> kExamplePlacesData = [
   {
     'id': 'local_001',

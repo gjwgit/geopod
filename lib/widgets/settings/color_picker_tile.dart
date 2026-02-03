@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// A tile widget for displaying and selecting a color.
+
 class ColorPickerTile extends StatelessWidget {
   const ColorPickerTile({
     super.key,
@@ -64,6 +65,7 @@ class ColorPickerTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 16),
+
             // Label and subtitle.
             Expanded(
               child: Column(
@@ -83,6 +85,7 @@ class ColorPickerTile extends StatelessWidget {
                 ],
               ),
             ),
+
             // Edit icon.
             Icon(Icons.edit, color: Colors.grey.shade400, size: 20),
           ],

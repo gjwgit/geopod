@@ -47,6 +47,7 @@ import 'package:geopod/services/places/encrypted_places_paths.dart';
 /// cleanup or another client), the persistent flag won't detect it until a write
 /// operation fails. The app handles this by clearing the flag on write failures,
 /// forcing re-verification on the next attempt (see encrypted_places_service.dart).
+
 Future<(bool success, bool dirCreated)> ensureEncryptedPlacesDir(
   bool directoryVerified,
 ) async {
@@ -58,7 +59,7 @@ Future<(bool success, bool dirCreated)> ensureEncryptedPlacesDir(
 
   try {
     // Only check directory if not yet verified
-    // This network call happens only once per installation
+    // This network call happens only once per installation.
     final fullDirPath = await getFullEncryptedPlacesDirPath();
     final dirUrl = await getDirUrl(fullDirPath);
 
@@ -70,6 +71,7 @@ Future<(bool success, bool dirCreated)> ensureEncryptedPlacesDir(
       await setInheritKeyDir(dirUrl, createAcl: true);
       return (true, true); // Directory was created
     }
+
     // Directory exists, return success without creation
     return (true, false);
   } catch (e) {
@@ -80,6 +82,7 @@ Future<(bool success, bool dirCreated)> ensureEncryptedPlacesDir(
 
 /// Read encrypted places from Pod.
 /// Optimized: tries to read directly without checking existence first.
+
 Future<List<Place>> fetchEncryptedPlacesFromPod() async {
   final places = <Place>[];
 
@@ -93,7 +96,8 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
     final filePath = getEncryptedPlacesFilePath();
     final content = await readPod(filePath);
 
-    // Handle non-existent file or errors gracefully
+    // Handle non-existent file or errors gracefully.
+
     if (content == SolidFunctionCallStatus.notLoggedIn.toString() ||
         content == SolidFunctionCallStatus.fail.toString() ||
         content.isEmpty) {
@@ -135,12 +139,13 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
 /// paths relative to the data directory (e.g., "encrypted_data/places.json").
 /// The inheritKeyFrom parameter also uses a relative directory path.
 /// This differs from ensureEncryptedPlacesDir() which uses full URLs.
+
 Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(
   List<Place> places,
   bool directoryVerified,
 ) async {
   try {
-    // Ensure directory exists
+    // Ensure directory exists.
     final (dirExists, dirCreated) = await ensureEncryptedPlacesDir(
       directoryVerified,
     );
@@ -153,7 +158,7 @@ Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(
     final filePath = getEncryptedPlacesFilePath();
     final dirPath = getEncryptedPlacesDirPath();
 
-    // Convert places to JSON
+    // Convert places to JSON.
 
     final jsonList = places.map((p) => p.toJson()).toList();
     final jsonContent = jsonEncode(jsonList);
@@ -172,7 +177,7 @@ Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(
       inheritKeyFrom: dirPath,
     );
 
-    // writePod returns void in 0.9.x, assume success if no exception
+    // writePod returns void in 0.9.x, assume success if no exception.
     return (true, dirCreated);
   } catch (e) {
     debugPrint('Error writing encrypted places: $e');

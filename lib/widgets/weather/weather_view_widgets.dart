@@ -191,7 +191,7 @@ Widget buildPastWeatherView({
         HourlyWeatherChart(
           data: pastWeatherData,
           dataType: selectedDataType,
-          sortAscending: false, // Past: newest to oldest
+          sortAscending: true, // Past: oldest to newest
           latitude: latitude,
           longitude: longitude,
           address: address,
@@ -347,7 +347,7 @@ Widget buildHistoricalWeatherView({
         HourlyWeatherChart(
           data: historicalWeatherData,
           dataType: selectedDataType,
-          sortAscending: false, // Historical: newest to oldest
+          sortAscending: true, // Historical: oldest to newest
           latitude: latitude,
           longitude: longitude,
           address: address,

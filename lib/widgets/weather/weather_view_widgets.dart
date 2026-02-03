@@ -77,7 +77,6 @@ Widget buildCurrentWeatherView({
         const SizedBox(height: 12),
 
         // Main weather display.
-
         Center(
           child: Column(
             children: [
@@ -99,7 +98,6 @@ Widget buildCurrentWeatherView({
               ),
 
               // Show today's high/low if available.
-
               if (weatherData.dailyMaxTemp != null &&
                   weatherData.dailyMinTemp != null) ...[
                 const SizedBox(height: 4),
@@ -116,7 +114,6 @@ Widget buildCurrentWeatherView({
         const SizedBox(height: 16),
 
         // Weather details.
-
         buildWeatherDetail(
           icon: Icons.water_drop,
           label: 'Humidity',

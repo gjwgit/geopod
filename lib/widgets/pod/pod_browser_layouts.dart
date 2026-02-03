@@ -181,7 +181,6 @@ class WideLayoutView extends StatelessWidget {
         const VerticalDivider(width: 1),
 
         // Preview (right panel)
-
         Expanded(
           child: selectedFile != null
               ? PodFilePreview(file: selectedFile!, onClose: onClearSelection)
@@ -241,7 +240,6 @@ class MediumLayoutView extends StatelessWidget {
         const VerticalDivider(width: 1),
 
         // Preview.
-
         Expanded(
           child: selectedFile != null
               ? PodFilePreview(file: selectedFile!, onClose: onClearSelection)

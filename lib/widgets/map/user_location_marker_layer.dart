@@ -111,7 +111,6 @@ class _UserLocationMarkerState extends State<_UserLocationMarker>
         ),
 
         // Static accuracy circle.
-
         Container(
           width: 40,
           height: 40,
@@ -126,7 +125,6 @@ class _UserLocationMarkerState extends State<_UserLocationMarker>
         ),
 
         // Inner blue dot.
-
         Container(
           width: 16,
           height: 16,

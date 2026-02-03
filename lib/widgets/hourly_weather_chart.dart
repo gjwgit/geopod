@@ -117,7 +117,6 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         const SizedBox(height: 12),
 
         // Data range indicator (shows actual data min/max with dates)
-
         WeatherChartRangeIndicator(
           dataMin: dataMin,
           dataMax: dataMax,
@@ -130,7 +129,6 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         const SizedBox(height: 16),
 
         // Legend for temperature and wind speed dual-line chart.
-
         if (widget.dataType == 'temperature')
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -180,7 +178,6 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
           ),
 
         // Simple chart using daily data.
-
         Container(
           height: 250,
           decoration: BoxDecoration(
@@ -217,7 +214,6 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         const SizedBox(height: 4),
 
         // Chart info with tooltip.
-
         if (widget.data.getDailyAverages().length > maxChartDataPoints)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -267,7 +263,6 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         const SizedBox(height: 8),
 
         // Export PDF button.
-
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: OutlinedButton.icon(
@@ -301,7 +296,6 @@ class _HourlyWeatherChartState extends State<HourlyWeatherChart> {
         const SizedBox(height: 12),
 
         // Daily data list with scrollbar.
-
         Row(
           children: [
             Text(

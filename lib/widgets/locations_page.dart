@@ -305,7 +305,6 @@ class _LocationsPageState extends State<LocationsPage>
           ),
 
           // Only show action buttons when logged in.
-
           if (isLoggedIn)
             LocationsActionButtons(
               isLoading: _isLoading,

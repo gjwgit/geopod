@@ -184,7 +184,6 @@ void showMarkerDetailsSheet(
           ),
 
           // Delete button for user's saved places only.
-
           if (!marker.isLocal && !marker.isSaving && onDelete != null) ...[
             const SizedBox(height: 20),
             const Divider(),

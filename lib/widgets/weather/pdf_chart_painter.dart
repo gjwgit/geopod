@@ -83,7 +83,6 @@ pw.Widget buildPdfChart(
             ),
 
             // Chart with grid and line.
-
             pw.Positioned(
               left: 30,
               top: 20,
@@ -193,7 +192,6 @@ pw.Widget buildPdfChart(
             ),
 
             // X-axis date labels.
-
             pw.Positioned(
               left: 30,
               right: 5,
@@ -255,7 +253,6 @@ pw.Widget buildPdfChart(
       pw.SizedBox(height: 4),
 
       // Info text.
-
       pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [

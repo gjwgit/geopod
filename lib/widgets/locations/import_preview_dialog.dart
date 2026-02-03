@@ -149,7 +149,6 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
               ],
 
               // Info box about editing.
-
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -180,7 +179,6 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
               const SizedBox(height: 12),
 
               // Encryption option.
-
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(

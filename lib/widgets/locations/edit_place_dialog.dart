@@ -199,7 +199,6 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
               const SizedBox(height: 12),
 
               // Preview address button.
-
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -220,7 +219,6 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
               const SizedBox(height: 12),
 
               // Address preview.
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),

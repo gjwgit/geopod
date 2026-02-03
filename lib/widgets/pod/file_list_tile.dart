@@ -170,7 +170,6 @@ class FileListTileContent extends StatelessWidget {
                 const SizedBox(width: 12),
 
                 // File info.
-
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +196,6 @@ class FileListTileContent extends StatelessWidget {
                 ),
 
                 // Actions.
-
                 if (item.isDirectory)
                   Icon(Icons.chevron_right, color: colorScheme.outline)
                 else ...[

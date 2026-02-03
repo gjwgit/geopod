@@ -230,7 +230,6 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               const Divider(height: 24),
 
               // Viewport section.
-
               buildViewportSection(
                 rememberViewport: _rememberViewport,
                 initialLat: _initialLat,
@@ -252,7 +251,6 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               const Divider(height: 24),
 
               // Map source section.
-
               buildMapSourceSection(
                 mapSource: _mapSource,
                 onMapSourceChanged: (source) {
@@ -264,7 +262,6 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               const Divider(height: 24),
 
               // Marker colors section.
-
               buildMarkerColorsSection(
                 context: context,
                 userPlacesColor: _userPlacesColor,
@@ -281,12 +278,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               const SizedBox(height: 20),
 
               // Reset button.
-
               buildResetButton(onReset: _resetToDefaults),
               const SizedBox(height: 12),
 
               // User actions (logout, debug buttons)
-
               buildUserActionsSection(context),
             ],
           ),

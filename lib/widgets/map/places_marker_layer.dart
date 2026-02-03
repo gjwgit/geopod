@@ -129,7 +129,6 @@ class _SavingMarkerState extends State<_SavingMarker>
         Icon(Icons.location_on, size: 40, color: Colors.cyan.shade400),
 
         // Rotating ring around the marker.
-
         Positioned(
           top: 2,
           child: AnimatedBuilder(
@@ -163,7 +162,6 @@ class _SavingMarkerState extends State<_SavingMarker>
         ),
 
         // Cloud upload icon in center.
-
         const Positioned(
           top: 6,
           child: Icon(Icons.cloud_upload, size: 12, color: Colors.white),

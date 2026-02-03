@@ -96,7 +96,6 @@ class _PodFileListState extends State<PodFileList> {
             ),
 
         // Files section.
-
         if (files.isNotEmpty) ...[
           if (directories.isNotEmpty) const SizedBox(height: 8),
           SectionHeader(

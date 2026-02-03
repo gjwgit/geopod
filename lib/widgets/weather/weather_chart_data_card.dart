@@ -72,7 +72,6 @@ class WeatherDataCard extends StatelessWidget {
           const SizedBox(height: 4),
 
           // For wind_speed: show max wind in main position.
-
           if (dataType == 'wind_speed') ...[
             Text(
               '${dayMax.toStringAsFixed(1)}${getDataUnit(dataType)}',
@@ -94,7 +93,6 @@ class WeatherDataCard extends StatelessWidget {
           const SizedBox(height: 2),
 
           // Show average wind speed for wind_speed type.
-
           if (dataType == 'wind_speed') ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -132,7 +130,6 @@ class WeatherDataCard extends StatelessWidget {
             ),
 
             // Show max hourly rate.
-
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

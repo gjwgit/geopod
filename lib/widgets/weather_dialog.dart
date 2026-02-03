@@ -259,15 +259,12 @@ class _WeatherDialogState extends State<WeatherDialog>
                       : _buildWeatherView(),
 
                   // Past weather tab.
-
                   _buildPastWeatherView(),
 
                   // Forecast weather tab.
-
                   _buildForecastWeatherView(),
 
                   // Historical weather tab.
-
                   _buildHistoricalWeatherView(),
                 ],
               ),

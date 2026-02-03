@@ -79,7 +79,6 @@ Future<void> showNewsListDialog({
             const SizedBox(height: 12),
 
             // News list.
-
             Expanded(
               child: visibleNewsMarkers.isEmpty
                   ? Center(
@@ -174,7 +173,6 @@ Future<void> showNewsListDialog({
             const SizedBox(height: 12),
 
             // Close button.
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(

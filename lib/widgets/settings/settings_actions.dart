@@ -59,7 +59,6 @@ Widget buildUserActionsSection(BuildContext context) {
           const SizedBox(height: 8),
 
           // DEBUG: Delete encryption keys from server.
-
           Center(
             child: TextButton.icon(
               onPressed: () => deleteEncryptionKeys(context),

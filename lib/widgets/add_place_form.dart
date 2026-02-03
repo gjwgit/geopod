@@ -314,7 +314,6 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                 const SizedBox(height: 16),
 
                 // Longitude field.
-
                 TextFormField(
                   controller: _longitudeController,
                   decoration: const InputDecoration(
@@ -335,7 +334,6 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                 const SizedBox(height: 16),
 
                 // Address preview.
-
                 if (_isLoadingAddress || _addressPreview != null)
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -399,7 +397,6 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                   const SizedBox(height: 16),
 
                 // Note field.
-
                 TextFormField(
                   controller: _noteController,
                   decoration: const InputDecoration(
@@ -415,7 +412,6 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                 const SizedBox(height: 16),
 
                 // Encryption checkbox.
-
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(

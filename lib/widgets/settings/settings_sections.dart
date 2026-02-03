@@ -125,7 +125,6 @@ Widget buildVisibilitySection({
       ),
 
       // Only show encrypted places option when logged in.
-
       if (isLoggedIn) ...[
         const SizedBox(height: 8),
         SwitchListTile(

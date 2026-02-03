@@ -68,7 +68,6 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
           const Divider(height: 24),
 
           // News title.
-
           Text(
             newsMarker.title,
             style: Theme.of(
@@ -78,7 +77,6 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
           const SizedBox(height: 12),
 
           // Source and date.
-
           if (newsMarker.source != null || newsMarker.publishedAt != null)
             Row(
               children: [
@@ -108,7 +106,6 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
             ),
 
           // Tone indicator.
-
           if (newsMarker.tone != null) ...[
             const SizedBox(height: 8),
             Row(
@@ -138,7 +135,6 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
           const SizedBox(height: 16),
 
           // Location info.
-
           Row(
             children: [
               Icon(Icons.location_on, size: 16, color: Colors.grey.shade600),
@@ -155,7 +151,6 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
           const SizedBox(height: 20),
 
           // Action buttons.
-
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [

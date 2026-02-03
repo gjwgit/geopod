@@ -21,8 +21,6 @@ import 'package:intl/intl.dart';
 
 import 'package:geopod/utils/ui_utils.dart';
 
-// Conditional import for platform-specific PDF download.
-
 import 'pdf_download_stub.dart' if (dart.library.html) 'pdf_download_web.dart';
 
 /// Handle PDF export with platform-specific save dialog.

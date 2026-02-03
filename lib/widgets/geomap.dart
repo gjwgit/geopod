@@ -413,7 +413,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           ),
 
           // Loading indicator.
-
           buildLoadingIndicator(isLoading: isLoadingPlaces),
           AddPlaceOverlayButton(
             isLoading: isLoadingPlaces,
@@ -434,7 +433,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           ),
 
           // Fullscreen toggle button.
-
           const FullscreenToggleButton(),
         ],
       ),

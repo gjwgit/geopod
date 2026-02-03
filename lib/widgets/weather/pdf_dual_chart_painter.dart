@@ -66,7 +66,6 @@ pw.Widget buildPdfDualChart(
       pw.SizedBox(height: 10),
 
       // Chart area.
-
       pw.Container(
         height: 200,
         decoration: pw.BoxDecoration(
@@ -96,7 +95,6 @@ pw.Widget buildPdfDualChart(
             ),
 
             // Chart with grid and lines.
-
             pw.Positioned(
               left: 30,
               top: 20,
@@ -247,7 +245,6 @@ pw.Widget buildPdfDualChart(
             ),
 
             // X-axis labels.
-
             pw.Positioned(
               left: 30,
               right: 5,
@@ -314,7 +311,6 @@ pw.Widget buildPdfDualChart(
       pw.SizedBox(height: 5),
 
       // Info text.
-
       pw.Text(
         'Curve: Catmull-Rom spline interpolation',
         style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),

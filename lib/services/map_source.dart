@@ -34,35 +34,27 @@ enum MapSource {
   openStreetMap,
 
   /// CartoDB Voyager - Colorful detailed map.
-
   cartoVoyager,
 
   /// CartoDB Dark Matter - Night-optimized dark map.
-
   cartoDarkMatter,
 
   /// CartoDB Positron - Light grayscale map.
-
   cartoPositron,
 
   /// Esri World Street Map - Professional street map.
-
   esriWorldStreetMap,
 
   /// Esri World Imagery - Satellite imagery.
-
   esriWorldImagery,
 
   /// Esri World Topo - Topographic map.
-
   esriWorldTopo,
 
   /// OpenTopoMap - Free topographic map.
-
   openTopoMap,
 
   /// CyclOSM - Optimized for cycling.
-
   cyclOSM,
 }
 

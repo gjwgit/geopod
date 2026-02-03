@@ -80,7 +80,6 @@ Widget buildFlutterMapWidget({
           ),
 
           // Wrap marker layer in RepaintBoundary to isolate marker animations.
-
           RepaintBoundary(
             child: buildPlacesMarkerLayer(
               context: context,
@@ -98,7 +97,6 @@ Widget buildFlutterMapWidget({
             ),
 
           // User location marker layer (always on top)
-
           ...() {
             final userLocationLayer = buildUserLocationMarkerLayer(
               userLocation: userLocation,

@@ -35,6 +35,7 @@ import 'package:uuid/uuid.dart';
 import 'package:geopod/models/place.dart';
 
 /// Result of an import operation.
+
 class ImportResult {
   /// Successfully parsed and validated places.
   final List<Place> places = [];
@@ -43,19 +44,24 @@ class ImportResult {
   final List<String> errors = [];
 
   /// Number of items that were skipped due to validation errors.
+
   int skippedCount = 0;
 
   /// Whether the user cancelled the file picker.
+
   bool cancelled = false;
 
   /// Whether the import was successful (at least one place imported).
+
   bool get hasPlaces => places.isNotEmpty;
 
   /// Whether there were any errors during import.
+
   bool get hasErrors => errors.isNotEmpty;
 }
 
 /// Service for importing and exporting places data.
+
 class PlacesImportExport {
   /// Exports user's Pod places to a JSON file and triggers download.
   ///
@@ -93,7 +99,8 @@ class PlacesImportExport {
   /// - id: auto-generated if missing (UUID)
   /// - timestamp: uses current time if missing
   /// - note: defaults to empty string if missing
-  /// - address: defaults to "Unknown Location" if missing
+  /// - address: defaults to "Unknown Location" if missing.
+
   static Future<ImportResult> importPlaces() async {
     final result = ImportResult();
 
@@ -160,6 +167,7 @@ class PlacesImportExport {
         }
 
         // Validate lat/lng ranges.
+
         if (lat < -90 || lat > 90) {
           result.errors.add(
             'Item ${i + 1}: lat must be between -90 and 90, skipped',

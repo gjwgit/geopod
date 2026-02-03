@@ -25,11 +25,13 @@ import 'package:geopod/services/pod/pod_directory_service.dart';
 const String settingsFileName = 'settings.json';
 
 /// Keys for last viewport storage.
+
 const String keyLastLat = 'map_last_lat';
 const String keyLastLng = 'map_last_lng';
 const String keyLastZoom = 'map_last_zoom';
 
 /// Get the full file path for settings in POD.
+
 Future<String> getSettingsFilePath() async {
   final path = await getDataDirPath();
   return '$path/$settingsFileName';
@@ -37,6 +39,7 @@ Future<String> getSettingsFilePath() async {
 
 /// Read settings from POD.
 /// Returns null if not logged in or if no settings exist.
+
 Future<Map<String, dynamic>?> readSettingsFromPod() async {
   try {
     // Quick sync check - avoid slow async checkLoggedIn()
@@ -68,6 +71,7 @@ Future<Map<String, dynamic>?> readSettingsFromPod() async {
 
 /// Write settings to POD (silently, in background).
 /// Note: This is only called when user is logged in (from settings dialog close).
+
 Future<bool> writeSettingsToPod(Map<String, dynamic> data) async {
   try {
     final fp = await getSettingsFilePath();
@@ -97,6 +101,7 @@ Future<bool> writeSettingsToPod(Map<String, dynamic> data) async {
 }
 
 /// Represents a map viewport position (center + zoom).
+
 class ViewportPosition {
   final double lat;
   final double lng;
@@ -110,6 +115,7 @@ class ViewportPosition {
 }
 
 /// Saves the last viewed viewport position.
+
 Future<bool> saveLastViewport({
   required double lat,
   required double lng,
@@ -127,6 +133,7 @@ Future<bool> saveLastViewport({
 }
 
 /// Loads the last viewed viewport position.
+
 Future<ViewportPosition?> loadLastViewport() async {
   try {
     final prefs = await SharedPreferences.getInstance();

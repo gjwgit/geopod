@@ -31,6 +31,7 @@ import 'package:geopod/widgets/map/marker_data.dart';
 import 'package:geopod/widgets/weather_dialog.dart';
 
 /// Shows detailed information about a marker in a bottom sheet.
+
 void showMarkerDetailsSheet(
   BuildContext context,
   MarkerData marker, {
@@ -183,6 +184,7 @@ void showMarkerDetailsSheet(
           ),
 
           // Delete button for user's saved places only.
+
           if (!marker.isLocal && !marker.isSaving && onDelete != null) ...[
             const SizedBox(height: 20),
             const Divider(),

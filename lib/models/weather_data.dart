@@ -11,6 +11,7 @@
 library;
 
 /// Weather data from Open-Meteo API.
+
 class WeatherData {
   WeatherData({
     required this.temperature,
@@ -28,7 +29,8 @@ class WeatherData {
   factory WeatherData.fromJson(Map<String, dynamic> json) {
     final current = json['current'] as Map<String, dynamic>;
 
-    // Get today's min/max temperature from daily data if available
+    // Get today's min/max temperature from daily data if available.
+
     double? maxTemp;
     double? minTemp;
     if (json.containsKey('daily')) {
@@ -43,7 +45,8 @@ class WeatherData {
       }
     }
 
-    // Calculate today's total precipitation from hourly data
+    // Calculate today's total precipitation from hourly data.
+
     double? todayTotal;
     if (json.containsKey('hourly')) {
       final hourly = json['hourly'] as Map<String, dynamic>;
@@ -55,7 +58,9 @@ class WeatherData {
         double sum = 0.0;
         for (var i = 0; i < times.length; i++) {
           final time = DateTime.parse(times[i]);
-          // Only sum precipitation for hours up to current time today
+
+          // Only sum precipitation for hours up to current time today.
+
           if (time.year == now.year &&
               time.month == now.month &&
               time.day == now.day &&
@@ -94,6 +99,7 @@ class WeatherData {
   todayTotalPrecipitation; // Total precipitation accumulated today
 
   /// Get weather description from WMO weather code.
+
   String get weatherDescription {
     return switch (weatherCode) {
       0 => 'Clear sky',
@@ -129,6 +135,7 @@ class WeatherData {
   }
 
   /// Get weather icon based on weather code.
+
   String get weatherIcon {
     return switch (weatherCode) {
       0 || 1 => '☀️',
@@ -146,7 +153,8 @@ class WeatherData {
   }
 
   /// Get wind direction description from degrees.
-  /// 0° = North, 90° = East, 180° = South, 270° = West
+  /// 0° = North, 90° = East, 180° = South, 270° = West.
+
   String get windDirectionDescription {
     if (windDirection >= 337.5 || windDirection < 22.5) return 'N';
     if (windDirection >= 22.5 && windDirection < 67.5) return 'NE';
@@ -160,6 +168,7 @@ class WeatherData {
   }
 
   /// Get wind direction full name.
+
   String get windDirectionFullName {
     return switch (windDirectionDescription) {
       'N' => 'North',
@@ -177,6 +186,7 @@ class WeatherData {
   /// Get arrow icon for wind direction.
   /// Wind direction follows meteorological convention: indicates where wind is coming FROM.
   /// Arrow points toward the direction the wind is coming FROM (e.g., 90° = East wind = arrow points → toward east).
+
   String get windDirectionArrow {
     if (windDirection >= 337.5 || windDirection < 22.5) return '↑';
     if (windDirection >= 22.5 && windDirection < 67.5) return '↗';

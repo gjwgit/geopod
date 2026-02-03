@@ -21,6 +21,7 @@ import 'package:geopod/widgets/hourly_weather_chart.dart';
 import 'weather_detail_builders.dart';
 
 /// Build error view for failed weather loading.
+
 Widget buildErrorView(BuildContext context, String? errorMessage) {
   return Column(
     mainAxisSize: MainAxisSize.min,
@@ -42,6 +43,7 @@ Widget buildErrorView(BuildContext context, String? errorMessage) {
 }
 
 /// Build current weather view.
+
 Widget buildCurrentWeatherView({
   required BuildContext context,
   required WeatherData weatherData,
@@ -59,7 +61,7 @@ Widget buildCurrentWeatherView({
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Location
+        // Location.
         if (address != null && address.isNotEmpty) ...[
           Text(address, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 4),
@@ -74,7 +76,8 @@ Widget buildCurrentWeatherView({
         ),
         const SizedBox(height: 12),
 
-        // Main weather display
+        // Main weather display.
+
         Center(
           child: Column(
             children: [
@@ -94,7 +97,9 @@ Widget buildCurrentWeatherView({
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              // Show today's high/low if available
+
+              // Show today's high/low if available.
+
               if (weatherData.dailyMaxTemp != null &&
                   weatherData.dailyMinTemp != null) ...[
                 const SizedBox(height: 4),
@@ -110,7 +115,8 @@ Widget buildCurrentWeatherView({
         ),
         const SizedBox(height: 16),
 
-        // Weather details
+        // Weather details.
+
         buildWeatherDetail(
           icon: Icons.water_drop,
           label: 'Humidity',
@@ -142,6 +148,7 @@ Widget buildCurrentWeatherView({
 }
 
 /// Build past weather view.
+
 Widget buildPastWeatherView({
   required BuildContext context,
   required bool isLoading,
@@ -203,6 +210,7 @@ Widget buildPastWeatherView({
 }
 
 /// Build forecast weather view.
+
 Widget buildForecastWeatherView({
   required BuildContext context,
   required bool isLoading,
@@ -264,6 +272,7 @@ Widget buildForecastWeatherView({
 }
 
 /// Build historical weather view.
+
 Widget buildHistoricalWeatherView({
   required BuildContext context,
   required bool isLoading,

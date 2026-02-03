@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Widget shown while loading places.
+
 class LoadingView extends StatelessWidget {
   const LoadingView({super.key});
 
@@ -47,6 +48,7 @@ class LoadingView extends StatelessWidget {
 }
 
 /// Widget shown when an error occurs.
+
 class ErrorView extends StatelessWidget {
   final String errorMessage;
   final VoidCallback onRetry;
@@ -88,6 +90,7 @@ class ErrorView extends StatelessWidget {
 }
 
 /// Widget shown when no places are saved.
+
 class EmptyPlacesView extends StatelessWidget {
   final VoidCallback onRefresh;
   final VoidCallback onImport;

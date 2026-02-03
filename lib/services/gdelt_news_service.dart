@@ -24,6 +24,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 /// Represents a news marker with geographic location and metadata.
+
 class NewsMarker {
   final String id;
   final LatLng location;
@@ -46,6 +47,7 @@ class NewsMarker {
   });
 
   /// Parse a NewsMarker from GDELT GeoJSON feature.
+
   factory NewsMarker.fromGeoJson(Map<String, dynamic> feature) {
     final geometry = feature['geometry'] as Map<String, dynamic>;
     final properties = feature['properties'] as Map<String, dynamic>?;
@@ -54,13 +56,14 @@ class NewsMarker {
     final lng = (coordinates[0] as num).toDouble();
     final lat = (coordinates[1] as num).toDouble();
 
-    // Extract title and URL from HTML field
+    // Extract title and URL from HTML field.
+
     String title = properties?['name']?.toString() ?? 'No title';
     String? url;
 
     final html = properties?['html']?.toString();
     if (html != null && html.isNotEmpty) {
-      // Parse HTML to extract title and URL
+      // Parse HTML to extract title and URL.
       final hrefMatch = RegExp(r'href="([^"]+)"').firstMatch(html);
       final titleMatch = RegExp(r'>([^<]+)</a>').firstMatch(html);
 
@@ -86,6 +89,7 @@ class NewsMarker {
 }
 
 /// Service for fetching news from GDELT GeoJSON API with debouncing and caching.
+
 class GdeltNewsService {
   static const String _baseUrl = 'https://api.gdeltproject.org/api/v2/geo/geo';
   static const Duration _debounceDuration = Duration(milliseconds: 500);
@@ -94,13 +98,14 @@ class GdeltNewsService {
   DateTime? _lastFetchTime;
   static const Duration _minFetchInterval = Duration(seconds: 2);
 
-  // Cache for storing fetched news markers
+  // Cache for storing fetched news markers.
   final List<NewsMarker> _cachedMarkers = [];
   LatLngBounds? _cachedBounds;
   DateTime? _cacheTime;
   static const Duration _cacheExpiry = Duration(minutes: 10);
 
   /// Fetch news markers within the specified bounds with debouncing and caching.
+
   Future<List<NewsMarker>> fetchNews({
     required LatLngBounds bounds,
     String query = 'news',
@@ -137,7 +142,8 @@ class GdeltNewsService {
           timeSpan: timeSpan,
         );
 
-        // Update cache
+        // Update cache.
+
         _cachedMarkers.clear();
         _cachedMarkers.addAll(markers);
         _cachedBounds = bounds;
@@ -154,6 +160,7 @@ class GdeltNewsService {
   }
 
   /// Perform the actual API fetch without debouncing.
+
   Future<List<NewsMarker>> _performFetch({
     required LatLngBounds bounds,
     required String query,
@@ -216,6 +223,7 @@ class GdeltNewsService {
   }
 
   /// Calculate approximate radius in kilometers from bounds.
+
   double _calculateRadiusKm(LatLngBounds bounds) {
     const Distance distance = Distance();
 
@@ -223,19 +231,22 @@ class GdeltNewsService {
     final southEast = LatLng(bounds.south, bounds.east);
 
     final diagonalMeters = distance(northWest, southEast);
-    // Use half diagonal and limit to max 500km for faster queries
+
+    // Use half diagonal and limit to max 500km for faster queries.
     return (diagonalMeters / 1000 / 2).clamp(1, 500);
   }
 
   /// Filter cached markers for the given bounds without making API call.
+
   List<NewsMarker> getMarkersInBounds(LatLngBounds bounds) {
     if (_cachedMarkers.isEmpty) return [];
 
-    // Check if cache is still valid
+    // Check if cache is still valid.
+
     if (_cacheTime != null) {
       final elapsed = DateTime.now().difference(_cacheTime!);
       if (elapsed > _cacheExpiry) {
-        // Cache expired, clear it
+        // Cache expired, clear it.
         _cachedMarkers.clear();
         _cachedBounds = null;
         _cacheTime = null;
@@ -243,7 +254,7 @@ class GdeltNewsService {
       }
     }
 
-    // Filter cached markers that are within the requested bounds
+    // Filter cached markers that are within the requested bounds.
     return _cachedMarkers.where((marker) {
       return marker.location.latitude >= bounds.south &&
           marker.location.latitude <= bounds.north &&
@@ -253,19 +264,20 @@ class GdeltNewsService {
   }
 
   /// Check if the given bounds are mostly covered by cached data.
+
   bool isBoundsCovered(LatLngBounds bounds) {
     if (_cachedBounds == null || _cacheTime == null) return false;
 
-    // Check if cache is still valid
+    // Check if cache is still valid.
     final elapsed = DateTime.now().difference(_cacheTime!);
     if (elapsed > _cacheExpiry) return false;
 
     // Calculate cache coverage percentage
-    // Only fetch new data if more than 40% of the view is outside cache
+    // Only fetch new data if more than 40% of the view is outside cache.
     final viewLatRange = bounds.north - bounds.south;
     final viewLngRange = bounds.east - bounds.west;
 
-    // Calculate overlap
+    // Calculate overlap.
     final overlapSouth = bounds.south.clamp(
       _cachedBounds!.south,
       _cachedBounds!.north,
@@ -290,11 +302,12 @@ class GdeltNewsService {
     final lngCoverage = viewLngRange > 0 ? overlapLngRange / viewLngRange : 0.0;
     final coverage = (latCoverage + lngCoverage) / 2;
 
-    // Consider covered if at least 60% of view is in cache
+    // Consider covered if at least 60% of view is in cache.
     return coverage >= 0.6;
   }
 
   /// Clear the cache manually.
+
   void clearCache() {
     _cachedMarkers.clear();
     _cachedBounds = null;
@@ -302,6 +315,7 @@ class GdeltNewsService {
   }
 
   /// Cancel any pending debounced requests.
+
   void dispose() {
     _debounceTimer?.cancel();
     clearCache();

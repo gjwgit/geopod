@@ -31,6 +31,7 @@ import 'package:geopod/models/place.dart';
 import 'package:geopod/widgets/locations/edit_import_place_dialog.dart';
 
 /// Result of import preview dialog containing places and encryption flag.
+
 class ImportPreviewResult {
   final List<Place> places;
   final bool encrypted;
@@ -39,6 +40,7 @@ class ImportPreviewResult {
 }
 
 /// Dialog showing a preview of places to be imported with edit/delete capabilities.
+
 class ImportPreviewDialog extends StatefulWidget {
   const ImportPreviewDialog({
     super.key,
@@ -60,16 +62,20 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
 
   /// Whether to encrypt imported places.
   /// Defaults to true for consistency with add place form.
+
   bool _encrypt = true;
 
   @override
   void initState() {
     super.initState();
+
     // Create a mutable copy of the places list.
+
     _editablePlaces = List<Place>.from(widget.places);
   }
 
   /// Opens the edit dialog for a place in the preview list.
+
   Future<void> _editPreviewPlace(int index) async {
     final place = _editablePlaces[index];
     final result = await showDialog<Place>(
@@ -85,6 +91,7 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
   }
 
   /// Removes a place from the preview list.
+
   void _removePreviewPlace(int index) {
     setState(() {
       _editablePlaces.removeAt(index);
@@ -140,7 +147,9 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                 ),
                 const SizedBox(height: 12),
               ],
+
               // Info box about editing.
+
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -169,7 +178,9 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                 ),
               ),
               const SizedBox(height: 12),
+
               // Encryption option.
+
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(

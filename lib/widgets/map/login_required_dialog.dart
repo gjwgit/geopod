@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:solidui/solidui.dart';
 
 /// Shows a dialog prompting user to login.
+
 Future<void> showLoginRequiredDialog(BuildContext context) async {
   await showDialog(
     context: context,

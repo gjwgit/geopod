@@ -25,6 +25,7 @@ import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/map/geomap_settings.dart';
 
 /// Handles settings loading and validation.
+
 mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
   MapController get mapController;
   MapSettings get mapSettings;
@@ -39,6 +40,7 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
   List<Place> get allPlaces;
 
   /// Load settings synchronously with viewport restoration.
+
   void loadSettingsSync(VoidCallback onLoadEncrypted) {
     loadMapSettingsSync(viewportInitialized: viewportInitialized)
         .then((result) {
@@ -53,12 +55,14 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
             }
           });
 
-          // Move map after state update if viewport was loaded
+          // Move map after state update if viewport was loaded.
+
           if (result.initialCenter != null) {
             mapController.move(result.initialCenter!, result.initialZoom!);
           }
 
-          // Validate encrypted setting if enabled
+          // Validate encrypted setting if enabled.
+
           if (result.settings.showEncryptedPlaces) {
             Future.delayed(const Duration(milliseconds: 200), () {
               if (mounted) {
@@ -71,6 +75,7 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
   }
 
   /// Validate saved encrypted setting and load if valid.
+
   Future<void> validateSavedEncryptedSettingAndLoad(
     VoidCallback onLoadEncrypted,
   ) async {
@@ -81,7 +86,7 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
     );
 
     if (!shouldLoad) {
-      // Reset setting if validation failed
+      // Reset setting if validation failed.
       if (!isLoggedIn) {
         safeSetState(this, () {
           mapSettings = mapSettings.copyWith(showEncryptedPlaces: false);
@@ -90,7 +95,8 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
       return;
     }
 
-    // Load encrypted places
+    // Load encrypted places.
+
     onLoadEncrypted();
   }
 }

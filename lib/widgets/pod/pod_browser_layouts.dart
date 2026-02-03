@@ -19,6 +19,7 @@ import 'package:geopod/widgets/pod/pod_file_list.dart';
 import 'package:geopod/widgets/pod/pod_file_preview.dart';
 
 /// Toolbar widget for POD file browser.
+
 class BrowserToolbar extends StatelessWidget {
   final bool canGoBack;
   final bool canGoHome;
@@ -67,6 +68,7 @@ class BrowserToolbar extends StatelessWidget {
 }
 
 /// Breadcrumb navigation widget for POD file browser.
+
 class BrowserBreadcrumb extends StatelessWidget {
   final String currentPath;
   final VoidCallback onNavigateToRoot;
@@ -131,6 +133,7 @@ class BrowserBreadcrumb extends StatelessWidget {
 }
 
 /// A widget showing the file list and preview in wide layout (side by side).
+
 class WideLayoutView extends StatelessWidget {
   final List<PodFileItem> items;
   final PodFileItem? selectedFile;
@@ -176,7 +179,9 @@ class WideLayoutView extends StatelessWidget {
           ),
         ),
         const VerticalDivider(width: 1),
+
         // Preview (right panel)
+
         Expanded(
           child: selectedFile != null
               ? PodFilePreview(file: selectedFile!, onClose: onClearSelection)
@@ -188,6 +193,7 @@ class WideLayoutView extends StatelessWidget {
 }
 
 /// A widget showing the file list and preview in medium layout.
+
 class MediumLayoutView extends StatelessWidget {
   final List<PodFileItem> items;
   final PodFileItem? selectedFile;
@@ -233,7 +239,9 @@ class MediumLayoutView extends StatelessWidget {
           ),
         ),
         const VerticalDivider(width: 1),
-        // Preview
+
+        // Preview.
+
         Expanded(
           child: selectedFile != null
               ? PodFilePreview(file: selectedFile!, onClose: onClearSelection)
@@ -245,6 +253,7 @@ class MediumLayoutView extends StatelessWidget {
 }
 
 /// Mobile preview view with back button.
+
 class MobilePreviewView extends StatelessWidget {
   final PodFileItem selectedFile;
   final VoidCallback onBack;
@@ -259,7 +268,7 @@ class MobilePreviewView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Back to list button - more prominent on mobile
+        // Back to list button - more prominent on mobile.
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
@@ -297,6 +306,7 @@ class MobilePreviewView extends StatelessWidget {
 }
 
 /// Empty preview placeholder.
+
 class EmptyPreviewView extends StatelessWidget {
   const EmptyPreviewView({super.key});
 
@@ -336,6 +346,7 @@ class EmptyPreviewView extends StatelessWidget {
 }
 
 /// List content view with loading, error, and file list states.
+
 class ListContentView extends StatelessWidget {
   final List<PodFileItem> items;
   final bool isLoading;

@@ -18,6 +18,7 @@ import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/widgets/map/news_marker_details_sheet.dart';
 
 /// Builds a marker layer for news markers.
+
 MarkerLayer buildNewsMarkerLayer({
   required BuildContext context,
   required List<NewsMarker> newsMarkers,

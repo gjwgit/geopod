@@ -20,25 +20,29 @@ import 'package:geopod/models/place.dart';
 ///
 /// This allows the app to show previously loaded places immediately
 /// on startup while fetching fresh data in the background.
+
 class PlacesCachePersistence {
   /// Key for storing cached Pod places JSON in SharedPreferences.
   static const String _podPlacesCacheKey = 'geopod_pod_places_cache';
 
   /// Key for storing cache timestamp.
+
   static const String _podPlacesCacheTimestampKey =
       'geopod_pod_places_cache_timestamp';
 
   /// Maximum cache age in hours before considering it stale.
+
   static const int _maxCacheAgeHours = 24;
 
   /// Get cached Pod places from SharedPreferences.
   ///
   /// Returns null if no cache exists or cache is too old.
+
   static Future<List<Place>?> getCachedPodPlaces() async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Check cache age
+      // Check cache age.
       final timestamp = prefs.getInt(_podPlacesCacheTimestampKey);
       if (timestamp != null) {
         final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -61,7 +65,7 @@ class PlacesCachePersistence {
             try {
               places.add(Place.fromJson(item, isLocalSource: false));
             } catch (_) {
-              // Skip malformed entries
+              // Skip malformed entries.
             }
           }
         }
@@ -76,6 +80,7 @@ class PlacesCachePersistence {
   /// Cache Pod places JSON content to SharedPreferences.
   ///
   /// [content] should be the raw JSON string from the Pod.
+
   static Future<void> cachePodPlaces(String content) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -85,22 +90,24 @@ class PlacesCachePersistence {
         DateTime.now().millisecondsSinceEpoch,
       );
     } catch (_) {
-      // Silently fail - caching is best-effort
+      // Silently fail - caching is best-effort.
     }
   }
 
   /// Clear the Pod places cache.
+
   static Future<void> clearPodPlacesCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_podPlacesCacheKey);
       await prefs.remove(_podPlacesCacheTimestampKey);
     } catch (_) {
-      // Silently fail
+      // Silently fail.
     }
   }
 
   /// Check if cache exists and is valid.
+
   static Future<bool> hasFreshCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();

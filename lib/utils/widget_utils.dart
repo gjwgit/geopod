@@ -29,18 +29,22 @@ import 'package:solidpod/solidpod.dart' show authStateNotifier;
 ///   }
 /// }
 /// ```
+
 mixin AuthStateManagement<T extends StatefulWidget> on State<T> {
   bool _isLoggedIn = false;
 
   /// Current login state.
+
   bool get isLoggedIn => _isLoggedIn;
 
   /// Called when authentication state changes.
   /// Override this method to handle auth state changes.
+
   void onAuthStateChanged(bool isLoggedIn);
 
   /// Initialize auth state listener.
   /// Call this in initState().
+
   void initAuthStateListener() {
     _isLoggedIn = authStateNotifier.value;
     authStateNotifier.addListener(_handleAuthStateChanged);
@@ -48,6 +52,7 @@ mixin AuthStateManagement<T extends StatefulWidget> on State<T> {
 
   /// Cleanup auth state listener.
   /// Call this in dispose().
+
   void disposeAuthStateListener() {
     authStateNotifier.removeListener(_handleAuthStateChanged);
   }
@@ -70,6 +75,7 @@ mixin AuthStateManagement<T extends StatefulWidget> on State<T> {
 ///   _myValue = newValue;
 /// });
 /// ```
+
 void safeSetState(State state, VoidCallback fn) {
   if (state.mounted) {
     // ignore: invalid_use_of_protected_member
@@ -93,6 +99,7 @@ void safeSetState(State state, VoidCallback fn) {
 ///   },
 /// );
 /// ```
+
 Future<bool> executeWithLoading({
   required State state,
   required void Function(bool) setLoading,
@@ -109,7 +116,7 @@ Future<bool> executeWithLoading({
   try {
     await operation();
     if (state.mounted) {
-      // CRITICAL: Execute setState to trigger rebuild after operation completes
+      // CRITICAL: Execute setState to trigger rebuild after operation completes.
       safeSetState(state, () => setLoading(false));
     }
     return true;
@@ -125,6 +132,7 @@ Future<bool> executeWithLoading({
 }
 
 /// Post-frame callback helper that checks mounted state.
+
 void addPostFrameCallback(State state, VoidCallback callback) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (state.mounted) {

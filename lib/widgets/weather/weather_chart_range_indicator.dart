@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 /// Widget displaying the min and max values of the data range with dates.
+
 class WeatherChartRangeIndicator extends StatelessWidget {
   const WeatherChartRangeIndicator({
     required this.dataMin,
@@ -40,6 +41,7 @@ class WeatherChartRangeIndicator extends StatelessWidget {
     final dateFormat = DateFormat('dd/MM');
 
     // For wind_speed, only show max wind (since it's max + average, not max + min)
+
     if (dataType == 'wind_speed') {
       return Row(
         children: [
@@ -64,7 +66,8 @@ class WeatherChartRangeIndicator extends StatelessWidget {
       );
     }
 
-    // Determine label prefix based on data type
+    // Determine label prefix based on data type.
+
     String getLabel(bool isMax) {
       if (dataType == 'temperature') {
         return isMax ? 'Max Temp' : 'Min Temp';

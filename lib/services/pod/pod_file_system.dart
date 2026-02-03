@@ -20,6 +20,7 @@ import 'package:geopod/services/pod/pod_http.dart';
 import 'package:geopod/services/pod/pod_path.dart';
 
 /// Result of a file operation.
+
 class FileOperationResult {
   final bool success;
   final String? content;
@@ -37,6 +38,7 @@ class FileOperationResult {
 /// High-level POD file system operations.
 ///
 /// Provides simple read/write operations without encryption.
+
 class PodFileSystem {
   PodFileSystem._();
 
@@ -46,6 +48,7 @@ class PodFileSystem {
   /// Example: `places/places.json`
   ///
   /// Returns the file content as a string, or null if file doesn't exist.
+
   static Future<String?> readFile(String relativePath) async {
     if (!await PodAuth.isLoggedIn()) {
       debugPrint('PodFileSystem.readFile() - not logged in');
@@ -81,6 +84,7 @@ class PodFileSystem {
   /// [createParentDirs] - Whether to create parent directories if missing.
   ///
   /// Returns true if write was successful.
+
   static Future<bool> writeFile(
     String relativePath,
     String content, {
@@ -95,7 +99,8 @@ class PodFileSystem {
     try {
       final url = await PodPath.getFileUrl(relativePath);
 
-      // Check if parent directory exists and create if needed
+      // Check if parent directory exists and create if needed.
+
       if (createParentDirs) {
         final parentPath = PodPath.getParentPath(
           PodPath.getFilePath(relativePath),
@@ -129,6 +134,7 @@ class PodFileSystem {
   /// [relativePath] - Path relative to the data directory.
   ///
   /// Returns true if deletion was successful.
+
   static Future<bool> deleteFile(String relativePath) async {
     if (!await PodAuth.isLoggedIn()) {
       debugPrint('PodFileSystem.deleteFile() - not logged in');
@@ -157,6 +163,7 @@ class PodFileSystem {
   /// Check if a file exists in the POD.
   ///
   /// [relativePath] - Path relative to the data directory.
+
   static Future<bool> fileExists(String relativePath) async {
     if (!await PodAuth.isLoggedIn()) {
       return false;
@@ -175,6 +182,7 @@ class PodFileSystem {
   /// Check if a directory exists in the POD.
   ///
   /// [relativePath] - Path relative to the data directory.
+
   static Future<bool> directoryExists(String relativePath) async {
     if (!await PodAuth.isLoggedIn()) {
       return false;
@@ -195,6 +203,7 @@ class PodFileSystem {
   /// [relativePath] - Path relative to the data directory.
   ///
   /// Returns true if creation was successful.
+
   static Future<bool> createDirectory(String relativePath) async {
     if (!await PodAuth.isLoggedIn()) {
       debugPrint('PodFileSystem.createDirectory() - not logged in');
@@ -210,8 +219,9 @@ class PodFileSystem {
   }
 
   /// Ensure a directory exists, creating it and any parent directories if needed.
+
   static Future<bool> _ensureDirectoryExists(String dirPath) async {
-    // Split path into parts and create each level
+    // Split path into parts and create each level.
     final parts = dirPath.split('/').where((p) => p.isNotEmpty).toList();
 
     var currentPath = '';
@@ -222,7 +232,7 @@ class PodFileSystem {
       final status = await PodHttp.checkStatus(url);
 
       if (status == ResourceStatus.notExist) {
-        // Get parent URL and create this directory
+        // Get parent URL and create this directory.
         final parentPath = i == 0 ? '' : '${parts.sublist(0, i).join('/')}/';
         final parentUrl = await _getAbsoluteUrl(
           parentPath.isEmpty ? '' : parentPath,
@@ -259,6 +269,7 @@ class PodFileSystem {
   }
 
   /// Get absolute URL for a path (without normalizing through getFilePath).
+
   static Future<String> _getAbsoluteUrl(String path) async {
     final baseUrl = await PodAuth.getPodBaseUrl();
     if (baseUrl == null) {

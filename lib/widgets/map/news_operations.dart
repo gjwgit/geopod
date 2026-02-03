@@ -19,6 +19,7 @@ import 'package:geopod/widgets/map/news_list_dialog.dart';
 import 'package:geopod/widgets/map/news_marker_details_sheet.dart';
 
 /// Shows news list dialog and handles news marker operations.
+
 Future<void> showNewsListDialogAsync({
   required BuildContext context,
   required MapController mapController,
@@ -64,6 +65,7 @@ Future<void> showNewsListDialogAsync({
 }
 
 /// Updates news markers from cache when map position changes.
+
 void updateNewsFromCacheForBounds({
   required MapController mapController,
   required GdeltNewsService newsService,
@@ -73,20 +75,23 @@ void updateNewsFromCacheForBounds({
   final bounds = mapController.camera.visibleBounds;
   final cached = newsService.getMarkersInBounds(bounds);
 
-  // Always update visible markers from cache
+  // Always update visible markers from cache.
+
   if (cached.isNotEmpty) {
     setMarkers(cached);
   }
 
   // Only fetch new data if significantly outside cached bounds
-  // This prevents unnecessary fetches during small movements
+  // This prevents unnecessary fetches during small movements.
+
   if (!newsService.isBoundsCovered(bounds)) {
-    // Async fetch without blocking UI
+    // Async fetch without blocking UI.
     fetchForCurrentBounds();
   }
 }
 
 /// Fetches news for current map bounds.
+
 Future<void> fetchNewsForBounds({
   required BuildContext context,
   required MapController mapController,
@@ -94,7 +99,7 @@ Future<void> fetchNewsForBounds({
   required void Function(List<NewsMarker> markers, bool loading) updateState,
 }) async {
   // Don't clear existing markers, just set loading state
-  // Get current cached markers first
+  // Get current cached markers first.
   final bounds = mapController.camera.visibleBounds;
   final currentMarkers = newsService.getMarkersInBounds(bounds);
   updateState(currentMarkers, true);
@@ -120,6 +125,7 @@ Future<void> fetchNewsForBounds({
 }
 
 /// Gets visible news markers within map bounds.
+
 List<NewsMarker> getVisibleNewsInBounds({
   required MapController mapController,
   required List<NewsMarker> newsMarkers,

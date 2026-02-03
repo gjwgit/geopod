@@ -21,38 +21,46 @@ import 'package:geopod/models/pod_file_item.dart';
 import 'package:geopod/services/pod/pod.dart';
 
 /// Cache expiry duration.
+
 const Duration _cacheExpiry = Duration(minutes: 2);
 
 /// Notifier for file system changes.
 /// Increments when files are added, deleted, or modified.
 /// UI components can listen to this to refresh their views.
+
 final podFilesChangeNotifier = ValueNotifier<int>(0);
 
 /// Service for listing and managing POD directories.
+
 class PodDirectoryService {
   PodDirectoryService._();
 
   /// Directory cache: path -> (items, timestamp)
+
   static final Map<String, (List<PodFileItem>, DateTime)> _cache = {};
 
   /// Notify listeners that the file system has changed.
   /// This only notifies UI components to refresh their views.
   /// Use invalidateCache() to clear specific cache entries before calling this.
+
   static void notifyChange() {
     podFilesChangeNotifier.value++;
     debugPrint('PodDirectoryService: Notified file system change');
   }
 
   /// Clear all cached data.
+
   static void clearCache() {
     _cache.clear();
     debugPrint('PodDirectoryService: Cache cleared');
   }
 
   /// Clear cache for a specific path and its parent.
+
   static void invalidateCache(String path) {
     _cache.remove(path);
-    // Also invalidate parent directory
+
+    // Also invalidate parent directory.
     final parentPath = PodPath.getParentPath(path);
     if (parentPath != path) {
       _cache.remove(
@@ -65,8 +73,9 @@ class PodDirectoryService {
   }
 
   /// Remove an item from the cache (used after deletion).
+
   static void removeFromCache(String itemPath) {
-    // Find the parent directory in cache and remove the item
+    // Find the parent directory in cache and remove the item.
     final parentPath = _getParentFromItemPath(itemPath);
     final cached = _cache[parentPath];
     if (cached != null) {
@@ -78,6 +87,7 @@ class PodDirectoryService {
   }
 
   /// Get parent path from an item path.
+
   static String _getParentFromItemPath(String itemPath) {
     final lastSlash = itemPath.lastIndexOf('/');
     if (lastSlash <= 0) return '';
@@ -90,6 +100,7 @@ class PodDirectoryService {
   ///   Empty string means app root directory (geopod/).
   /// [forceRefresh] - If true, bypass cache and fetch fresh data.
   /// Returns a list of [PodFileItem] representing files and directories.
+
   static Future<List<PodFileItem>> listDirectory(
     String relativePath, {
     bool forceRefresh = false,
@@ -109,17 +120,18 @@ class PodDirectoryService {
     }
 
     try {
-      // Build the directory URL
+      // Build the directory URL.
       String dirUrl = await PodPath.getDirUrl(relativePath);
 
       // Ensure URL ends with /
+
       if (!dirUrl.endsWith('/')) {
         dirUrl = '$dirUrl/';
       }
 
       debugPrint('PodDirectoryService: Listing directory: $dirUrl');
 
-      // Get authentication tokens
+      // Get authentication tokens.
       final tokens = await PodAuth.getTokens(dirUrl, 'GET');
 
       // Make the request with proper headers (matching solidpod's implementation)
@@ -138,7 +150,7 @@ class PodDirectoryService {
       );
 
       if (response.statusCode == 404) {
-        // Directory doesn't exist
+        // Directory doesn't exist.
         debugPrint('PodDirectoryService: Directory not found');
         return [];
       }
@@ -155,10 +167,11 @@ class PodDirectoryService {
         throw Exception('Failed to list directory: ${response.statusCode}');
       }
 
-      // Parse the Turtle/RDF response to extract file list
+      // Parse the Turtle/RDF response to extract file list.
       final items = _parseTurtleResponse(response.body, relativePath);
 
-      // Update cache
+      // Update cache.
+
       _cache[relativePath] = (List.from(items), DateTime.now());
       debugPrint(
         'PodDirectoryService: Cached ${items.length} items for: $relativePath',
@@ -173,6 +186,7 @@ class PodDirectoryService {
 
   /// Parse Turtle/RDF response to extract file and directory items.
   /// Uses the same heuristic as solidpod's _parseGetContainerResponse.
+
   static List<PodFileItem> _parseTurtleResponse(
     String responseBody,
     String basePath,
@@ -191,7 +205,8 @@ class PodDirectoryService {
 
           final isDirectory = line.contains('ldp:Container');
 
-          // Extract name: <NAME/> for dirs, <NAME> for files
+          // Extract name: <NAME/> for dirs, <NAME> for files.
+
           String name;
           if (isDirectory) {
             // Remove < and />
@@ -201,12 +216,13 @@ class PodDirectoryService {
             name = nameMatch.substring(1, nameMatch.length - 1);
           }
 
-          // Skip ACL and meta files
+          // Skip ACL and meta files.
+
           if (name.endsWith('.acl') || name.endsWith('.meta')) {
             continue;
           }
 
-          // Build relative path
+          // Build relative path.
           final itemPath = basePath.isEmpty ? name : '$basePath/$name';
 
           items.add(
@@ -216,7 +232,8 @@ class PodDirectoryService {
       }
     }
 
-    // Sort: directories first, then files alphabetically
+    // Sort: directories first, then files alphabetically.
+
     items.sort((a, b) {
       if (a.isDirectory && !b.isDirectory) return -1;
       if (!a.isDirectory && b.isDirectory) return 1;
@@ -229,6 +246,7 @@ class PodDirectoryService {
   /// Create a directory in the POD.
   ///
   /// [relativePath] - Path relative to the app data directory.
+
   static Future<bool> createDirectory(String relativePath) async {
     final success = await PodFileSystem.createDirectory(relativePath);
     if (success) {
@@ -242,19 +260,21 @@ class PodDirectoryService {
   ///
   /// [relativePath] - Path relative to the app data directory.
   /// Also deletes the associated ACL file if it exists.
+
   static Future<bool> delete(String relativePath) async {
     final success = await PodFileSystem.deleteFile(relativePath);
     if (success) {
-      // Remove from cache immediately
+      // Remove from cache immediately.
       removeFromCache(relativePath);
       notifyChange(); // Notify listeners
 
       // Also try to delete the ACL file (ignore errors)
+
       try {
         await PodFileSystem.deleteFile('$relativePath.acl');
         debugPrint('PodDirectoryService: Deleted ACL file for: $relativePath');
       } catch (_) {
-        // ACL file may not exist, ignore
+        // ACL file may not exist, ignore.
       }
     }
     return success;
@@ -263,6 +283,7 @@ class PodDirectoryService {
   /// Check if a path exists in the POD.
   ///
   /// [relativePath] - Path relative to the app data directory.
+
   static Future<bool> exists(String relativePath) async {
     return await PodFileSystem.fileExists(relativePath);
   }
@@ -270,15 +291,17 @@ class PodDirectoryService {
   /// Read file content from the POD.
   ///
   /// [relativePath] - Path relative to the app data directory.
+
   static Future<String?> readFile(String relativePath) async {
     return await PodFileSystem.readFile(relativePath);
   }
 
   /// Preload common directories into cache.
   /// Call this after login to make file browser feel instant.
+
   static Future<void> preload() async {
     try {
-      // Check if already cached
+      // Check if already cached.
       if (_cache.containsKey('') && _cache.containsKey('data')) {
         debugPrint('PodDirectoryService.preload: skipped (cache exists)');
         return;
@@ -286,7 +309,7 @@ class PodDirectoryService {
 
       debugPrint('PodDirectoryService.preload: starting...');
 
-      // Preload root directory and data directory in parallel
+      // Preload root directory and data directory in parallel.
       await Future.wait([
         listDirectory(''), // geopod/
         listDirectory('data'), // geopod/data/

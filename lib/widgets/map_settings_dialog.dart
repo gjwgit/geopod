@@ -42,7 +42,8 @@ import 'package:geopod/widgets/settings/settings_sections.dart';
 /// - Toggle visibility of local (canned) example places
 /// - Customize colors for user places and example places
 /// - Select map source
-/// - Configure viewport settings
+/// - Configure viewport settings.
+
 class MapSettingsDialog extends StatefulWidget {
   const MapSettingsDialog({
     super.key,
@@ -74,7 +75,8 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late double _initialZoom;
   bool _isLoadingEncrypted = false;
 
-  // Snapshot of initial settings to detect actual changes
+  // Snapshot of initial settings to detect actual changes.
+
   late MapSettings _initialSnapshot;
 
   @override
@@ -95,6 +97,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   }
 
   /// Check if current settings differ from initial snapshot.
+
   bool _hasActualChanges() {
     return _showLocalPlaces != _initialSnapshot.showLocalPlaces ||
         _showEncryptedPlaces != _initialSnapshot.showEncryptedPlaces ||
@@ -110,6 +113,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   }
 
   /// Saves current settings and notifies parent.
+
   void _saveAndNotify() {
     final newSettings = MapSettings(
       showLocalPlaces: _showLocalPlaces,
@@ -126,13 +130,16 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     );
 
     // Save to SharedPreferences.
+
     MapSettingsService.saveSettings(newSettings);
 
     // Notify parent widget.
+
     widget.onSettingsChanged(newSettings);
   }
 
   /// Resets all settings to defaults.
+
   void _resetToDefaults() {
     setState(() {
       _showLocalPlaces = true;
@@ -152,7 +159,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Use responsive width: larger on desktop/tablet, adapt on mobile
+    // Use responsive width: larger on desktop/tablet, adapt on mobile.
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 400 ? screenWidth * 0.9 : 380.0;
 
@@ -171,7 +178,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Visibility section
+              // Visibility section.
               buildVisibilitySection(
                 showLocalPlaces: _showLocalPlaces,
                 showEncryptedPlaces: _showEncryptedPlaces,
@@ -184,10 +191,10 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 },
                 onShowEncryptedChanged: (value) async {
                   if (value) {
-                    // Enabling encrypted places - verify security key first
+                    // Enabling encrypted places - verify security key first.
                     setState(() => _isLoadingEncrypted = true);
 
-                    // Check if security key is available, prompt if not
+                    // Check if security key is available, prompt if not.
                     final hasKey =
                         await EncryptedPlacesService.ensureSecurityKey(
                           context,
@@ -197,19 +204,20 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                     if (!mounted) return;
 
                     if (hasKey) {
-                      // Security key verified, enable the setting
+                      // Security key verified, enable the setting.
                       setState(() {
                         _showEncryptedPlaces = true;
                         _isLoadingEncrypted = false;
                       });
                       _saveAndNotify();
                     } else {
-                      // User cancelled or key verification failed
+                      // User cancelled or key verification failed.
                       setState(() => _isLoadingEncrypted = false);
-                      // Don't change _showEncryptedPlaces - it stays false
+
+                      // Don't change _showEncryptedPlaces - it stays false.
                     }
                   } else {
-                    // Disabling encrypted places - no verification needed
+                    // Disabling encrypted places - no verification needed.
                     setState(() => _showEncryptedPlaces = false);
                     _saveAndNotify();
                   }
@@ -221,7 +229,8 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               ),
               const Divider(height: 24),
 
-              // Viewport section
+              // Viewport section.
+
               buildViewportSection(
                 rememberViewport: _rememberViewport,
                 initialLat: _initialLat,
@@ -242,7 +251,8 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               ),
               const Divider(height: 24),
 
-              // Map source section
+              // Map source section.
+
               buildMapSourceSection(
                 mapSource: _mapSource,
                 onMapSourceChanged: (source) {
@@ -253,7 +263,8 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               const SizedBox(height: 12),
               const Divider(height: 24),
 
-              // Marker colors section
+              // Marker colors section.
+
               buildMarkerColorsSection(
                 context: context,
                 userPlacesColor: _userPlacesColor,
@@ -269,11 +280,13 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               ),
               const SizedBox(height: 20),
 
-              // Reset button
+              // Reset button.
+
               buildResetButton(onReset: _resetToDefaults),
               const SizedBox(height: 12),
 
               // User actions (logout, debug buttons)
+
               buildUserActionsSection(context),
             ],
           ),
@@ -283,7 +296,9 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
         ElevatedButton(
           onPressed: () {
             Navigator.pop(context);
-            // Only sync to POD if there were actual changes
+
+            // Only sync to POD if there were actual changes.
+
             if (_hasActualChanges()) {
               unawaited(MapSettingsService.syncToPod());
             }

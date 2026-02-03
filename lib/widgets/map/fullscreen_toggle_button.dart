@@ -16,6 +16,7 @@ import 'package:geopod/services/fullscreen_service.dart';
 
 /// A semi-transparent fullscreen toggle button that appears in the corner.
 /// When pressed, it toggles fullscreen mode and becomes opaque.
+
 class FullscreenToggleButton extends StatelessWidget {
   const FullscreenToggleButton({super.key});
 

@@ -20,6 +20,7 @@ import 'package:geopod/widgets/pod/pod_file_browser.dart';
 
 /// A widget that wraps PodFileBrowser with login state checking.
 /// Shows a friendly login prompt when user is not logged in.
+
 class FilesPage extends StatefulWidget {
   const FilesPage({super.key});
 
@@ -45,7 +46,7 @@ class _FilesPageState extends State<FilesPage> with AuthStateManagement {
 
   @override
   void onAuthStateChanged(bool isLoggedIn) {
-    // State is already updated by mixin
+    // State is already updated by mixin.
   }
 
   Future<void> _checkLoginStatus() async {
@@ -81,7 +82,7 @@ class _FilesPageState extends State<FilesPage> with AuthStateManagement {
       );
     }
 
-    // Use the new PodFileBrowser instead of SolidFile
+    // Use the new PodFileBrowser instead of SolidFile.
     return const PodFileBrowser(basePath: '', title: 'Files');
   }
 }

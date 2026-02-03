@@ -30,6 +30,7 @@ import 'package:flutter/material.dart';
 import 'package:geopod/models/place.dart';
 
 /// Dialog for editing a place during import preview.
+
 class EditImportPlaceDialog extends StatefulWidget {
   const EditImportPlaceDialog({
     super.key,

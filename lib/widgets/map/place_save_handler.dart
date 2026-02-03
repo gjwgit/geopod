@@ -24,16 +24,19 @@ import 'package:geopod/widgets/geomap.dart';
 import 'package:geopod/widgets/map/login_required_dialog.dart';
 
 /// Shows a saving snackbar for optimistic save.
+
 void showSavingSnackbar(BuildContext context, Place place) {
   SnackBarHelper.showLoading(context, 'Saving "${place.displayTitle}"...');
 }
 
 /// Shows a success snackbar after place is saved.
+
 void showSaveSuccessSnackbar(BuildContext context) {
   SnackBarHelper.showSuccess(context, 'Place saved successfully!');
 }
 
 /// Shows an error snackbar when save fails.
+
 void showSaveErrorSnackbar(BuildContext context, dynamic error) {
   SnackBarHelper.showError(
     context,
@@ -45,6 +48,7 @@ void showSaveErrorSnackbar(BuildContext context, dynamic error) {
 /// Performs background save of a place with address lookup.
 /// Note: Context is passed through to PlacesService which handles mounted checks internally.
 /// If [encrypted] is true, saves to encrypted storage.
+
 Future<Place?> performBackgroundSave(
   Place originalPlace,
   BuildContext context, {
@@ -67,14 +71,14 @@ Future<Place?> performBackgroundSave(
 
   bool success;
   if (encrypted) {
-    // Save to encrypted storage
+    // Save to encrypted storage.
     success = await EncryptedPlacesService.addEncryptedPlace(
       updatedPlace,
       context,
       const GeoMapWidget(),
     );
   } else {
-    // Save to regular storage
+    // Save to regular storage.
     success = await PlacesService.addPlace(
       updatedPlace,
       context,
@@ -92,6 +96,7 @@ Future<Place?> performBackgroundSave(
 /// Shows the add place dialog and returns the result.
 /// Returns null if user is not logged in or cancels.
 /// Returns AddPlaceResult with place and encryption flag.
+
 Future<AddPlaceResult?> showAddPlaceDialogIfLoggedIn({
   required BuildContext context,
   double? latitude,
@@ -116,12 +121,14 @@ Future<AddPlaceResult?> showAddPlaceDialogIfLoggedIn({
 }
 
 /// Zoom in the map by a fixed amount.
+
 void zoomIn(MapController mapController) {
   final z = mapController.camera.zoom;
   mapController.move(mapController.camera.center, (z + 0.6).clamp(3.0, 18.0));
 }
 
 /// Zoom out the map by a fixed amount.
+
 void zoomOut(MapController mapController) {
   final z = mapController.camera.zoom;
   mapController.move(mapController.camera.center, (z - 0.6).clamp(3.0, 18.0));

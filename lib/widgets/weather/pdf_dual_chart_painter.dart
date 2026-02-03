@@ -17,6 +17,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'weather_chart_sampling.dart';
 
 /// Build dual-line chart for PDF (e.g., max/min temperature).
+
 pw.Widget buildPdfDualChart(
   Map<DateTime, double> maxData,
   Map<DateTime, double> minData,
@@ -26,7 +27,7 @@ pw.Widget buildPdfDualChart(
 ) {
   if (maxData.isEmpty || minData.isEmpty) return pw.SizedBox();
 
-  // Always sort entries by date in ascending order for PDF
+  // Always sort entries by date in ascending order for PDF.
   final maxEntries = maxData.entries.toList()
     ..sort((a, b) => a.key.compareTo(b.key));
   final minEntries = minData.entries.toList()
@@ -34,12 +35,12 @@ pw.Widget buildPdfDualChart(
 
   final valueRange = maxValue - minValue;
 
-  // Handle flat lines
+  // Handle flat lines.
   final effectiveMin = minValue;
   final effectiveMax = valueRange < 0.01 ? minValue * 1.1 : maxValue;
   final effectiveRange = effectiveMax - effectiveMin;
 
-  // Sample data for PDF if too many points
+  // Sample data for PDF if too many points.
   final sampledMaxEntries = maxEntries.length > 20
       ? sampleEntriesForPdf(maxEntries, 20)
       : maxEntries;
@@ -64,7 +65,8 @@ pw.Widget buildPdfDualChart(
       ),
       pw.SizedBox(height: 10),
 
-      // Chart area
+      // Chart area.
+
       pw.Container(
         height: 200,
         decoration: pw.BoxDecoration(
@@ -72,7 +74,7 @@ pw.Widget buildPdfDualChart(
         ),
         child: pw.Stack(
           children: [
-            // Y-axis labels
+            // Y-axis labels.
             pw.Positioned(
               left: 0,
               top: 17,
@@ -92,7 +94,9 @@ pw.Widget buildPdfDualChart(
                 ),
               ),
             ),
-            // Chart with grid and lines
+
+            // Chart with grid and lines.
+
             pw.Positioned(
               left: 30,
               top: 20,
@@ -103,7 +107,8 @@ pw.Widget buildPdfDualChart(
                   final chartWidth = size.x;
                   final chartHeight = size.y;
 
-                  // Draw grid
+                  // Draw grid.
+
                   for (var i = 0; i <= 4; i++) {
                     final y = chartHeight * i / 4;
                     canvas
@@ -114,7 +119,8 @@ pw.Widget buildPdfDualChart(
                       ..strokePath();
                   }
 
-                  // Draw max temperature line
+                  // Draw max temperature line.
+
                   if (sampledMaxEntries.length >= 2) {
                     final xStep = chartWidth / (sampledMaxEntries.length - 1);
                     canvas
@@ -154,7 +160,8 @@ pw.Widget buildPdfDualChart(
                     canvas.strokePath();
                   }
 
-                  // Draw min temperature line
+                  // Draw min temperature line.
+
                   if (sampledMinEntries.length >= 2) {
                     final xStep = chartWidth / (sampledMinEntries.length - 1);
                     canvas
@@ -193,7 +200,8 @@ pw.Widget buildPdfDualChart(
                     }
                     canvas.strokePath();
 
-                    // Draw data points for min temperature
+                    // Draw data points for min temperature.
+
                     for (final point in minPoints) {
                       canvas
                         ..setFillColor(PdfColors.blue700)
@@ -203,6 +211,7 @@ pw.Widget buildPdfDualChart(
                   }
 
                   // Draw data points for max temperature (after drawing both lines)
+
                   if (sampledMaxEntries.length >= 2) {
                     final xStep = chartWidth / (sampledMaxEntries.length - 1);
                     for (var i = 0; i < sampledMaxEntries.length; i++) {
@@ -218,7 +227,8 @@ pw.Widget buildPdfDualChart(
                     }
                   }
 
-                  // Draw X-axis tick marks at the bottom
+                  // Draw X-axis tick marks at the bottom.
+
                   if (sampledMaxEntries.length >= 2) {
                     final xStep = chartWidth / (sampledMaxEntries.length - 1);
                     canvas
@@ -235,7 +245,9 @@ pw.Widget buildPdfDualChart(
                 },
               ),
             ),
-            // X-axis labels
+
+            // X-axis labels.
+
             pw.Positioned(
               left: 30,
               right: 5,
@@ -272,7 +284,8 @@ pw.Widget buildPdfDualChart(
                       );
                     }
 
-                    // Always show the last label
+                    // Always show the last label.
+
                     if (sampledMaxEntries.length > 1 &&
                         (sampledMaxEntries.length - 1) % labelStep != 0) {
                       final lastIndex = sampledMaxEntries.length - 1;
@@ -299,7 +312,9 @@ pw.Widget buildPdfDualChart(
         ),
       ),
       pw.SizedBox(height: 5),
-      // Info text
+
+      // Info text.
+
       pw.Text(
         'Curve: Catmull-Rom spline interpolation',
         style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),

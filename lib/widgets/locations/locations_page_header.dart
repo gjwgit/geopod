@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Header section showing title and count of places.
+
 class LocationsPageHeader extends StatelessWidget {
   final int placeCount;
   final bool isLoading;
@@ -72,6 +73,7 @@ class LocationsPageHeader extends StatelessWidget {
 }
 
 /// Action buttons row for import/export/clear.
+
 class LocationsActionButtons extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onExport;

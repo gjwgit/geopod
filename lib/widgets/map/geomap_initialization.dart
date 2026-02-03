@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 
 /// Initializes animation controller and listeners for map widget.
+
 void initializeMapState({
   required AnimationController animationController,
   required Animation<double> fadeAnimation,
@@ -39,6 +40,7 @@ void initializeMapState({
 }
 
 /// Initializes map widget after first frame.
+
 void initializeMapPostFrame({
   required BuildContext context,
   required AnimationController animationController,
@@ -50,12 +52,14 @@ void initializeMapPostFrame({
 
     animationController.forward();
 
-    // Defer settings loading slightly to not block animation
+    // Defer settings loading slightly to not block animation.
+
     Future.microtask(() {
       if (context.mounted) loadSettingsSync();
     });
 
-    // Defer login verification even more
+    // Defer login verification even more.
+
     Future.delayed(const Duration(milliseconds: 50), () {
       if (context.mounted) verifyLoginStateAndLoadData();
     });
@@ -63,6 +67,7 @@ void initializeMapPostFrame({
 }
 
 /// Handles app lifecycle changes for map widget.
+
 void handleMapLifecycleChange({
   required AppLifecycleState state,
   required VoidCallback onResume,
@@ -77,6 +82,7 @@ void handleMapLifecycleChange({
 }
 
 /// Creates tile provider for map tiles.
+
 TileProvider createTileProvider() {
   return NetworkTileProvider();
 }

@@ -22,6 +22,7 @@ import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/map/geomap_places_loader.dart';
 
 /// Handles encrypted places loading.
+
 mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
   bool get isLoggedIn;
   MapSettings get mapSettings;
@@ -30,6 +31,7 @@ mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
   set allPlaces(List<Place> value);
 
   /// Load all places including encrypted if enabled.
+
   Future<void> loadAllPlaces({
     bool forceRefresh = false,
     bool? includeEncrypted,
@@ -54,6 +56,7 @@ mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
   }
 
   /// Load encrypted places with optional key verification.
+
   Future<void> loadEncryptedPlaces({bool skipKeyVerification = false}) async {
     if (!isLoggedIn || !mounted) return;
 

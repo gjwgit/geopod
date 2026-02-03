@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Builds loading indicator overlay.
+
 Widget buildLoadingIndicator({required bool isLoading}) {
   if (!isLoading) return const SizedBox.shrink();
 

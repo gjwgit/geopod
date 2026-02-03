@@ -18,6 +18,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 /// Result of location request with detailed error message.
+
 class LocationResult {
   final LatLng? location;
   final String? errorMessage;
@@ -32,12 +33,13 @@ class LocationResult {
 }
 
 /// Service class for handling location operations.
+
 class LocationService {
   /// Get current user location with detailed error information.
   /// Returns LocationResult with location or error message.
   static Future<LocationResult> getCurrentLocation() async {
     try {
-      // Check if location services are enabled
+      // Check if location services are enabled.
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         return LocationResult.error(
@@ -45,7 +47,8 @@ class LocationService {
         );
       }
 
-      // Check permission
+      // Check permission.
+
       LocationPermission permission = await Geolocator.checkPermission();
 
       if (permission == LocationPermission.denied) {
@@ -64,7 +67,8 @@ class LocationService {
         );
       }
 
-      // Get current position with platform-specific settings
+      // Get current position with platform-specific settings.
+
       Position position = await Geolocator.getCurrentPosition(
         locationSettings: kIsWeb
             ? const LocationSettings(
@@ -89,7 +93,7 @@ class LocationService {
         'Location request timed out. Please check your GPS signal and try again.',
       );
     } catch (e) {
-      // Check for specific error messages
+      // Check for specific error messages.
       final errorStr = e.toString().toLowerCase();
       if (errorStr.contains('location') && errorStr.contains('disabled')) {
         return LocationResult.error(
@@ -102,6 +106,7 @@ class LocationService {
   }
 
   /// Check if location permission is granted.
+
   static Future<bool> hasLocationPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
     return permission == LocationPermission.always ||
@@ -109,6 +114,7 @@ class LocationService {
   }
 
   /// Open app settings to allow user to enable location permission.
+
   static Future<bool> openAppSettings() async {
     return await Geolocator.openAppSettings();
   }

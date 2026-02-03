@@ -24,24 +24,28 @@ import 'package:geopod/models/place.dart';
 const String placesFileName = 'places.json';
 
 /// Get the full file path for places.json.
+
 Future<String> getPlacesFilePath() async {
   final path = await getDataDirPath();
   return '$path/places/$placesFileName';
 }
 
 /// Get the directory path for places.
+
 Future<String> getPlacesDirPath() async {
   final path = await getDataDirPath();
   return '$path/places';
 }
 
 /// Get file path for individual place file.
+
 Future<String> getIndividualPlaceFilePath(String placeId) async {
   final dirPath = await getPlacesDirPath();
   return '$dirPath/place_$placeId.json';
 }
 
 /// Read the main places.json file.
+
 Future<String?> readPlacesJsonFile() async {
   try {
     final fp = await getPlacesFilePath();
@@ -63,6 +67,7 @@ Future<String?> readPlacesJsonFile() async {
 }
 
 /// Write content to places.json file.
+
 Future<bool> writePlacesJsonFile(String content) async {
   try {
     final fp = await getPlacesFilePath();
@@ -86,6 +91,7 @@ Future<bool> writePlacesJsonFile(String content) async {
 }
 
 /// Write an individual place file.
+
 Future<bool> writeIndividualPlaceFile(Place place) async {
   try {
     final fp = await getIndividualPlaceFilePath(place.id);
@@ -111,6 +117,7 @@ Future<bool> writeIndividualPlaceFile(Place place) async {
 }
 
 /// Delete an individual place file.
+
 Future<bool> deleteIndividualPlaceFile(String placeId) async {
   try {
     final fp = await getIndividualPlaceFilePath(placeId);
@@ -128,7 +135,8 @@ Future<bool> deleteIndividualPlaceFile(String placeId) async {
         'DPoP': dPopToken,
       },
     );
-    // 404 means file doesn't exist, which is fine
+
+    // 404 means file doesn't exist, which is fine.
     return r.statusCode >= 200 && r.statusCode < 300 || r.statusCode == 404;
   } catch (_) {
     return false;
@@ -136,6 +144,7 @@ Future<bool> deleteIndividualPlaceFile(String placeId) async {
 }
 
 /// Delete all individual place files for given place IDs.
+
 Future<void> deleteAllIndividualPlaceFiles(List<String> ids) async {
   await Future.wait(ids.map((id) => deleteIndividualPlaceFile(id)));
 }

@@ -32,6 +32,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 
 /// Shows a dialog with the list of all news in current view.
+
 Future<void> showNewsListDialog({
   required BuildContext context,
   required List<NewsMarker> visibleNewsMarkers,
@@ -48,7 +49,7 @@ Future<void> showNewsListDialog({
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Header
+            // Header.
             Row(
               children: [
                 Icon(Icons.article, color: Colors.blue.shade700, size: 28),
@@ -64,7 +65,7 @@ Future<void> showNewsListDialog({
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () {
-                    // Only close dialog, keep news markers visible
+                    // Only close dialog, keep news markers visible.
                     Navigator.of(dialogContext).pop();
                   },
                 ),
@@ -76,7 +77,9 @@ Future<void> showNewsListDialog({
               style: TextStyle(color: Colors.grey.shade600),
             ),
             const SizedBox(height: 12),
-            // News list
+
+            // News list.
+
             Expanded(
               child: visibleNewsMarkers.isEmpty
                   ? Center(
@@ -169,7 +172,9 @@ Future<void> showNewsListDialog({
                     ),
             ),
             const SizedBox(height: 12),
-            // Close button
+
+            // Close button.
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -194,6 +199,7 @@ Future<void> showNewsListDialog({
 }
 
 /// Launch URL in browser.
+
 Future<void> _launchUrl(String url) async {
   try {
     final uri = Uri.parse(url);
@@ -201,6 +207,6 @@ Future<void> _launchUrl(String url) async {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   } catch (_) {
-    // Ignore errors
+    // Ignore errors.
   }
 }

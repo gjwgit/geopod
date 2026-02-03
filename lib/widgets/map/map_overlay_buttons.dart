@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Overlay button for adding places.
+
 class AddPlaceOverlayButton extends StatelessWidget {
   final bool isLoading;
   final bool isLoggedIn;
@@ -97,6 +98,7 @@ class AddPlaceOverlayButton extends StatelessWidget {
 }
 
 /// Overlay button for toggling news markers.
+
 class NewsOverlayButton extends StatelessWidget {
   final bool isLoadingNews;
   final bool showNewsMarkers;

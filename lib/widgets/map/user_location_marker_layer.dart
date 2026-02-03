@@ -19,6 +19,7 @@ import 'package:latlong2/latlong.dart';
 ///
 /// Displays a pulsing blue dot with a semi-transparent circle
 /// to indicate the user's current position on the map.
+
 MarkerLayer? buildUserLocationMarkerLayer({required LatLng? userLocation}) {
   if (userLocation == null) return null;
 
@@ -36,6 +37,7 @@ MarkerLayer? buildUserLocationMarkerLayer({required LatLng? userLocation}) {
 }
 
 /// Widget that displays the user location marker with animation.
+
 class _UserLocationMarker extends StatefulWidget {
   const _UserLocationMarker();
 
@@ -53,7 +55,8 @@ class _UserLocationMarkerState extends State<_UserLocationMarker>
   void initState() {
     super.initState();
 
-    // Create pulsing animation
+    // Create pulsing animation.
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -81,7 +84,7 @@ class _UserLocationMarkerState extends State<_UserLocationMarker>
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Pulsing outer circle
+        // Pulsing outer circle.
         AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
@@ -106,7 +109,9 @@ class _UserLocationMarkerState extends State<_UserLocationMarker>
             );
           },
         ),
-        // Static accuracy circle
+
+        // Static accuracy circle.
+
         Container(
           width: 40,
           height: 40,
@@ -119,7 +124,9 @@ class _UserLocationMarkerState extends State<_UserLocationMarker>
             ),
           ),
         ),
-        // Inner blue dot
+
+        // Inner blue dot.
+
         Container(
           width: 16,
           height: 16,

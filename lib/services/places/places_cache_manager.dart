@@ -30,28 +30,35 @@ import 'package:solidpod/solidpod.dart';
 import 'package:geopod/models/place.dart';
 
 /// In-memory cache manager for instant access to places data.
+
 class PlacesCacheManager {
-  // Singleton pattern
+  // Singleton pattern.
   static final PlacesCacheManager _instance = PlacesCacheManager._internal();
   factory PlacesCacheManager() => _instance;
   PlacesCacheManager._internal();
 
   /// Cached all places (local + Pod)
+
   List<Place>? _allPlacesCache;
 
-  /// Cached Pod-only places
+  /// Cached Pod-only places.
+
   List<Place>? _podPlacesCache;
 
-  /// Last cache update timestamp
+  /// Last cache update timestamp.
+
   DateTime? _lastCacheTime;
 
   /// Login state when cache was created (to prevent guest using logged-in user's cache)
+
   bool? _wasLoggedInWhenCached;
 
   /// Cache validity duration (in-memory cache, should be long enough for login)
+
   static const Duration _memoryCacheExpiry = Duration(minutes: 30);
 
   /// Gets all cached places (local + Pod)
+
   List<Place>? get allPlaces {
     if (_allPlacesCache == null || _isCacheExpired()) {
       return null;
@@ -59,10 +66,12 @@ class PlacesCacheManager {
     return List.unmodifiable(_allPlacesCache!);
   }
 
-  /// Gets the login state when cache was created
+  /// Gets the login state when cache was created.
+
   bool? get wasLoggedInWhenCached => _wasLoggedInWhenCached;
 
-  /// Gets cached Pod places only
+  /// Gets cached Pod places only.
+
   List<Place>? get podPlaces {
     if (_podPlacesCache == null || _isCacheExpired()) {
       return null;
@@ -70,26 +79,30 @@ class PlacesCacheManager {
     return List.unmodifiable(_podPlacesCache!);
   }
 
-  /// Caches all places data with current login state
+  /// Caches all places data with current login state.
+
   void cacheAllPlaces(List<Place> places) {
     _allPlacesCache = List.from(places);
     _lastCacheTime = DateTime.now();
     _wasLoggedInWhenCached = authStateNotifier.value;
   }
 
-  /// Caches Pod places data
+  /// Caches Pod places data.
+
   void cachePodPlaces(List<Place> places) {
     _podPlacesCache = List.from(places);
     _lastCacheTime = DateTime.now();
   }
 
-  /// Checks if in-memory cache is expired
+  /// Checks if in-memory cache is expired.
+
   bool _isCacheExpired() {
     if (_lastCacheTime == null) return true;
     return DateTime.now().difference(_lastCacheTime!) > _memoryCacheExpiry;
   }
 
-  /// Clears all in-memory cache
+  /// Clears all in-memory cache.
+
   void clearCache() {
     _allPlacesCache = null;
     _podPlacesCache = null;
@@ -98,16 +111,19 @@ class PlacesCacheManager {
   }
 
   /// Clears only Pod-related cache, preserves local places structure
-  /// allPlaces cache is cleared because it contains merged data
+  /// allPlaces cache is cleared because it contains merged data.
+
   void clearPodCacheOnly() {
     _allPlacesCache = null; // Clear merged cache (will be rebuilt)
     _podPlacesCache = null; // Clear Pod cache
     _lastCacheTime = null;
     _wasLoggedInWhenCached = null;
-    // Note: Local places are cached in PlacesService._cachedLocalPlaces, not here
+
+    // Note: Local places are cached in PlacesService._cachedLocalPlaces, not here.
   }
 
-  /// Forces cache refresh on next fetch
+  /// Forces cache refresh on next fetch.
+
   void invalidateCache() {
     _lastCacheTime = null;
   }

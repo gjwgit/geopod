@@ -22,6 +22,7 @@ import 'package:solidpod/solidpod.dart';
 /// - public-key.ttl (public key)
 ///
 /// WARNING: All encrypted data will become unreadable after this operation.
+
 Future<void> deleteEncryptionKeys(BuildContext context) async {
   final confirmed = await showDialog<bool>(
     context: context,
@@ -56,14 +57,14 @@ Future<void> deleteEncryptionKeys(BuildContext context) async {
   if (confirmed != true || !context.mounted) return;
 
   try {
-    // Show loading indicator
+    // Show loading indicator.
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
-    // Get the webId to construct full URLs
+    // Get the webId to construct full URLs.
     final webId = await getWebId();
     if (webId == null || webId.isEmpty) {
       throw Exception('User not logged in');
@@ -84,8 +85,9 @@ Future<void> deleteEncryptionKeys(BuildContext context) async {
     for (final filePath in filesToDelete) {
       try {
         debugPrint('Attempting to delete: $filePath');
+
         // deleteFile with isKey=true only deletes the file without
-        // trying to revoke permissions or remove individual keys
+        // trying to revoke permissions or remove individual keys.
         await deleteFile(filePath, isKey: true);
         deletedFiles.add(filePath);
         debugPrint('Deleted: $filePath');
@@ -95,7 +97,7 @@ Future<void> deleteEncryptionKeys(BuildContext context) async {
       }
     }
 
-    // Clear local key cache
+    // Clear local key cache.
     await KeyManager.clear();
 
     if (context.mounted) {

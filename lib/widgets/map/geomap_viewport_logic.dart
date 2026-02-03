@@ -19,6 +19,7 @@ import 'package:geopod/services/map_settings_service.dart';
 /// Adjusts zoom level if it exceeds the map source's max native zoom.
 ///
 /// Returns true if zoom was adjusted.
+
 bool adjustZoomForMapSource({
   required MapController mapController,
   required MapSettings mapSettings,

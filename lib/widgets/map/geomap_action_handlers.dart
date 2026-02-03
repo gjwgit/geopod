@@ -18,6 +18,7 @@ import 'package:geopod/services/places_service.dart';
 import 'package:geopod/utils/ui_utils.dart';
 
 /// Handles user actions for place management.
+
 mixin GeoMapActionHandlers<T extends StatefulWidget> on State<T> {
   Set<String> get savingPlaceIds;
   List<Place> get allPlaces;
@@ -29,6 +30,7 @@ mixin GeoMapActionHandlers<T extends StatefulWidget> on State<T> {
   Future<void> loadAllPlaces();
 
   /// Handle refresh button tap - reload places and show success message.
+
   Future<void> handleRefreshPressed() async {
     if (isLoadingPlaces) return;
 
@@ -59,11 +61,13 @@ mixin GeoMapActionHandlers<T extends StatefulWidget> on State<T> {
   }
 
   /// Handle optimistic save of place.
+
   Future<void> handleOptimisticSave(Place place) async {
-    // Prevent places change notifications during save
+    // Prevent places change notifications during save.
     skipPlacesChangeNotification = true;
 
     // Show immediately (optimistic update)
+
     setState(() {
       savingPlaceIds.add(place.id);
       allPlaces = [...allPlaces, place];
@@ -76,7 +80,7 @@ mixin GeoMapActionHandlers<T extends StatefulWidget> on State<T> {
         if (success) {
           SnackBarHelper.showSuccess(context, 'Place saved successfully');
         } else {
-          // Rollback on failure
+          // Rollback on failure.
           setState(() {
             allPlaces = allPlaces.where((p) => p.id != place.id).toList();
           });
@@ -84,7 +88,7 @@ mixin GeoMapActionHandlers<T extends StatefulWidget> on State<T> {
         }
       }
     } catch (e) {
-      // Rollback on error
+      // Rollback on error.
       if (mounted) {
         setState(() {
           allPlaces = allPlaces.where((p) => p.id != place.id).toList();
@@ -102,6 +106,7 @@ mixin GeoMapActionHandlers<T extends StatefulWidget> on State<T> {
   }
 
   /// Confirm and delete a place.
+
   Future<void> confirmAndDeletePlace(Place place) async {
     if (!mounted) return;
 

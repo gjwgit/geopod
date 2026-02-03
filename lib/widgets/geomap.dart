@@ -65,7 +65,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         GeoMapSettingsLoader,
         GeoMapEncryptedPlacesLoader,
         GeoMapNewsMixin {
-  // State variables implementation for mixins
+  // State variables implementation for mixins.
   @override
   final MapController mapController = MapController();
   @override
@@ -150,7 +150,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         );
         if (!mounted) return;
 
-        // Update state if login changed
+        // Update state if login changed.
+
         if (result.loginStateChanged) {
           setState(() {
             isLoggedIn = result.actuallyLoggedIn;
@@ -160,14 +161,15 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           });
         }
 
-        // Load fresh data if needed
+        // Load fresh data if needed.
+
         if (result.needsRefresh) {
           final places = await loadAllPlaces(forceRefresh: false);
           if (mounted) {
             setState(() => allPlaces = places);
           }
         } else if (result.places != null && !result.loginStateChanged) {
-          // Use cached places if no refresh needed and state didn't change
+          // Use cached places if no refresh needed and state didn't change.
           if (mounted) {
             setState(() => allPlaces = result.places!);
           }
@@ -234,7 +236,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             }
           });
 
-          // Handle encrypted places toggle
+          // Handle encrypted places toggle.
+
           if (changes.encryptedToggled && changes.encryptedEnabled) {
             unawaited(
               loadEncryptedPlaces(skipKeyVerification: true).catchError((
@@ -255,6 +258,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   /// Handle location button tap - get user location and move map to it.
+
   Future<void> _onLocatePressed() async {
     if (isLocating) return;
 
@@ -266,13 +270,14 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       if (!mounted) return;
 
       if (result.success && result.location != null) {
-        // Save user location and move map to it
+        // Save user location and move map to it.
         setState(() {
           userLocation = result.location;
         });
         mapController.move(result.location!, 15.0);
 
-        // Show success message
+        // Show success message.
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Location found successfully'),
@@ -281,7 +286,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           ),
         );
       } else {
-        // Show detailed error message
+        // Show detailed error message.
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -311,6 +316,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   /// Cached getter for filtered markers to avoid expensive rebuilds.
+
   List<MarkerData> get _filteredMarkers {
     return getCachedFilteredMarkers(
       allPlaces: allPlaces,
@@ -331,7 +337,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       longitude: lng,
     );
     if (result != null && mounted) {
-      // If adding encrypted place, auto-enable showEncryptedPlaces so user can see it
+      // If adding encrypted place, auto-enable showEncryptedPlaces so user can see it.
       if (result.encrypted && !mapSettings.showEncryptedPlaces) {
         safeSetState(this, () {
           mapSettings = mapSettings.copyWith(showEncryptedPlaces: true);
@@ -362,7 +368,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   }
 
   Future<void> _confirmAndDeletePlace(MarkerData m) async {
-    // Set flag to skip placesChangeNotifier during our delete operation
+    // Set flag to skip placesChangeNotifier during our delete operation.
     skipPlacesChangeNotification = true;
     try {
       await confirmAndDeletePlace(
@@ -405,7 +411,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             initialZoom: initialZoom,
             userLocation: userLocation,
           ),
-          // Loading indicator
+
+          // Loading indicator.
+
           buildLoadingIndicator(isLoading: isLoadingPlaces),
           AddPlaceOverlayButton(
             isLoading: isLoadingPlaces,
@@ -424,7 +432,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             visibleNewsCount: getVisibleNewsMarkersImpl().length,
             onTap: toggleNewsMarkers,
           ),
-          // Fullscreen toggle button
+
+          // Fullscreen toggle button.
+
           const FullscreenToggleButton(),
         ],
       ),

@@ -26,6 +26,7 @@ import 'package:geopod/widgets/pod/pod_dialogs.dart';
 ///
 /// This is a standalone implementation that doesn't depend on
 /// solidui's complex security key system.
+
 class PodFileBrowser extends StatefulWidget {
   /// Base path in the POD data directory (e.g., '' for root).
   final String basePath;
@@ -44,21 +45,26 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
   String _currentPath = '';
 
   /// List of items in current directory.
+
   List<PodFileItem> _items = [];
 
   /// Whether we're loading.
+
   bool _isLoading = true;
 
   /// Error message if any.
+
   String? _error;
 
   /// Currently selected file for preview.
+
   PodFileItem? _selectedFile;
 
   /// Path history for navigation.
   final List<String> _pathHistory = [''];
 
   /// Flag to skip podFilesChangeNotifier during our own delete operations.
+
   bool _skipFilesChangeNotification = false;
 
   @override
@@ -67,7 +73,8 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
     _currentPath = widget.basePath;
     _loadDirectory();
 
-    // Listen for file system changes from other parts of the app
+    // Listen for file system changes from other parts of the app.
+
     podFilesChangeNotifier.addListener(_onFilesChanged);
   }
 
@@ -78,10 +85,13 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
   }
 
   /// Called when files change elsewhere in the app.
+
   void _onFilesChanged() {
     // Skip if we triggered this ourselves (during delete operations)
     if (_skipFilesChangeNotification) return;
-    // Force refresh the current directory
+
+    // Force refresh the current directory.
+
     _refreshDirectory();
   }
 
@@ -151,13 +161,15 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
   }
 
   Future<void> _deleteFile(PodFileItem item) async {
-    // Set flag to skip file change notifications during our delete operation
+    // Set flag to skip file change notifications during our delete operation.
     _skipFilesChangeNotification = true;
 
     try {
       if (PlacesService.isMainPlacesFile(item.path)) {
         if (!await showDeletePlacesConfirmation(context)) return;
-        // Use addPostFrameCallback to avoid blocking animation
+
+        // Use addPostFrameCallback to avoid blocking animation.
+
         SchedulerBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
@@ -214,7 +226,8 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
         return;
       }
 
-      // Regular file deletion
+      // Regular file deletion.
+
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
@@ -237,7 +250,7 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
         if (!success) _loadDirectory();
       }
     } finally {
-      // Always reset the flag
+      // Always reset the flag.
       _skipFilesChangeNotification = false;
     }
   }
@@ -337,6 +350,7 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
   }
 
   /// Navigate to a specific path from breadcrumb.
+
   void _navigateToPath(String targetPath) {
     _pathHistory.add(_currentPath);
     setState(() {
@@ -350,6 +364,7 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
 
   /// Check if an item can be deleted.
   /// Only items in the data directory can be deleted.
+
   bool _canDeleteItem(PodFileItem item) {
     return PodPath.isDataPath(item.path);
   }

@@ -17,6 +17,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'weather_chart_sampling.dart';
 
 /// Build line chart for PDF using simple drawing.
+
 pw.Widget buildPdfChart(
   Map<DateTime, double> data,
   double minValue,
@@ -27,12 +28,12 @@ pw.Widget buildPdfChart(
   if (data.isEmpty) return pw.SizedBox();
 
   // Always sort entries by date in ascending order for PDF
-  // This ensures data points and X-axis labels are properly aligned
+  // This ensures data points and X-axis labels are properly aligned.
   final entries = data.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
   final valueRange = maxValue - minValue;
 
   // For temperature and humidity, use actual min value to show variation
-  // For precipitation and wind, start from 0
+  // For precipitation and wind, start from 0.
   final effectiveMin = useActualRange
       ? minValue
       : (minValue >= 0 ? 0.0 : minValue);
@@ -43,7 +44,7 @@ pw.Widget buildPdfChart(
       : maxValue;
   final effectiveRange = effectiveMax - effectiveMin;
 
-  // Sample data for PDF if too many points
+  // Sample data for PDF if too many points.
   final sampledEntries = entries.length > 20
       ? sampleEntriesForPdf(entries, 20)
       : entries;
@@ -51,7 +52,7 @@ pw.Widget buildPdfChart(
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.start,
     children: [
-      // Chart area with grid and line
+      // Chart area with grid and line.
       pw.Container(
         height: 200,
         decoration: pw.BoxDecoration(
@@ -80,7 +81,9 @@ pw.Widget buildPdfChart(
                 ),
               ),
             ),
-            // Chart with grid and line
+
+            // Chart with grid and line.
+
             pw.Positioned(
               left: 30,
               top: 20,
@@ -91,7 +94,8 @@ pw.Widget buildPdfChart(
                   final chartWidth = size.x;
                   final chartHeight = size.y;
 
-                  // Draw horizontal grid lines
+                  // Draw horizontal grid lines.
+
                   for (var i = 0; i <= 4; i++) {
                     final y = chartHeight * i / 4;
                     canvas
@@ -102,7 +106,8 @@ pw.Widget buildPdfChart(
                       ..strokePath();
                   }
 
-                  // Draw line chart
+                  // Draw line chart.
+
                   if (sampledEntries.length >= 2) {
                     final xStep = chartWidth / (sampledEntries.length - 1);
 
@@ -111,19 +116,21 @@ pw.Widget buildPdfChart(
                       ..setLineWidth(2);
 
                     // Calculate points
-                    // PDF coordinate system: origin at bottom-left, Y-axis goes upward
+                    // PDF coordinate system: origin at bottom-left, Y-axis goes upward.
                     final points = <PdfPoint>[];
                     for (var i = 0; i < sampledEntries.length; i++) {
                       final x = i * xStep;
                       final normalizedY =
                           (sampledEntries[i].value - effectiveMin) /
                           effectiveRange;
-                      // In PDF: y=0 is bottom, y=chartHeight is top
+
+                      // In PDF: y=0 is bottom, y=chartHeight is top.
                       final y = normalizedY * chartHeight;
                       points.add(PdfPoint(x, y));
                     }
 
-                    // Draw smooth curve with Catmull-Rom spline
+                    // Draw smooth curve with Catmull-Rom spline.
+
                     canvas.moveTo(points[0].x, points[0].y);
 
                     if (points.length == 2) {
@@ -144,7 +151,8 @@ pw.Widget buildPdfChart(
 
                         // Clamp control points Y to prevent curve going below chartHeight (value < 0)
                         // Important for non-negative values like precipitation and wind speed.
-                        // Only apply this clamping when using actual range to avoid distorting curves
+                        // Only apply this clamping when using actual range to avoid distorting curves.
+
                         if (!useActualRange && minValue >= 0) {
                           if (cp1y > chartHeight) cp1y = chartHeight;
                           if (cp1y < 0) cp1y = 0;
@@ -158,7 +166,8 @@ pw.Widget buildPdfChart(
 
                     canvas.strokePath();
 
-                    // Draw data points
+                    // Draw data points.
+
                     for (final point in points) {
                       canvas
                         ..setFillColor(PdfColors.blue700)
@@ -166,7 +175,8 @@ pw.Widget buildPdfChart(
                         ..fillPath();
                     }
 
-                    // Draw X-axis tick marks at the bottom
+                    // Draw X-axis tick marks at the bottom.
+
                     canvas
                       ..setStrokeColor(PdfColors.grey600)
                       ..setLineWidth(1);
@@ -181,7 +191,9 @@ pw.Widget buildPdfChart(
                 },
               ),
             ),
-            // X-axis date labels
+
+            // X-axis date labels.
+
             pw.Positioned(
               left: 30,
               right: 5,
@@ -213,7 +225,9 @@ pw.Widget buildPdfChart(
                         ),
                       );
                     }
-                    // Always show the last label
+
+                    // Always show the last label.
+
                     if (sampledEntries.length > 1 &&
                         (sampledEntries.length - 1) % labelStep != 0) {
                       final lastIndex = sampledEntries.length - 1;
@@ -239,7 +253,9 @@ pw.Widget buildPdfChart(
         ),
       ),
       pw.SizedBox(height: 4),
-      // Info text
+
+      // Info text.
+
       pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [

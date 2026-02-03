@@ -43,17 +43,20 @@ class _LocationsPageState extends State<LocationsPage>
   @override
   void initState() {
     super.initState();
-    // CRITICAL: Initialize auth listener FIRST to get current state
+
+    // CRITICAL: Initialize auth listener FIRST to get current state.
+
     initAuthStateListener();
 
-    // Try to load from cache for instant display
+    // Try to load from cache for instant display.
     final cm = PlacesCacheManager();
     final cached = cm.allPlaces;
     final cacheState = cm.wasLoggedInWhenCached;
 
-    // Only use cache if it matches current login state
+    // Only use cache if it matches current login state.
+
     if (cached != null && cached.isNotEmpty && cacheState == isLoggedIn) {
-      // Show POD places if logged in, local places if not
+      // Show POD places if logged in, local places if not.
       _places = isLoggedIn
           ? cached
                 .where((p) => !p.isLocal)
@@ -66,7 +69,7 @@ class _LocationsPageState extends State<LocationsPage>
     } else {
       // Cache state doesn't match current login state or no cache
       // This happens when: guest cache exists but now logged in, or vice versa
-      // _verifyLoginAndRefresh will handle the refresh
+      // _verifyLoginAndRefresh will handle the refresh.
       _isLoading = true;
     }
 
@@ -75,10 +78,10 @@ class _LocationsPageState extends State<LocationsPage>
   }
 
   Future<void> _verifyLoginAndRefresh() async {
-    // Always check current login state from server
+    // Always check current login state from server.
     final loggedIn = await isUserLoggedIn();
 
-    // Check if cache matches the actual login state from server
+    // Check if cache matches the actual login state from server.
     final cm = PlacesCacheManager();
     final cacheState = cm.wasLoggedInWhenCached;
     final cacheMatchesLoginState = cacheState == loggedIn;
@@ -87,18 +90,19 @@ class _LocationsPageState extends State<LocationsPage>
 
     // If auth state differs from mixin state, force reload
     // (onAuthStateChanged will also be triggered, but that's okay - double check ensures consistency)
-    // If we haven't loaded once yet, check if cache matches login state
+    // If we haven't loaded once yet, check if cache matches login state.
+
     if (loggedIn != isLoggedIn) {
-      // Auth state mismatch - force refresh to get correct data
+      // Auth state mismatch - force refresh to get correct data.
       await _loadPlaces(forceRefresh: true);
     } else if (!_hasLoadedOnce) {
       // First load but auth state matches
-      // Check if cache is from the correct login state
+      // Check if cache is from the correct login state.
       if (!cacheMatchesLoginState) {
         // Cache is from different login state (e.g., guest cache when now logged in)
         await _loadPlaces(forceRefresh: true);
       } else {
-        // Cache matches current login state - safe to use
+        // Cache matches current login state - safe to use.
         await _loadPlaces(forceRefresh: false);
       }
     }
@@ -116,12 +120,12 @@ class _LocationsPageState extends State<LocationsPage>
     // MUST force refresh on auth state change:
     // - Guest -> Login: need to fetch Pod data
     // - Login -> Logout: need to show local examples
-    // - Cache from previous state is invalid
+    // - Cache from previous state is invalid.
     _loadPlaces(forceRefresh: true);
   }
 
   void _onPlacesChanged() {
-    // Load places regardless of login state to ensure local places are visible
+    // Load places regardless of login state to ensure local places are visible.
     if (mounted) {
       _loadPlaces(forceRefresh: false);
     }
@@ -136,9 +140,11 @@ class _LocationsPageState extends State<LocationsPage>
         final places = await PlacesService.fetchPlaces(
           forceRefresh: forceRefresh,
         );
+
         // Filter based on login state:
         // - Logged in: show POD places (user's own places)
-        // - Not logged in: show local example places
+        // - Not logged in: show local example places.
+
         _places = isLoggedIn
             ? places.where((p) => !p.isLocal).toList()
             : places.where((p) => p.isLocal).toList();
@@ -253,10 +259,11 @@ class _LocationsPageState extends State<LocationsPage>
 
   @override
   Widget build(BuildContext context) {
-    // Show loading view only on first load
+    // Show loading view only on first load.
     if (_isLoading && !_hasLoadedOnce) return const LoadingView();
 
-    // Show error view if there's an error
+    // Show error view if there's an error.
+
     if (_errorMessage != null) {
       return ErrorView(errorMessage: _errorMessage!, onRetry: _refresh);
     }
@@ -266,10 +273,11 @@ class _LocationsPageState extends State<LocationsPage>
     // For not logged in: use _places directly (which contains local examples)
     final displayPlaces = isLoggedIn ? _userPlaces : _places;
 
-    // Show empty view if no places
+    // Show empty view if no places.
+
     if (displayPlaces.isEmpty) {
       // Show NotLoggedInView for logged-in users with no places
-      // Show different message for not-logged-in users
+      // Show different message for not-logged-in users.
       if (isLoggedIn) {
         return EmptyPlacesView(onRefresh: _refresh, onImport: _importPlaces);
       } else {
@@ -295,7 +303,9 @@ class _LocationsPageState extends State<LocationsPage>
             isLoading: _isLoading,
             onRefresh: _refresh,
           ),
-          // Only show action buttons when logged in
+
+          // Only show action buttons when logged in.
+
           if (isLoggedIn)
             LocationsActionButtons(
               isLoading: _isLoading,
@@ -312,7 +322,8 @@ class _LocationsPageState extends State<LocationsPage>
                 final p = displayPlaces[i];
                 return PlaceListTile(
                   place: p,
-                  // Only allow edit/delete when logged in and place is not local
+
+                  // Only allow edit/delete when logged in and place is not local.
                   onEdit: isLoggedIn && !p.isLocal ? () => _editPlace(p) : null,
                   onDelete: isLoggedIn && !p.isLocal
                       ? () => _deletePlace(p)

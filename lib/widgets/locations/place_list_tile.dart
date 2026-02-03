@@ -33,6 +33,7 @@ import 'package:geopod/widgets/locations/detail_row.dart';
 /// A list tile widget for displaying a single user place.
 ///
 /// Only displays user's Pod data (not local canned examples).
+
 class PlaceListTile extends StatelessWidget {
   const PlaceListTile({
     super.key,

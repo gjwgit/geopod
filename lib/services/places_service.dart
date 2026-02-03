@@ -52,6 +52,7 @@ class PlacesService {
   static List<Place>? _cachedLocalPlaces;
 
   /// Get local example places synchronously.
+
   static List<Place> getLocalPlacesSync() {
     _cachedLocalPlaces ??= kExamplePlacesData
         .map((json) => Place.fromJson(json, isLocalSource: true))
@@ -62,6 +63,7 @@ class PlacesService {
   /// Load local example places (async wrapper for API compatibility).
   /// NOTE: Prefer using getLocalPlacesSync() directly as local places
   /// are now compiled into the app and don't require async loading.
+
   @Deprecated('Use getLocalPlacesSync() instead - local data is compiled in')
   static Future<List<Place>> loadLocalPlaces() async => getLocalPlacesSync();
 
@@ -73,18 +75,19 @@ class PlacesService {
     if (!forceRefresh) {
       final c = cm.allPlaces;
       if (c != null) {
-        // If cached but need encrypted, check if encrypted is included
+        // If cached but need encrypted, check if encrypted is included.
         if (includeEncrypted && !c.any((p) => p.isEncrypted)) {
-          // Need to fetch encrypted separately
+          // Need to fetch encrypted separately.
         } else {
           return c;
         }
       }
     }
-    // Local places are synchronous (compiled into binary) - get them immediately
+
+    // Local places are synchronous (compiled into binary) - get them immediately.
     final localPlaces = getLocalPlacesSync();
 
-    // Fetch network data in parallel for better performance
+    // Fetch network data in parallel for better performance.
     final results = await Future.wait([
       fetchPodPlaces(forceRefresh: forceRefresh),
       includeEncrypted
@@ -104,12 +107,14 @@ class PlacesService {
   /// Returns empty list if not logged in or no security key available.
   /// NOTE: Will not prompt for security key - use EncryptedPlacesService
   /// directly if you need to prompt the user.
+
   static Future<List<Place>> fetchEncryptedPlaces({
     bool forceRefresh = false,
   }) async {
     try {
       if (!authStateNotifier.value) return [];
-      // Check if security key is available - don't try to load if not
+
+      // Check if security key is available - don't try to load if not.
       final hasKey = await EncryptedPlacesService.isSecurityKeyAvailable();
       if (!hasKey) {
         debugPrint(
@@ -117,7 +122,8 @@ class PlacesService {
         );
         return [];
       }
-      // Import and use EncryptedPlacesService
+
+      // Import and use EncryptedPlacesService.
       final encPlaces = await EncryptedPlacesService.fetchEncryptedPlaces(
         forceRefresh: forceRefresh,
       );
@@ -200,6 +206,7 @@ class PlacesService {
 
   static Future<List<Place>> refreshPodDataOnly() async {
     final cm = PlacesCacheManager();
+
     // Local places are synchronous (compiled into binary)
     final local = getLocalPlacesSync();
     await clearPodCacheOnly();
@@ -220,7 +227,7 @@ class PlacesService {
       var existing = cm.podPlaces ?? await fetchPodPlaces();
       final updated = List<Place>.from(existing)..insert(0, place);
 
-      // Write main file first to ensure it succeeds
+      // Write main file first to ensure it succeeds.
       final mainSuccess = await writePlacesJsonFile(
         jsonEncode(updated.map((p) => p.toJson()).toList()),
       );
@@ -234,7 +241,9 @@ class PlacesService {
 
         await clearCache();
         placesChangeNotifier.value++;
-        // Clear directory cache completely to force refresh
+
+        // Clear directory cache completely to force refresh.
+
         PodDirectoryService.clearCache();
         PodDirectoryService.notifyChange();
       }
@@ -257,7 +266,7 @@ class PlacesService {
       final updated = List<Place>.from(existing)
         ..removeWhere((p) => p.id == placeId);
 
-      // Delete individual file and update main file in parallel
+      // Delete individual file and update main file in parallel.
       final results = await Future.wait([
         writePlacesJsonFile(
           jsonEncode(updated.map((p) => p.toJson()).toList()),
@@ -269,7 +278,9 @@ class PlacesService {
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
-        // Invalidate directory cache and notify file browser
+
+        // Invalidate directory cache and notify file browser.
+
         PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
       }
@@ -315,17 +326,19 @@ class PlacesService {
       }
       final merged = [...withAddr, ...existing];
 
-      // Write main file first
+      // Write main file first.
       final success = await writePlacesJsonFile(
         jsonEncode(merged.map((p) => p.toJson()).toList()),
       );
 
       if (success) {
-        // Write individual files for new places in parallel
+        // Write individual files for new places in parallel.
         await Future.wait(withAddr.map((p) => writeIndividualPlaceFile(p)));
         await clearCache();
         placesChangeNotifier.value++;
-        // Invalidate directory cache and notify file browser
+
+        // Invalidate directory cache and notify file browser.
+
         PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
       }
@@ -342,17 +355,19 @@ class PlacesService {
     try {
       if (!authStateNotifier.value) return false;
 
-      // Get all existing place IDs before clearing
+      // Get all existing place IDs before clearing.
       final existing = await fetchPodPlaces();
       final placeIds = existing.map((p) => p.id).toList();
 
       final success = await writePlacesJsonFile('[]');
       if (success) {
-        // Delete all individual place files
+        // Delete all individual place files.
         await deleteAllIndividualPlaceFiles(placeIds);
         await clearCache();
         placesChangeNotifier.value++;
-        // Invalidate directory cache and notify file browser
+
+        // Invalidate directory cache and notify file browser.
+
         PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
       }
@@ -396,7 +411,7 @@ class PlacesService {
         list[i] = toSave;
       }
 
-      // Update both main file and individual file in parallel
+      // Update both main file and individual file in parallel.
       final results = await Future.wait([
         writePlacesJsonFile(jsonEncode(list.map((p) => p.toJson()).toList())),
         writeIndividualPlaceFile(toSave),
@@ -406,7 +421,9 @@ class PlacesService {
       if (success) {
         await clearCache();
         placesChangeNotifier.value++;
-        // Invalidate directory cache and notify file browser
+
+        // Invalidate directory cache and notify file browser.
+
         PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
       }
@@ -419,6 +436,7 @@ class PlacesService {
   /// Delete a place by its individual file path.
   /// This is called when a user deletes place_xxx.json from the file browser.
   /// It will also remove the place from the main places.json file.
+
   static Future<bool> deletePlaceByFilePath(
     String filePath,
     BuildContext context,
@@ -434,12 +452,14 @@ class PlacesService {
   }
 
   /// Check if a file path is a places.json file.
+
   static bool isMainPlacesFile(String filePath) {
     return filePath.endsWith('/places.json') ||
         filePath.endsWith('\\places.json');
   }
 
   /// Check if a file path is an individual place file.
+
   static bool isIndividualPlaceFile(String filePath) {
     final fileName = filePath.split('/').last.split('\\').last;
     return RegExp(r'^place_.+\.json$').hasMatch(fileName);

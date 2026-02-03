@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 
 /// Show confirmation dialog for deleting the main places.json file.
+
 Future<bool> showDeletePlacesConfirmation(BuildContext context) async {
   return await showDialog<bool>(
         context: context,
@@ -40,6 +41,7 @@ Future<bool> showDeletePlacesConfirmation(BuildContext context) async {
 }
 
 /// Show snackbar for file operation result.
+
 void showFileOperationSnackBar(
   BuildContext context, {
   required String message,
@@ -54,6 +56,7 @@ void showFileOperationSnackBar(
 }
 
 /// Show snackbar for delete in progress.
+
 void showDeletingSnackBar(BuildContext context, String fileName) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(

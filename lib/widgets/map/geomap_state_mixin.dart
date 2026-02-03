@@ -23,6 +23,7 @@ import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 
 /// Manages map state variables.
+
 mixin GeoMapStateMixin {
   MapController get mapController;
   TileProvider get tileProvider;
@@ -64,6 +65,7 @@ mixin GeoMapStateMixin {
 }
 
 /// Manages marker cache for performance.
+
 mixin MarkerCacheMixin {
   List<MarkerData>? _cachedFilteredMarkers;
   int _lastPlacesHash = 0;
@@ -76,13 +78,14 @@ mixin MarkerCacheMixin {
   Color _lastEncryptedPlacesColor = Colors.purple;
 
   /// Get filtered markers with caching to avoid expensive rebuilds.
+
   List<MarkerData> getCachedFilteredMarkers({
     required List<Place> allPlaces,
     required MapSettings mapSettings,
     required Set<String> savingPlaceIds,
     required List<MarkerData> Function() builder,
   }) {
-    // Compute hashes to detect changes
+    // Compute hashes to detect changes.
     final placesHash = Object.hashAll(allPlaces.map((p) => p.id));
     final savingHash = Object.hashAll(savingPlaceIds);
     final showLocal = mapSettings.showLocalPlaces;
@@ -92,7 +95,8 @@ mixin MarkerCacheMixin {
     final localColor = mapSettings.localPlacesColor;
     final encryptedColor = mapSettings.encryptedPlacesColor;
 
-    // Return cached if nothing changed
+    // Return cached if nothing changed.
+
     if (_cachedFilteredMarkers != null &&
         placesHash == _lastPlacesHash &&
         savingHash == _lastSavingIdsHash &&
@@ -105,7 +109,8 @@ mixin MarkerCacheMixin {
       return _cachedFilteredMarkers!;
     }
 
-    // Rebuild and cache
+    // Rebuild and cache.
+
     _lastPlacesHash = placesHash;
     _lastSavingIdsHash = savingHash;
     _lastShowLocalPlaces = showLocal;
@@ -119,6 +124,7 @@ mixin MarkerCacheMixin {
   }
 
   /// Clear marker cache.
+
   void clearMarkerCache() {
     _cachedFilteredMarkers = null;
   }

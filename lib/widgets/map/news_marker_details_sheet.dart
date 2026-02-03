@@ -32,6 +32,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 
 /// Shows detailed information about a news marker in a bottom sheet.
+
 void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
   showModalBottomSheet(
     context: context,
@@ -45,7 +46,7 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with news icon
+          // Header with news icon.
           Row(
             children: [
               Icon(
@@ -66,7 +67,8 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
           ),
           const Divider(height: 24),
 
-          // News title
+          // News title.
+
           Text(
             newsMarker.title,
             style: Theme.of(
@@ -75,7 +77,8 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
           ),
           const SizedBox(height: 12),
 
-          // Source and date
+          // Source and date.
+
           if (newsMarker.source != null || newsMarker.publishedAt != null)
             Row(
               children: [
@@ -104,7 +107,8 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
               ],
             ),
 
-          // Tone indicator
+          // Tone indicator.
+
           if (newsMarker.tone != null) ...[
             const SizedBox(height: 8),
             Row(
@@ -133,7 +137,8 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
 
           const SizedBox(height: 16),
 
-          // Location info
+          // Location info.
+
           Row(
             children: [
               Icon(Icons.location_on, size: 16, color: Colors.grey.shade600),
@@ -149,7 +154,8 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
 
           const SizedBox(height: 20),
 
-          // Action buttons
+          // Action buttons.
+
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -178,6 +184,7 @@ void showNewsMarkerDetailsSheet(BuildContext context, NewsMarker newsMarker) {
 }
 
 /// Format DateTime for display.
+
 String _formatDateTime(DateTime dateTime) {
   final now = DateTime.now();
   final difference = now.difference(dateTime);
@@ -194,6 +201,7 @@ String _formatDateTime(DateTime dateTime) {
 }
 
 /// Launch URL in browser.
+
 Future<void> _launchUrl(BuildContext context, String url) async {
   try {
     final uri = Uri.parse(url);

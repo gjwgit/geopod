@@ -21,6 +21,7 @@ import 'package:http/http.dart' as http;
 import 'package:geopod/services/pod/pod_auth.dart';
 
 /// Result of a POD HTTP operation.
+
 class PodResponse {
   final int statusCode;
   final String body;
@@ -39,9 +40,11 @@ class PodResponse {
 }
 
 /// Resource status enumeration.
+
 enum ResourceStatus { exist, notExist, forbidden, unknown }
 
 /// Content types for POD resources.
+
 enum PodContentType {
   json('application/json'),
   turtle('text/turtle'),
@@ -54,10 +57,12 @@ enum PodContentType {
 }
 
 /// Low-level HTTP client for POD operations.
+
 class PodHttp {
   PodHttp._();
 
   /// Perform a GET request to fetch a resource.
+
   static Future<PodResponse> get(
     String url, {
     PodContentType accept = PodContentType.any,
@@ -87,6 +92,7 @@ class PodHttp {
   }
 
   /// Perform a PUT request to create or replace a resource.
+
   static Future<PodResponse> put(
     String url,
     String content, {
@@ -121,6 +127,7 @@ class PodHttp {
   }
 
   /// Perform a POST request to create a resource.
+
   static Future<PodResponse> post(
     String containerUrl,
     String name,
@@ -131,7 +138,8 @@ class PodHttp {
     try {
       final tokens = await PodAuth.getTokens(containerUrl, 'POST');
 
-      // Link header for resource type
+      // Link header for resource type.
+
       const fileTypeLink = '<http://www.w3.org/ns/ldp#Resource>; rel="type"';
       const dirTypeLink =
           '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"';
@@ -162,6 +170,7 @@ class PodHttp {
   }
 
   /// Perform a DELETE request to remove a resource.
+
   static Future<PodResponse> delete(String url) async {
     try {
       final tokens = await PodAuth.getTokens(url, 'DELETE');
@@ -188,6 +197,7 @@ class PodHttp {
   }
 
   /// Perform a HEAD request to check resource existence.
+
   static Future<ResourceStatus> checkStatus(String url) async {
     try {
       final tokens = await PodAuth.getTokens(url, 'HEAD');

@@ -39,6 +39,7 @@ import 'package:geopod/widgets/weather_dialog.dart';
 /// Result returned from AddPlaceForm containing the place data.
 /// Used for optimistic updates - the Place is returned immediately
 /// before the save completes.
+
 class AddPlaceResult {
   final Place place;
 
@@ -50,6 +51,7 @@ class AddPlaceResult {
 
 /// A form widget that allows users to add a new place with coordinates and
 /// a note. Returns immediately with optimistic data for instant UI updates.
+
 class AddPlaceForm extends StatefulWidget {
   const AddPlaceForm({
     super.key,
@@ -82,12 +84,15 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   Timer? _debounceTimer;
 
   /// Whether to encrypt this place.
+
   bool _encrypt = true;
 
   @override
   void initState() {
     super.initState();
+
     // Pre-fill coordinates if provided.
+
     if (widget.initialLatitude != null) {
       _latitudeController.text = widget.initialLatitude!.toStringAsFixed(6);
     }
@@ -95,11 +100,13 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
       _longitudeController.text = widget.initialLongitude!.toStringAsFixed(6);
     }
 
-    // Listen to coordinate changes for live preview
+    // Listen to coordinate changes for live preview.
+
     _latitudeController.addListener(_onCoordinateChanged);
     _longitudeController.addListener(_onCoordinateChanged);
 
-    // Load initial address preview if coordinates provided
+    // Load initial address preview if coordinates provided.
+
     if (widget.initialLatitude != null && widget.initialLongitude != null) {
       _loadAddressPreview();
     }
@@ -114,23 +121,26 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
     super.dispose();
   }
 
-  /// Called when coordinates change - triggers debounced address lookup
+  /// Called when coordinates change - triggers debounced address lookup.
+
   void _onCoordinateChanged() {
-    // Cancel previous timer
+    // Cancel previous timer.
     _debounceTimer?.cancel();
 
     // Start new timer (wait 800ms after user stops typing)
+
     _debounceTimer = Timer(const Duration(milliseconds: 800), () {
       _loadAddressPreview();
     });
   }
 
-  /// Loads address preview from coordinates
+  /// Loads address preview from coordinates.
+
   Future<void> _loadAddressPreview() async {
     final latText = _latitudeController.text.trim();
     final lngText = _longitudeController.text.trim();
 
-    // Validate coordinates
+    // Validate coordinates.
     final lat = double.tryParse(latText);
     final lng = double.tryParse(lngText);
 
@@ -150,14 +160,15 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
       return;
     }
 
-    // Show loading state
+    // Show loading state.
+
     setState(() {
       _isLoadingAddress = true;
       _addressPreview = null;
     });
 
     try {
-      // Call geocoding API
+      // Call geocoding API.
       final address = await GeocodingService.getAddress(lat, lng);
 
       safeSetState(this, () {
@@ -173,6 +184,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   }
 
   /// Validates that the input is a valid latitude (-90 to 90).
+
   String? _validateLatitude(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Latitude is required';
@@ -188,6 +200,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   }
 
   /// Validates that the input is a valid longitude (-180 to 180).
+
   String? _validateLongitude(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Longitude is required';
@@ -203,6 +216,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   }
 
   /// Validates that the note is not empty.
+
   String? _validateNote(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Note is required';
@@ -212,6 +226,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
 
   /// INSTANT SAVE: Returns immediately with optimistic Place data.
   /// The actual save (geocoding + writePod) happens in the parent widget.
+
   void _handleSave() {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -232,6 +247,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
     );
 
     // INSTANT: Close dialog and return Place for optimistic update.
+
     Navigator.pop(context, AddPlaceResult(place: place, encrypted: _encrypt));
   }
 
@@ -298,6 +314,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                 const SizedBox(height: 16),
 
                 // Longitude field.
+
                 TextFormField(
                   controller: _longitudeController,
                   decoration: const InputDecoration(
@@ -317,7 +334,8 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                 ),
                 const SizedBox(height: 16),
 
-                // Address preview
+                // Address preview.
+
                 if (_isLoadingAddress || _addressPreview != null)
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -381,6 +399,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                   const SizedBox(height: 16),
 
                 // Note field.
+
                 TextFormField(
                   controller: _noteController,
                   decoration: const InputDecoration(
@@ -396,6 +415,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                 const SizedBox(height: 16),
 
                 // Encryption checkbox.
+
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(

@@ -1,6 +1,6 @@
 /// Encryption key operations for settings dialog.
 ///
-// Time-stamp: <2026-01-07 Miduo>
+// Time-stamp: <Friday 2026-02-13 17:11:19 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -88,7 +88,7 @@ Future<void> deleteEncryptionKeys(BuildContext context) async {
 
         // deleteFile with isKey=true only deletes the file without
         // trying to revoke permissions or remove individual keys.
-        await deleteFile(filePath, isKey: true);
+        await deleteFile(fileUrl: filePath, isKey: true);
         deletedFiles.add(filePath);
         debugPrint('Deleted: $filePath');
       } catch (e) {

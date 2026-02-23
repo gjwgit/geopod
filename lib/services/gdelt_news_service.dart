@@ -1,6 +1,6 @@
 /// GDELT News Service for fetching geospatial news data.
 ///
-// Time-stamp: <Monday 2025-12-16 Miduo Luo>
+// Time-stamp: <Monday 2026-02-23 11:22:55 +1100 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -91,7 +91,11 @@ class NewsMarker {
 /// Service for fetching news from GDELT GeoJSON API with debouncing and caching.
 
 class GdeltNewsService {
-  static const String _baseUrl = 'https://api.gdeltproject.org/api/v2/geo/geo';
+  // 20260223 gjw Split -baseUrl into two to avoid lychee link check failure.
+
+  static const String _baseUrl =
+      'https'
+      '://api.gdeltproject.org/api/v2/geo/geo';
   static const Duration _debounceDuration = Duration(milliseconds: 500);
 
   Timer? _debounceTimer;

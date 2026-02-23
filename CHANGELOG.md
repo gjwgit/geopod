@@ -22,7 +22,6 @@ better, fork the repository yourself, update the code, and submit a
 Pull Request. Coding documentation is
 [available](https://solidcommunity.au/docs/geopod).
 
-
 ## 0.1 First beta release
 
 + Move to latest solidpod dev from anusii [0.0.15 20260203 gjw]

@@ -20,7 +20,7 @@ Contributions are welcome. Visit
 [github](https://github.com/gjwgit/geopod) to submit an issue or, even
 better, fork the repository yourself, update the code, and submit a
 Pull Request. Coding documentation is
-[available](https://solidcommunity.au/docs/geopod).
+[available](https://solidcommunity.au/docs/geopod/).
 
 ## 0.1 First beta release
 

@@ -22,6 +22,10 @@ better, fork the repository yourself, update the code, and submit a
 Pull Request. Coding documentation is
 [available](https://solidcommunity.au/docs/geopod/).
 
+We make this project available for free so if you appreciate the app
+then please show some ❤️ and tap on the star at
+[GitHub](https://github.com/gjwgit/geopod) to support our work.
+
 ## 0.1 First beta release
 
 + Move to latest solidpod dev from anusii [0.0.15 20260203 gjw]

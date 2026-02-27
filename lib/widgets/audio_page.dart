@@ -1,6 +1,6 @@
 /// Audio library page – lists audio files and plays them inline.
 ///
-// Time-stamp: <2026-02-19 GitHub Copilot>
+// Time-stamp: <2026-02-28 GitHub Copilot>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -27,14 +27,16 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:solidpod/solidpod.dart' show authStateNotifier;
+
 import 'package:geopod/models/media_item.dart';
+import 'package:geopod/services/media/media_pod_service.dart';
+import 'package:geopod/services/pod/pod_auth.dart';
 import 'package:geopod/widgets/media/audio_player_widget.dart';
 import 'package:geopod/widgets/media/media_list_widget.dart';
+import 'package:geopod/widgets/media/upload_media_dialog.dart';
 
 /// Page listing short audio files stored on the user's Pod.
-///
-/// Currently seeded from bundled `assets/audio/`.
-/// Replace [_items] with a dynamic Pod fetch to satisfy Issue #27.
 class AudioPage extends StatefulWidget {
   const AudioPage({super.key});
 
@@ -43,32 +45,103 @@ class AudioPage extends StatefulWidget {
 }
 
 class _AudioPageState extends State<AudioPage> {
-  List<MediaItem> _items = const [
+  // Bundled demo assets – always shown first.
+  static const List<MediaItem> _assets = [
     MediaItem(
       name: 'Example Audio',
       type: MediaType.audio,
       assetPath: 'assets/audio/example.mp3',
     ),
-    // TODO(issue-27): append Pod-fetched MediaItems here.
   ];
 
+  List<MediaItem> _podItems = [];
+  bool _isLoadingPod = false;
+
+  List<MediaItem> get _allItems => [..._assets, ..._podItems];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPodItems();
+    // Reload when login state changes.
+    authStateNotifier.addListener(_onAuthChanged);
+  }
+
+  @override
+  void dispose() {
+    authStateNotifier.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  void _onAuthChanged() => _loadPodItems();
+
+  Future<void> _loadPodItems() async {
+    if (!PodAuth.isLoggedInSync()) {
+      if (mounted) setState(() => _podItems = []);
+      return;
+    }
+    if (mounted) setState(() => _isLoadingPod = true);
+    try {
+      final items = await MediaPodService.listItems(MediaType.audio);
+      if (mounted) setState(() => _podItems = items);
+    } finally {
+      if (mounted) setState(() => _isLoadingPod = false);
+    }
+  }
+
   Future<void> _delete(MediaItem item) async {
-    setState(() => _items = List.of(_items)..remove(item));
-    // TODO(issue-27): delete from Solid Pod.
+    if (item.isPodItem) {
+      await MediaPodService.deleteItem(item);
+    }
+    setState(() => _podItems = List.of(_podItems)..remove(item));
+  }
+
+  Future<void> _upload() async {
+    final item = await showUploadMediaDialog(context, MediaType.audio);
+    if (item != null && mounted) {
+      setState(() => _podItems = [..._podItems, item]);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return MediaListWidget<MediaItem>(
-      title: 'Audio',
-      items: _items,
-      isLoading: false,
-      emptyMessage: 'No audio files. Upload some to your Pod!',
-      titleOf: (i) => i.name,
-      subtitleOf: (i) => i.isRemote ? 'Pod' : 'Local',
-      iconOf: (_) => Icons.audio_file,
-      playerBuilder: (ctx, i) => AudioPlayerWidget(item: i),
-      onDelete: _delete,
+    return Stack(
+      children: [
+        MediaListWidget<MediaItem>(
+          title: 'Audio',
+          items: _allItems,
+          isLoading: _isLoadingPod,
+          emptyMessage: 'No audio files. Upload some to your Pod!',
+          titleOf: (i) => i.name,
+          subtitleOf: (i) {
+            if (i.isPodItem) {
+              return i.isEncrypted ? 'Pod · Encrypted' : 'Pod';
+            }
+            return i.isRemote ? 'Pod' : 'Local';
+          },
+          iconOf: (i) {
+            if (i.isPodItem && i.isEncrypted) return Icons.lock;
+            return Icons.audio_file;
+          },
+          playerBuilder: (ctx, i) => AudioPlayerWidget(item: i),
+          onDelete: (i) async {
+            if (i.isPodItem) await _delete(i);
+          },
+        ),
+
+        // Upload FAB – only shown when logged in.
+        if (PodAuth.isLoggedInSync())
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton.extended(
+              heroTag: 'audio_upload_fab',
+              onPressed: _upload,
+              icon: const Icon(Icons.upload_file),
+              label: const Text('Upload'),
+            ),
+          ),
+      ],
     );
   }
 }

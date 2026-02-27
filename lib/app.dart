@@ -63,6 +63,12 @@ class App extends StatelessWidget {
       image: const AssetImage('assets/images/app_image.png'),
       logo: const AssetImage('assets/images/app_icon.png'),
       title: appTitle.replaceAll(' - ', '\n'),
+      customFolderPathList: const [
+        'audio',
+        'video',
+        'encrypted_data',
+        'places',
+      ],
       child: appWithPreload,
     );
 

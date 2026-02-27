@@ -27,3 +27,28 @@ Future<String> writeBytesToTempFile(String filename, Uint8List bytes) async {
   await tempFile.writeAsBytes(bytes);
   return tempFile.path;
 }
+
+/// Writes [bytes] to a platform temp file and returns a `file://` URI string
+/// suitable for [VideoPlayerController.networkUrl] or [AudioPlayer].
+/// [mimeType] is ignored on native – the file extension determines the codec.
+Future<String> bytesToPlaybackUrl(
+  Uint8List bytes,
+  String mimeType,
+  String filename,
+) async {
+  final path = await writeBytesToTempFile(filename, bytes);
+  // Return a file:// URL; VideoPlayerController.networkUrl handles it on native.
+  return Uri.file(path).toString();
+}
+
+/// Deletes the temp file previously created by [bytesToPlaybackUrl].
+/// Safe to call even if the file no longer exists.
+Future<void> revokePlaybackUrl(String url) async {
+  try {
+    final uri = Uri.tryParse(url);
+    if (uri != null && uri.isScheme('file')) {
+      final file = File.fromUri(uri);
+      if (await file.exists()) await file.delete();
+    }
+  } catch (_) {}
+}

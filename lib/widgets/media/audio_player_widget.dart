@@ -1,4 +1,4 @@
-/// Inline audio playback widget.
+﻿/// Inline audio playback widget.
 ///
 // Time-stamp: <2026-02-27 GitHub Copilot>
 ///
@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:geopod/models/media_item.dart';
+import 'package:geopod/services/media/media_pod_service.dart';
 
 /// An inline audio player backed by the `video_player` package.
 ///
@@ -36,6 +37,11 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   bool _failedToLoad = false;
   String? _errorMessage;
 
+  /// Local playback URL created by [MediaPodService.loadPlaybackUrl] for Pod
+  /// items.  Must be released in [dispose] to free the underlying Blob / temp
+  /// file.
+  String? _playbackUrl;
+
   double _volume = 1.0;
   double _preMuteVolume = 1.0;
 
@@ -48,13 +54,24 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   @override
   void dispose() {
     _controller.dispose();
+    if (_playbackUrl != null) {
+      MediaPodService.releasePlaybackUrl(_playbackUrl!);
+    }
     super.dispose();
   }
 
   Future<void> _initPlayer() async {
     final item = widget.item;
     try {
-      if (item.isRemote) {
+      if (item.isPodItem) {
+        // Download (and optionally decrypt) the file, get a local playback URL.
+        final url = await MediaPodService.loadPlaybackUrl(item);
+        if (url == null) {
+          throw Exception('Failed to load media from Pod.');
+        }
+        _playbackUrl = url;
+        _controller = VideoPlayerController.networkUrl(Uri.parse(url));
+      } else if (item.isRemote) {
         _controller = VideoPlayerController.networkUrl(
           Uri.parse(item.remoteUrl!),
         );

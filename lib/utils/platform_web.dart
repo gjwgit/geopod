@@ -25,7 +25,10 @@
 
 library;
 
+import 'dart:js_interop';
 import 'dart:typed_data';
+
+import 'package:web/web.dart' as web;
 
 /// On web, files are not accessible via the local file-system.
 /// Always returns `false`.
@@ -38,4 +41,25 @@ Future<String> writeBytesToTempFile(String filename, Uint8List bytes) async {
   // Return the filename as-is; the caller must use a different strategy
   // (e.g. Blob/URL) to play back the bytes.
   return filename;
+}
+
+/// Creates a browser Blob URL from [bytes] with the given [mimeType].
+/// The returned URL can be used directly in `<audio>`/`<video>` elements
+/// and by [VideoPlayerController.networkUrl] on web.
+/// [filename] is unused on web.
+Future<String> bytesToPlaybackUrl(
+  Uint8List bytes,
+  String mimeType,
+  String filename,
+) async {
+  // Use package:web Blob API.
+  final blob = web.Blob([bytes.toJS].toJS, web.BlobPropertyBag(type: mimeType));
+  return web.URL.createObjectURL(blob);
+}
+
+/// Revokes a Blob URL previously created by [bytesToPlaybackUrl].
+Future<void> revokePlaybackUrl(String url) async {
+  if (url.startsWith('blob:')) {
+    web.URL.revokeObjectURL(url);
+  }
 }

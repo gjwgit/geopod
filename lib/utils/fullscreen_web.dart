@@ -11,8 +11,8 @@
 library;
 
 import 'dart:async';
-
 import 'dart:js_interop';
+
 import 'package:web/web.dart' as web;
 
 /// Calls `document.documentElement.requestFullscreen()`.

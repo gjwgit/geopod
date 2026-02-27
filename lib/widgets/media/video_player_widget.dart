@@ -19,6 +19,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:geopod/models/media_item.dart';
+import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/utils/fullscreen_stub.dart'
     if (dart.library.html) 'package:geopod/utils/fullscreen_web.dart';
 
@@ -45,6 +46,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   bool _failedToLoad = false;
   String? _errorMessage;
 
+  /// Local playback URL for Pod items (Blob URL on web, file:// on native).
+  String? _playbackUrl;
+
   double _volume = 1.0;
   double _preMuteVolume = 1.0;
   double _speed = 1.0;
@@ -64,13 +68,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   @override
   void dispose() {
     _controller.dispose();
+    if (_playbackUrl != null) {
+      MediaPodService.releasePlaybackUrl(_playbackUrl!);
+    }
     super.dispose();
   }
 
   Future<void> _initVideo() async {
     final item = widget.item;
     try {
-      if (item.isRemote) {
+      if (item.isPodItem) {
+        final url = await MediaPodService.loadPlaybackUrl(item);
+        if (url == null) throw Exception('Failed to load media from Pod.');
+        _playbackUrl = url;
+        _controller = VideoPlayerController.networkUrl(Uri.parse(url));
+      } else if (item.isRemote) {
         _controller = VideoPlayerController.networkUrl(
           Uri.parse(item.remoteUrl!),
         );

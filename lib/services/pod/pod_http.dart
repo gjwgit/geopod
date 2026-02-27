@@ -13,6 +13,7 @@
 library;
 
 import 'dart:convert' show utf8;
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 
@@ -123,6 +124,73 @@ class PodHttp {
     } catch (e) {
       debugPrint('PodHttp.put() error: $e');
       rethrow;
+    }
+  }
+
+  /// Perform a PUT request with raw binary bytes (for audio/video uploads).
+  ///
+  /// [url] – full resource URL.
+  /// [bytes] – raw binary content.
+  /// [mimeType] – MIME type string, e.g. `'audio/mpeg'`.
+
+  static Future<PodResponse> putBinary(
+    String url,
+    Uint8List bytes,
+    String mimeType,
+  ) async {
+    try {
+      final tokens = await PodAuth.getTokens(url, 'PUT');
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {
+          'Accept': '*/*',
+          'Authorization': 'DPoP ${tokens.accessToken}',
+          'Connection': 'keep-alive',
+          'Content-Type': mimeType,
+          'Content-Length': bytes.length.toString(),
+          'DPoP': tokens.dPopToken,
+        },
+        body: bytes,
+      );
+
+      return PodResponse(
+        statusCode: response.statusCode,
+        body: response.body,
+        headers: response.headers,
+      );
+    } catch (e) {
+      debugPrint('PodHttp.putBinary() error: $e');
+      rethrow;
+    }
+  }
+
+  /// Perform a GET request that returns binary bytes.
+  ///
+  /// Returns `null` on error or if the resource does not exist.
+
+  static Future<Uint8List?> getBytes(String url) async {
+    try {
+      final tokens = await PodAuth.getTokens(url, 'GET');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Accept': '*/*',
+          'Authorization': 'DPoP ${tokens.accessToken}',
+          'Connection': 'keep-alive',
+          'DPoP': tokens.dPopToken,
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.bodyBytes;
+      }
+      debugPrint('PodHttp.getBytes() – HTTP ${response.statusCode} for $url');
+      return null;
+    } catch (e) {
+      debugPrint('PodHttp.getBytes() error: $e');
+      return null;
     }
   }
 

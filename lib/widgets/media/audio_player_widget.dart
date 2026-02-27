@@ -1,6 +1,6 @@
 /// Inline audio playback widget.
 ///
-// Time-stamp: <2026-02-19 GitHub Copilot>
+// Time-stamp: <2026-02-27 GitHub Copilot>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -18,12 +18,8 @@ import 'package:geopod/models/media_item.dart';
 
 /// An inline audio player backed by the `video_player` package.
 ///
-/// Uses the same package as [VideoPlayerWidget] so there is no extra native
-/// plugin to register  this works on web (HTML5 `<audio>`), Android, iOS,
-/// and desktop without any extra setup.
-///
-/// Supports both bundled assets ([MediaItem.assetPath]) and remote URLs
-/// ([MediaItem.remoteUrl]).
+/// Features: seek slider, play/pause, volume control (mute toggle + slider).
+/// Works on web (HTML5 `<audio>`), Android, iOS, and desktop without extra setup.
 class AudioPlayerWidget extends StatefulWidget {
   final MediaItem item;
 
@@ -39,6 +35,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   bool _initialized = false;
   bool _failedToLoad = false;
   String? _errorMessage;
+
+  double _volume = 1.0;
+  double _preMuteVolume = 1.0;
 
   @override
   void initState() {
@@ -62,24 +61,37 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       } else {
         _controller = VideoPlayerController.asset(item.assetPath!);
       }
-
       await _controller.initialize();
       _controller.addListener(_onUpdate);
       if (mounted) setState(() => _initialized = true);
-
       await _controller.play();
     } catch (e, st) {
       debugPrint('[AudioPlayerWidget] init error: $e\n$st');
-      if (mounted)
+      if (mounted) {
         setState(() {
           _failedToLoad = true;
           _errorMessage = e.toString();
         });
+      }
     }
   }
 
   void _onUpdate() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _setVolume(double v) async {
+    setState(() => _volume = v);
+    await _controller.setVolume(v);
+  }
+
+  Future<void> _toggleMute() async {
+    if (_volume == 0.0) {
+      await _setVolume(_preMuteVolume);
+    } else {
+      setState(() => _preMuteVolume = _volume);
+      await _setVolume(0.0);
+    }
   }
 
   @override
@@ -112,9 +124,12 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       return '$m:$s';
     }
 
+    final isMuted = _volume == 0.0;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        //  Seek bar
         Slider(
           value: current.toDouble(),
           min: 0,
@@ -125,18 +140,71 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
             }
           },
         ),
+
+        // ── Controls: time | [vol →] | ⏸ | [← empty] | time ────────────────
         Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(fmt(position), style: const TextStyle(fontSize: 12)),
             const SizedBox(width: 12),
+            Text(fmt(position), style: const TextStyle(fontSize: 12)),
+            const SizedBox(width: 8),
+            // Left half – volume, right-aligned to hug play button
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: isMuted ? 'Unmute' : 'Mute',
+                    icon: Icon(
+                      isMuted
+                          ? Icons.volume_off
+                          : _volume < 0.5
+                          ? Icons.volume_down
+                          : Icons.volume_up,
+                      size: 18,
+                    ),
+                    onPressed: _toggleMute,
+                  ),
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 80,
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 5,
+                        ),
+                        overlayShape: const RoundSliderOverlayShape(
+                          overlayRadius: 10,
+                        ),
+                      ),
+                      child: Slider(
+                        value: _volume,
+                        min: 0.0,
+                        max: 1.0,
+                        divisions: 100,
+                        label: '${(_volume * 100).round()}%',
+                        onChanged: _setVolume,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+              ),
+            ),
+            // Center – play/pause
             IconButton(
-              iconSize: 36,
+              iconSize: 40,
               icon: Icon(isPlaying ? Icons.pause_circle : Icons.play_circle),
               onPressed: isPlaying ? _controller.pause : _controller.play,
             ),
-            const SizedBox(width: 12),
+            // Right half – mirror spacer (keeps play centred)
+            const Expanded(child: SizedBox.shrink()),
+            const SizedBox(width: 8),
             Text(fmt(duration), style: const TextStyle(fontSize: 12)),
+            const SizedBox(width: 12),
           ],
         ),
       ],

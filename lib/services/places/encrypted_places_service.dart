@@ -3,7 +3,7 @@
 /// Encrypted places are stored in the 'encryption data' directory
 /// using the solidpod encryption mechanisms.
 ///
-// Time-stamp: <Friday 2026-01-30 11:21:13 +1100 Graham Williams>
+// Time-stamp: <2026-02-28 Miduo>
 ///
 /// Copyright (C) 2025-2026, Software Innovation Institute, ANU.
 ///
@@ -211,15 +211,15 @@ class EncryptedPlacesService {
       return false;
     }
 
-    // Write to Pod using IO helper
-    // The directoryVerified flag (loaded from persistent storage) prevents
-    // repeated checkResourceStatus calls for the directory.
-    final (success, dirCreated) = await writeEncryptedPlacesToPod(
+    // Write to Pod using IO helper.
+    // The directoryVerified flag (loaded from persistent storage) skips the
+    // setInheritKeyDir call once the ACL and encryption key are known to exist.
+    final (success, _) = await writeEncryptedPlacesToPod(
       places,
       _directoryVerified,
     );
     if (success) {
-      // Update and persist directory verification flag if write succeeded.
+      // Persist the verification flag after first successful write.
       if (!_directoryVerified) {
         await _saveDirVerifiedFlag(true);
       }
@@ -228,21 +228,6 @@ class EncryptedPlacesService {
       // Notify places change to trigger UI refresh.
 
       placesChangeNotifier.value++;
-
-      // If directory was newly created, update security key cache and notify UI
-      // (directory creation confirms encryption keys are available)
-
-      if (dirCreated) {
-        _securityKeyAvailableCache = true; // Keys are now known to be available
-        if (context.mounted) {
-          const SecurityKeyStatusChangedNotification(
-            isKeySaved: true,
-          ).dispatch(context);
-          debugPrint(
-            'Directory created, security key status notification dispatched',
-          );
-        }
-      }
     } else {
       // Error recovery: If write failed while assuming directory was verified,
       // clear the persisted flag to force re-verification on next attempt.

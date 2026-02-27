@@ -18,20 +18,14 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'package:solidpod/solidpod.dart'
-    show
-        readPod,
-        writePod,
-        setInheritKeyDir,
-        checkResourceStatus,
-        SolidFunctionCallStatus,
-        ResourceStatus;
+    show readPod, writePod, setInheritKeyDir, SolidFunctionCallStatus;
 import 'package:uuid/uuid.dart';
 
 import 'package:geopod/models/media_item.dart';
 import 'package:geopod/services/media/media_pod_paths.dart';
 import 'package:geopod/services/pod/pod_auth.dart';
 import 'package:geopod/services/pod/pod_file_system.dart';
-import 'package:geopod/services/pod/pod_http.dart' hide ResourceStatus;
+import 'package:geopod/services/pod/pod_http.dart';
 import 'package:geopod/services/pod/pod_path.dart';
 import 'package:geopod/utils/platform_io.dart'
     if (dart.library.html) 'package:geopod/utils/platform_web.dart';
@@ -54,21 +48,31 @@ const _uuid = Uuid();
 class MediaPodService {
   MediaPodService._();
 
+  // Per-session flags: setInheritKeyDir only needs to run once per type per session.
+  static bool _audioKeyReady = false;
+  static bool _videoKeyReady = false;
+
   // ── Directory initialisation ─────────────────────────────────────────────
 
-  /// Call once per subdirectory before any read/write.
-  /// Creates the directory and sets up encryption key inheritance.
+  /// Call before any encrypted write to ensure the ACL file and encryption
+  /// key are set up for the directory. Skipped after the first successful
+  /// call per session (the directory is guaranteed to exist after Pod init).
   static Future<void> _ensureDir(MediaType type) async {
+    final alreadyReady = type == MediaType.audio
+        ? _audioKeyReady
+        : _videoKeyReady;
+    if (alreadyReady) return;
+
     final relDir = type == MediaType.audio
         ? getAudioDirPath()
         : getVideoDirPath();
     try {
-      // PodPath.getDirUrl prepends 'geopod/' and returns the full URL.
       final dirUrl = await PodPath.getDirUrl(relDir);
-      final status = await checkResourceStatus(dirUrl, isFile: false);
-      if (status == ResourceStatus.notExist) {
-        // Creates the directory AND sets up encryption key inheritance.
-        await setInheritKeyDir(dirUrl, createAcl: true);
+      await setInheritKeyDir(dirUrl, createAcl: true);
+      if (type == MediaType.audio) {
+        _audioKeyReady = true;
+      } else {
+        _videoKeyReady = true;
       }
     } catch (e) {
       debugPrint('MediaPodService._ensureDir error: $e');
@@ -102,6 +106,7 @@ class MediaPodService {
         _indexPath(type),
         content,
         contentType: PodContentType.json,
+        createParentDirs: false,
       );
     } catch (e) {
       debugPrint('MediaPodService._writeIndex error: $e');
@@ -139,7 +144,8 @@ class MediaPodService {
       return null;
     }
 
-    await _ensureDir(type);
+    // Only encrypted uploads need ACL/key setup for the directory.
+    if (encrypt) await _ensureDir(type);
 
     final id = _uuid.v4();
     final safeFilename = filename.replaceAll(RegExp(r'[^a-zA-Z0-9._\-]'), '_');

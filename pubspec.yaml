@@ -38,8 +38,7 @@ dependencies:
   web: ^1.1.0
   window_manager: ^0.5.0
   universal_io: any
-  markdown_widget_builder:
-    path: ../markdown_widget_builder
+  markdown_widget_builder: ^0.0.10
   media_kit: ^1.2.6
   media_kit_libs_video: ^1.0.7
   media_kit_video: ^2.0.1

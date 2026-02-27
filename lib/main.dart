@@ -27,6 +27,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:media_kit/media_kit.dart';
 import 'package:solidpod/solidpod.dart' show KeyManager, setAppDirName;
 import 'package:solidui/solidui.dart';
 import 'package:window_manager/window_manager.dart';
@@ -53,6 +54,9 @@ void main() async {
   // to set the Linux desktop window [title].
 
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialise media_kit (required for video/audio playback via media_kit).
+  MediaKit.ensureInitialized();
 
   // CRITICAL: Set app directory name BEFORE any Pod operations
   // This must be called early to prevent double-slash bug in file paths

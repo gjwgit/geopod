@@ -32,9 +32,11 @@ import 'package:solidui/solidui.dart';
 import 'constants/app.dart';
 import 'home.dart';
 import 'services/fullscreen_service.dart';
+import 'widgets/audio_page.dart';
 import 'widgets/files_page.dart';
 import 'widgets/geomap.dart';
 import 'widgets/locations_page.dart';
+import 'widgets/video_page.dart';
 
 /// App scaffold widget that responds to fullscreen mode changes.
 
@@ -98,12 +100,7 @@ class AppScaffoldWidget extends StatelessWidget {
             specific locations of interest.
 
             ''',
-          child: Center(
-            child: Text(
-              'List of Audio for specific Locations of Interest',
-              style: TextStyle(fontSize: 24),
-            ),
-          ),
+          child: AudioPage(),
         ),
         const SolidMenuItem(
           icon: Icons.video_library,
@@ -114,12 +111,7 @@ class AppScaffoldWidget extends StatelessWidget {
               of interest.
 
             ''',
-          child: Center(
-            child: Text(
-              'Video Library for Locations of Interest',
-              style: TextStyle(fontSize: 24),
-            ),
-          ),
+          child: VideoPage(),
         ),
         const SolidMenuItem(
           icon: Icons.folder,

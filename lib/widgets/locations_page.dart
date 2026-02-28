@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 import 'package:solidpod/solidpod.dart' show isUserLoggedIn;
 
 import 'package:geopod/models/place.dart';
+import 'package:geopod/services/map_settings_service.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places_service.dart'
     show PlacesService, PlacesCacheManager, placesChangeNotifier;
 import 'package:geopod/utils/widget_utils.dart';
@@ -37,6 +39,9 @@ class _LocationsPageState extends State<LocationsPage>
   late bool _isLoading;
   String? _errorMessage;
   bool _hasLoadedOnce = false;
+
+  /// Whether to load and display encrypted places.
+  bool _showEncryptedPlaces = false;
 
   List<Place> get _userPlaces => _places.where((p) => !p.isLocal).toList();
 
@@ -80,6 +85,12 @@ class _LocationsPageState extends State<LocationsPage>
   Future<void> _verifyLoginAndRefresh() async {
     // Always check current login state from server.
     final loggedIn = await isUserLoggedIn();
+
+    // Load saved encrypted-places preference from map settings.
+    final settings = await MapSettingsService.loadSettings();
+    if (mounted) {
+      setState(() => _showEncryptedPlaces = settings.showEncryptedPlaces);
+    }
 
     // Check if cache matches the actual login state from server.
     final cm = PlacesCacheManager();
@@ -139,18 +150,58 @@ class _LocationsPageState extends State<LocationsPage>
       operation: () async {
         final places = await PlacesService.fetchPlaces(
           forceRefresh: forceRefresh,
+          includeEncrypted: _showEncryptedPlaces,
         );
 
         // Filter based on login state:
-        // - Logged in: show POD places (user's own places)
+        // - Logged in: show POD places (user's own places, incl. encrypted)
         // - Not logged in: show local example places.
 
         _places = isLoggedIn
-            ? places.where((p) => !p.isLocal).toList()
+            // Exclude local examples; also exclude encrypted places when
+            // the toggle is off — avoids cached encrypted data leaking
+            // into the list even when includeEncrypted was false.
+            ? places
+                  .where(
+                    (p) =>
+                        !p.isLocal && (_showEncryptedPlaces || !p.isEncrypted),
+                  )
+                  .toList()
             : places.where((p) => p.isLocal).toList();
         _hasLoadedOnce = true;
       },
     );
+  }
+
+  /// Toggles the encrypted places visibility, syncing with map settings.
+  /// When enabling, ensures the security key is available (prompts if needed)
+  /// so the user doesn't have to navigate to the map first.
+
+  Future<void> _toggleShowEncryptedPlaces(bool value) async {
+    if (value) {
+      // Ensure security key before enabling — prompt right here in the
+      // locations page instead of waiting until the user opens the map.
+      final hasKey = await EncryptedPlacesService.ensureSecurityKey(
+        context,
+        const LocationsPage(),
+      );
+      if (!mounted) return;
+      if (!hasKey) {
+        // User cancelled or no key — don't enable the toggle.
+        return;
+      }
+    }
+
+    setState(() => _showEncryptedPlaces = value);
+    // Persist the setting in the background — does not block place loading.
+    MapSettingsService.loadSettings().then(
+      (s) => MapSettingsService.saveSettings(
+        s.copyWith(showEncryptedPlaces: value),
+      ),
+    );
+    // forceRefresh: false — fetchPlaces will fast-merge from the
+    // EncryptedPlacesService in-memory cache when available.
+    await _loadPlaces(forceRefresh: false);
   }
 
   Future<void> _refresh() async => await _loadPlaces(forceRefresh: true);
@@ -305,13 +356,17 @@ class _LocationsPageState extends State<LocationsPage>
           ),
 
           // Only show action buttons when logged in.
-          if (isLoggedIn)
+          if (isLoggedIn) ...[
             LocationsActionButtons(
               isLoading: _isLoading,
               onExport: _exportPlaces,
               onImport: _importPlaces,
               onClearAll: _clearAllPlaces,
+              showEncryptedToggle: true,
+              showEncryptedPlaces: _showEncryptedPlaces,
+              onToggleEncrypted: _toggleShowEncryptedPlaces,
             ),
+          ],
           const SizedBox(height: 8),
           const Divider(height: 1),
           Expanded(

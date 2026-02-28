@@ -19,7 +19,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart' show authStateNotifier;
 
 import 'package:geopod/services/map_settings_service.dart';
-import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places_service.dart';
 
 /// Handles authentication and places change events.

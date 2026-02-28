@@ -119,7 +119,6 @@ class GdeltNewsService {
   }) async {
     // If bounds are covered by cache and not forcing refresh, return filtered cache
     if (!forceRefresh && isBoundsCovered(bounds)) {
-      debugPrint('Using cached news data');
       return getMarkersInBounds(bounds);
     }
 
@@ -152,7 +151,6 @@ class GdeltNewsService {
         _cachedMarkers.addAll(markers);
         _cachedBounds = bounds;
         _cacheTime = DateTime.now();
-        debugPrint('Cached ${markers.length} news markers');
 
         completer.complete(markers);
       } catch (e) {
@@ -185,8 +183,6 @@ class GdeltNewsService {
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
 
-      debugPrint('GDELT API URL: $uri');
-
       final response = await http
           .get(uri)
           .timeout(
@@ -203,8 +199,6 @@ class GdeltNewsService {
       final data = json.decode(response.body) as Map<String, dynamic>;
       final features = data['features'] as List<dynamic>? ?? [];
 
-      debugPrint('API returned ${features.length} features');
-
       // Parse all features and cache them (filtering done later for specific bounds)
       final markers = features
           .whereType<Map<String, dynamic>>()
@@ -216,9 +210,6 @@ class GdeltNewsService {
           })
           .toList();
 
-      debugPrint(
-        'Parsed ${markers.length} valid markers (excluding 0,0 coordinates)',
-      );
       return markers;
     } catch (e) {
       debugPrint('Error fetching GDELT news: $e');

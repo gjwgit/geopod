@@ -43,6 +43,7 @@ Widget buildFlutterMapWidget({
   required void Function(TapPosition, LatLng) onLongPress,
   required void Function(MapCamera, bool) onPositionChanged,
   required void Function(MarkerData) onDeletePlace,
+  required void Function(MarkerData) onEditPlace,
   required BuildContext context,
   required LatLng initialCenter,
   required double initialZoom,
@@ -79,21 +80,22 @@ Widget buildFlutterMapWidget({
             applyFilter: applyFilter,
           ),
 
-          // Wrap marker layer in RepaintBoundary to isolate marker animations.
-          RepaintBoundary(
-            child: buildPlacesMarkerLayer(
-              context: context,
-              markers: filteredMarkers,
-              shouldAnimate: shouldAnimate,
-              onDelete: onDeletePlace,
-            ),
+          // NOTE: Do NOT wrap MarkerLayer in RepaintBoundary.
+          // flutter_map 8.x uses MobileLayerTransformer to apply a GPU transform
+          // to move layers during panning. A RepaintBoundary creates a separate
+          // composited layer that does not automatically inherit this transform,
+          // causing markers to appear detached from the map during fast drags.
+          buildPlacesMarkerLayer(
+            context: context,
+            markers: filteredMarkers,
+            shouldAnimate: shouldAnimate,
+            onDelete: onDeletePlace,
+            onEdit: onEditPlace,
           ),
           if (showNewsMarkers)
-            RepaintBoundary(
-              child: buildNewsMarkerLayer(
-                context: context,
-                newsMarkers: visibleNewsMarkers,
-              ),
+            buildNewsMarkerLayer(
+              context: context,
+              newsMarkers: visibleNewsMarkers,
             ),
 
           // User location marker layer (always on top)

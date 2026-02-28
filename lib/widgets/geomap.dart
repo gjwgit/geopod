@@ -25,8 +25,12 @@ import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/location_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
-import 'package:geopod/services/places_service.dart' show placesChangeNotifier;
+import 'package:geopod/services/places_service.dart'
+    show placesChangeNotifier, PlacesService;
 import 'package:geopod/utils/widget_utils.dart';
+import 'package:geopod/widgets/locations/edit_place_dialog.dart';
+import 'package:geopod/widgets/locations/place_operations.dart';
+import 'package:geopod/widgets/locations_page.dart';
 import 'package:geopod/widgets/map/fullscreen_toggle_button.dart';
 import 'package:geopod/widgets/map/geomap_action_handlers.dart';
 import 'package:geopod/widgets/map/geomap_builders.dart';
@@ -164,7 +168,10 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         // Load fresh data if needed.
 
         if (result.needsRefresh) {
-          final places = await loadAllPlaces(forceRefresh: false);
+          final places = await loadAllPlaces(
+            forceRefresh: false,
+            includeEncrypted: mapSettings.showEncryptedPlaces,
+          );
           if (mounted) {
             setState(() => allPlaces = places);
           }
@@ -382,6 +389,67 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     }
   }
 
+  Future<void> _editPlaceFromMap(MarkerData m) async {
+    // Reconstruct a Place from MarkerData for the edit dialog.
+    final place = Place(
+      id: m.id,
+      lat: m.position.latitude,
+      lng: m.position.longitude,
+      note: m.description,
+      timestamp: DateTime.now().toIso8601String(),
+      address: m.address,
+      isLocal: m.isLocal,
+      isEncrypted: m.isEncrypted,
+    );
+
+    final result = await showDialog<Place>(
+      context: context,
+      builder: (_) => EditPlaceDialog(place: place),
+    );
+    if (result == null || !mounted) return;
+
+    final coordsChanged = result.lat != place.lat || result.lng != place.lng;
+    final i = allPlaces.indexWhere((p) => p.id == place.id);
+    final old = i != -1 ? allPlaces[i] : null;
+
+    if (i != -1) {
+      setState(() => allPlaces[i] = result);
+    }
+
+    showUpdatingPlaceSnackbar(context, coordsChanged);
+
+    skipPlacesChangeNotification = true;
+    try {
+      final success = await PlacesService.updatePlace(
+        result,
+        context,
+        const LocationsPage(),
+        coordinatesChanged: coordsChanged,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        showUpdateSuccessSnackbar(context);
+        if (coordsChanged) {
+          // Reload to get the updated address from the server.
+          final places = await loadAllPlaces(
+            forceRefresh: true,
+            includeEncrypted: mapSettings.showEncryptedPlaces,
+          );
+          if (mounted) setState(() => allPlaces = places);
+        }
+      } else {
+        if (i != -1 && old != null) {
+          setState(() => allPlaces[i] = old);
+        }
+        showUpdateFailureSnackbar(context);
+      }
+    } finally {
+      skipPlacesChangeNotification = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -406,6 +474,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                 _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude),
             onPositionChanged: onMapPositionChangedForNews,
             onDeletePlace: _confirmAndDeletePlace,
+            onEditPlace: _editPlaceFromMap,
             context: context,
             initialCenter: initialCenter,
             initialZoom: initialZoom,

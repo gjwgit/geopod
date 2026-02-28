@@ -110,6 +110,7 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
           .place
           .address, // Address will be updated by service if coords changed.
       isLocal: false,
+      isEncrypted: widget.place.isEncrypted, // Preserve encryption status.
     );
 
     Navigator.pop(context, updatedPlace);

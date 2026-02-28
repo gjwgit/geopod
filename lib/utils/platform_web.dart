@@ -30,19 +30,6 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
-/// On web, files are not accessible via the local file-system.
-/// Always returns `false`.
-Future<bool> fileExists(String path) async => false;
-
-/// On web, there is no writable temporary directory.
-/// Returns [filename] unchanged – callers should handle this gracefully.
-Future<String> writeBytesToTempFile(String filename, Uint8List bytes) async {
-  // Web does not support writing to the local file-system.
-  // Return the filename as-is; the caller must use a different strategy
-  // (e.g. Blob/URL) to play back the bytes.
-  return filename;
-}
-
 /// Creates a browser Blob URL from [bytes] with the given [mimeType].
 /// The returned URL can be used directly in `<audio>`/`<video>` elements
 /// and by [VideoPlayerController.networkUrl] on web.

@@ -132,7 +132,7 @@ class AppScaffoldWidget extends StatelessWidget {
         // VERSION.
         versionConfig: const SolidVersionConfig(
           changelogUrl:
-              'https://github.com/gjwgit/geopod/blob/dev/'
+              'https://raw.githubusercontent.com/gjwgit/geopod/dev/'
               'CHANGELOG.md',
           showDate: true,
         ),

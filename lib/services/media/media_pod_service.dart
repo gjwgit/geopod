@@ -149,8 +149,11 @@ class MediaPodService {
 
     final id = _uuid.v4();
     final safeFilename = filename.replaceAll(RegExp(r'[^a-zA-Z0-9._\-]'), '_');
-    // Encrypted files get an `.enc` suffix so the index knows what they are.
-    final storedFilename = encrypt ? '$safeFilename.enc' : safeFilename;
+    // solidpod writePod requires encrypted files to end with `.ttl` (Turtle
+    // format is the only format it accepts for encrypted content).
+    // Follow the solidui convention: use `.enc.ttl` suffix so the file is
+    // visually identifiable as encrypted while still passing solidpod's check.
+    final storedFilename = encrypt ? '$safeFilename.enc.ttl' : safeFilename;
     final relPath = type == MediaType.audio
         ? getAudioFilePath(storedFilename)
         : getVideoFilePath(storedFilename);

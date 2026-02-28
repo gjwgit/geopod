@@ -95,8 +95,10 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
       return;
     }
 
-    // Load encrypted places.
+    // Load encrypted places, then reset the in-progress guard.
 
     onLoadEncrypted();
+    // Allow a new load after 5 s to handle race conditions during initial auth.
+    Future.delayed(const Duration(seconds: 5), encryptedLoadInProgressReset);
   }
 }

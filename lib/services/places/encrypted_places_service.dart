@@ -100,20 +100,20 @@ class EncryptedPlacesService {
   }
 
   /// Check if security key is available for encryption operations.
-  /// Uses cache to avoid repeated KeyManager calls.
+  /// Only caches positive (true) results to avoid stale 'no key' responses
+  /// during async key verification at startup.
 
   static Future<bool> isSecurityKeyAvailable() async {
-    // Return cached value if available.
-    if (_securityKeyAvailableCache != null) {
-      return _securityKeyAvailableCache!;
-    }
+    // Only return cached value when it's a confirmed positive.
+    if (_securityKeyAvailableCache == true) return true;
 
     try {
       final available = await KeyManager.hasSecurityKey();
-      _securityKeyAvailableCache = available;
+      // Only cache true — false may be temporary (key not yet verified).
+      if (available) _securityKeyAvailableCache = true;
       return available;
     } catch (_) {
-      _securityKeyAvailableCache = false;
+      // Do not cache errors to allow retry.
       return false;
     }
   }
@@ -123,6 +123,15 @@ class EncryptedPlacesService {
   static void clearSecurityKeyCache() {
     _securityKeyAvailableCache = null;
   }
+
+  /// Whether encrypted places have been successfully loaded this session.
+
+  static bool get hasLoadedEncryptedPlaces =>
+      _cachedEncryptedPlaces != null && _cachedEncryptedPlaces!.isNotEmpty;
+
+  /// Returns the in-memory cache of encrypted places, or null if not yet loaded.
+
+  static List<Place>? getCachedEncryptedPlaces() => _cachedEncryptedPlaces;
 
   /// Check if verification key exists (meaning encryption was set up).
 
@@ -177,7 +186,6 @@ class EncryptedPlacesService {
         const SecurityKeyStatusChangedNotification(
           isKeySaved: true,
         ).dispatch(context);
-        debugPrint('Security key status notification dispatched');
       }
     }
     return result;
@@ -214,7 +222,7 @@ class EncryptedPlacesService {
     // Write to Pod using IO helper.
     // The directoryVerified flag (loaded from persistent storage) skips the
     // setInheritKeyDir call once the ACL and encryption key are known to exist.
-    final (success, _) = await writeEncryptedPlacesToPod(
+    final (success, dirCreated) = await writeEncryptedPlacesToPod(
       places,
       _directoryVerified,
     );
@@ -228,6 +236,18 @@ class EncryptedPlacesService {
       // Notify places change to trigger UI refresh.
 
       placesChangeNotifier.value++;
+
+      // If directory was newly created, update security key cache and notify UI
+      // (directory creation confirms encryption keys are available)
+
+      if (dirCreated) {
+        _securityKeyAvailableCache = true; // Keys are now known to be available
+        if (context.mounted) {
+          const SecurityKeyStatusChangedNotification(
+            isKeySaved: true,
+          ).dispatch(context);
+        }
+      }
     } else {
       // Error recovery: If write failed while assuming directory was verified,
       // clear the persisted flag to force re-verification on next attempt.
@@ -277,9 +297,6 @@ class EncryptedPlacesService {
 
       if (_cachedEncryptedPlaces == null) {
         if (!await ensureSecurityKey(context, child)) {
-          debugPrint(
-            'Security key not available, cannot safely add encrypted places',
-          );
           return false;
         }
       }
@@ -307,9 +324,6 @@ class EncryptedPlacesService {
       // Ensure security key is available before fetching/modifying data.
       if (_cachedEncryptedPlaces == null) {
         if (!await ensureSecurityKey(context, child)) {
-          debugPrint(
-            'Security key not available, cannot safely delete encrypted place',
-          );
           return false;
         }
       }
@@ -338,9 +352,6 @@ class EncryptedPlacesService {
       // Ensure security key is available before fetching/modifying data.
       if (_cachedEncryptedPlaces == null) {
         if (!await ensureSecurityKey(context, child)) {
-          debugPrint(
-            'Security key not available, cannot safely update encrypted place',
-          );
           return false;
         }
       }

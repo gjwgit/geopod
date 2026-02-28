@@ -36,6 +36,7 @@ void showMarkerDetailsSheet(
   BuildContext context,
   MarkerData marker, {
   VoidCallback? onDelete,
+  VoidCallback? onEdit,
 }) {
   // Use marker's custom color for UI elements.
   final markerColor = marker.color;
@@ -183,26 +184,50 @@ void showMarkerDetailsSheet(
             ],
           ),
 
-          // Delete button for user's saved places only.
-          if (!marker.isLocal && !marker.isSaving && onDelete != null) ...[
+          // Action buttons for user's saved places only.
+          if (!marker.isLocal &&
+              !marker.isSaving &&
+              (onEdit != null || onDelete != null)) ...[
             const SizedBox(height: 20),
             const Divider(),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(sheetContext);
-                  onDelete();
-                },
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Delete This Place'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
+            Row(
+              children: [
+                if (onEdit != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        onEdit();
+                      },
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Edit'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        side: const BorderSide(color: Colors.blue),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                if (onEdit != null && onDelete != null)
+                  const SizedBox(width: 12),
+                if (onDelete != null)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        onDelete();
+                      },
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Delete'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
           const SizedBox(height: 12),

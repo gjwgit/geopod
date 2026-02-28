@@ -82,7 +82,6 @@ void main() async {
       // Clear security key on logout to ensure clean state.
       onSecurityKeyReset: () async {
         await KeyManager.clear();
-        debugPrint('GeoPod: Security key cleared on logout');
       },
     ),
   );

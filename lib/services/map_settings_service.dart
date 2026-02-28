@@ -212,26 +212,23 @@ class MapSettingsService {
 
   static Future<void> _saveToPrefs(MapSettings settings) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces);
-    await prefs.setBool(_keyShowEncryptedPlaces, settings.showEncryptedPlaces);
-    await prefs.setBool(_keyHideAllMarkers, settings.hideAllMarkers);
-    await prefs.setInt(
-      _keyUserPlacesColor,
-      settings.userPlacesColor.toARGB32(),
-    );
-    await prefs.setInt(
-      _keyLocalPlacesColor,
-      settings.localPlacesColor.toARGB32(),
-    );
-    await prefs.setInt(
-      _keyEncryptedPlacesColor,
-      settings.encryptedPlacesColor.toARGB32(),
-    );
-    await prefs.setInt(_keyMapSource, settings.mapSource.index);
-    await prefs.setBool(_keyRememberViewport, settings.rememberViewport);
-    await prefs.setDouble(_keyInitialLat, settings.initialLat);
-    await prefs.setDouble(_keyInitialLng, settings.initialLng);
-    await prefs.setDouble(_keyInitialZoom, settings.initialZoom);
+    // All writes are independent — run in parallel.
+    await Future.wait([
+      prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces),
+      prefs.setBool(_keyShowEncryptedPlaces, settings.showEncryptedPlaces),
+      prefs.setBool(_keyHideAllMarkers, settings.hideAllMarkers),
+      prefs.setInt(_keyUserPlacesColor, settings.userPlacesColor.toARGB32()),
+      prefs.setInt(_keyLocalPlacesColor, settings.localPlacesColor.toARGB32()),
+      prefs.setInt(
+        _keyEncryptedPlacesColor,
+        settings.encryptedPlacesColor.toARGB32(),
+      ),
+      prefs.setInt(_keyMapSource, settings.mapSource.index),
+      prefs.setBool(_keyRememberViewport, settings.rememberViewport),
+      prefs.setDouble(_keyInitialLat, settings.initialLat),
+      prefs.setDouble(_keyInitialLng, settings.initialLng),
+      prefs.setDouble(_keyInitialZoom, settings.initialZoom),
+    ]);
   }
 
   /// Load settings from SharedPreferences.

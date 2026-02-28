@@ -23,6 +23,8 @@
 ///
 /// Authors: Graham Williams, Miduo
 
+// ignore_for_file: use_build_context_synchronously
+
 library;
 
 import 'dart:convert';
@@ -42,6 +44,8 @@ import 'package:geopod/services/places/places_pod_file.dart';
 import 'package:geopod/services/pod/pod_directory_service.dart';
 
 export 'package:geopod/models/place.dart';
+export 'package:geopod/services/places/encrypted_places_service.dart'
+    show EncryptedPlacesService;
 export 'package:geopod/services/places/places_cache_manager.dart';
 export 'package:geopod/services/places/places_import_export.dart';
 
@@ -75,9 +79,16 @@ class PlacesService {
     if (!forceRefresh) {
       final c = cm.allPlaces;
       if (c != null) {
-        // If cached but need encrypted, check if encrypted is included.
+        // If cached but need encrypted and none present, try fast-merge from
+        // EncryptedPlacesService in-memory cache before any network call.
         if (includeEncrypted && !c.any((p) => p.isEncrypted)) {
-          // Need to fetch encrypted separately.
+          final cachedEnc = EncryptedPlacesService.getCachedEncryptedPlaces();
+          if (cachedEnc != null && cachedEnc.isNotEmpty) {
+            final merged = [...c, ...cachedEnc];
+            cm.cacheAllPlaces(merged);
+            return merged;
+          }
+          // No encrypted cache — fall through to network fetch.
         } else {
           return c;
         }
@@ -114,16 +125,17 @@ class PlacesService {
     try {
       if (!authStateNotifier.value) return [];
 
+      // Fast path: data already in memory — skip the async key check entirely.
+      if (!forceRefresh && EncryptedPlacesService.hasLoadedEncryptedPlaces) {
+        return EncryptedPlacesService.getCachedEncryptedPlaces()!;
+      }
+
       // Check if security key is available - don't try to load if not.
       final hasKey = await EncryptedPlacesService.isSecurityKeyAvailable();
       if (!hasKey) {
-        debugPrint(
-          'PlacesService.fetchEncryptedPlaces: no security key, skipping',
-        );
         return [];
       }
 
-      // Import and use EncryptedPlacesService.
       final encPlaces = await EncryptedPlacesService.fetchEncryptedPlaces(
         forceRefresh: forceRefresh,
       );
@@ -192,8 +204,11 @@ class PlacesService {
   static Future<void> clearCache() async {
     try {
       PlacesCacheManager().clearCache();
-      await PlacesCachePersistence.clearPodPlacesCache();
-      await EncryptedPlacesService.resetSessionState();
+      // Both are independent — run in parallel.
+      await Future.wait([
+        PlacesCachePersistence.clearPodPlacesCache(),
+        EncryptedPlacesService.resetSessionState(),
+      ]);
     } catch (_) {}
   }
 
@@ -233,13 +248,17 @@ class PlacesService {
       );
 
       if (mainSuccess) {
-        // Write individual file (don't block on failure)
-        final individualSuccess = await writeIndividualPlaceFile(place);
-        debugPrint(
-          'addPlace: main=$mainSuccess, individual=$individualSuccess',
-        );
+        // Fire-and-forget individual file (non-critical — main file is the
+        // source of truth and is already written above).
+        writeIndividualPlaceFile(place);
 
-        await clearCache();
+        // Surgically insert into caches — avoids a full clear + re-fetch and
+        // preserves the encrypted places cache which is unrelated to this write.
+        final newJson = jsonEncode(updated.map((p) => p.toJson()).toList());
+        cm.insertPlaceIntoCache(place);
+        cm.cachePodPlaces(updated);
+        // Persist in background — does not block the UI notification.
+        PlacesCachePersistence.cachePodPlaces(newJson);
         placesChangeNotifier.value++;
 
         // Clear directory cache completely to force refresh.
@@ -276,7 +295,12 @@ class PlacesService {
       final success = results[0];
 
       if (success) {
-        await clearCache();
+        // Surgically remove from in-memory caches and refresh pod persistence.
+        cm.removePlaceFromCache(placeId);
+        await PlacesCachePersistence.cachePodPlaces(
+          jsonEncode(updated.map((p) => p.toJson()).toList()),
+        );
+        cm.cachePodPlaces(updated);
         placesChangeNotifier.value++;
 
         // Invalidate directory cache and notify file browser.
@@ -307,23 +331,26 @@ class PlacesService {
       final ids = existing.map((p) => p.id).toSet();
       final newPlaces = imported.where((p) => !ids.contains(p.id)).toList();
       if (newPlaces.isEmpty && imported.isNotEmpty) return true;
-      final withAddr = <Place>[];
-      for (int i = 0; i < newPlaces.length; i++) {
+
+      // Fetch all addresses in parallel instead of sequentially.
+      onProgress?.call(0, newPlaces.length);
+      final addresses = await Future.wait(
+        newPlaces.map((p) => GeocodingService.getAddress(p.lat, p.lng)),
+      );
+      onProgress?.call(newPlaces.length, newPlaces.length);
+
+      final withAddr = List<Place>.generate(newPlaces.length, (i) {
         final p = newPlaces[i];
-        onProgress?.call(i + 1, newPlaces.length);
-        final addr = await GeocodingService.getAddress(p.lat, p.lng);
-        withAddr.add(
-          Place(
-            id: p.id,
-            lat: p.lat,
-            lng: p.lng,
-            note: p.note,
-            timestamp: p.timestamp,
-            address: addr,
-            isLocal: false,
-          ),
+        return Place(
+          id: p.id,
+          lat: p.lat,
+          lng: p.lng,
+          note: p.note,
+          timestamp: p.timestamp,
+          address: addresses[i],
+          isLocal: false,
         );
-      }
+      });
       final merged = [...withAddr, ...existing];
 
       // Write main file first.
@@ -358,13 +385,31 @@ class PlacesService {
       // Get all existing place IDs before clearing.
       final existing = await fetchPodPlaces();
       final placeIds = existing.map((p) => p.id).toList();
+      // Snapshot before async write so we know whether to wipe encrypted.
+      final hadEncryptedPlaces =
+          EncryptedPlacesService.hasLoadedEncryptedPlaces;
 
       final success = await writePlacesJsonFile('[]');
       if (success) {
         // Delete all individual place files.
         await deleteAllIndividualPlaceFiles(placeIds);
-        await clearCache();
-        placesChangeNotifier.value++;
+
+        if (hadEncryptedPlaces) {
+          // Clear main/pod cache but keep encrypted session state alive so
+          // writeEncryptedPlaces can skip the security key re-check.
+          PlacesCacheManager().clearCache();
+          await PlacesCachePersistence.clearPodPlacesCache();
+          // Erase encrypted places from Pod. writeEncryptedPlaces updates
+          // the encrypted cache and fires placesChangeNotifier.
+          await EncryptedPlacesService.writeEncryptedPlaces(
+            [],
+            context,
+            returnWidget,
+          );
+        } else {
+          await clearCache();
+          placesChangeNotifier.value++;
+        }
 
         // Invalidate directory cache and notify file browser.
 
@@ -385,7 +430,39 @@ class PlacesService {
   }) async {
     try {
       if (!authStateNotifier.value) return false;
-      final existing = await fetchPodPlaces();
+
+      // Route encrypted places to their dedicated storage.
+      if (updated.isEncrypted) {
+        var toSave = updated;
+        if (coordinatesChanged) {
+          final addr = await GeocodingService.getAddress(
+            updated.lat,
+            updated.lng,
+          );
+          toSave = Place(
+            id: updated.id,
+            lat: updated.lat,
+            lng: updated.lng,
+            note: updated.note,
+            timestamp: updated.timestamp,
+            address: addr,
+            isLocal: false,
+            isEncrypted: true,
+          );
+        }
+        // Surgically update main cache BEFORE the write so that the
+        // placesChangeNotifier fired inside writeEncryptedPlaces hits an
+        // already-correct allPlaces cache — no revert, no extra network fetch.
+        PlacesCacheManager().updatePlaceInCache(toSave);
+        return EncryptedPlacesService.updateEncryptedPlace(
+          toSave,
+          context,
+          returnWidget,
+        );
+      }
+
+      final cm = PlacesCacheManager();
+      final existing = cm.podPlaces ?? await fetchPodPlaces();
       final list = List<Place>.from(existing);
       final i = list.indexWhere((p) => p.id == updated.id);
       var toSave = updated;
@@ -412,14 +489,18 @@ class PlacesService {
       }
 
       // Update both main file and individual file in parallel.
+      final newJson = jsonEncode(list.map((p) => p.toJson()).toList());
       final results = await Future.wait([
-        writePlacesJsonFile(jsonEncode(list.map((p) => p.toJson()).toList())),
+        writePlacesJsonFile(newJson),
         writeIndividualPlaceFile(toSave),
       ]);
       final success = results[0];
 
       if (success) {
-        await clearCache();
+        // Surgically update in-memory caches — no full reload needed.
+        cm.updatePlaceInCache(toSave);
+        await PlacesCachePersistence.cachePodPlaces(newJson);
+        cm.cachePodPlaces(list);
         placesChangeNotifier.value++;
 
         // Invalidate directory cache and notify file browser.
@@ -431,6 +512,25 @@ class PlacesService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Deletes a place routing to the correct storage based on [place.isEncrypted].
+
+  static Future<bool> deletePlaceByPlace(
+    Place place,
+    BuildContext context,
+    Widget returnWidget,
+  ) async {
+    if (place.isEncrypted) {
+      final success = await EncryptedPlacesService.deleteEncryptedPlace(
+        place.id,
+        context,
+        returnWidget,
+      );
+      if (success) placesChangeNotifier.value++;
+      return success;
+    }
+    return deletePlace(place.id, context, returnWidget);
   }
 
   /// Delete a place by its individual file path.

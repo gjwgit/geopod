@@ -84,11 +84,13 @@ class PlacesCachePersistence {
   static Future<void> cachePodPlaces(String content) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_podPlacesCacheKey, content);
-      await prefs.setInt(
-        _podPlacesCacheTimestampKey,
-        DateTime.now().millisecondsSinceEpoch,
-      );
+      await Future.wait([
+        prefs.setString(_podPlacesCacheKey, content),
+        prefs.setInt(
+          _podPlacesCacheTimestampKey,
+          DateTime.now().millisecondsSinceEpoch,
+        ),
+      ]);
     } catch (_) {
       // Silently fail - caching is best-effort.
     }
@@ -99,8 +101,10 @@ class PlacesCachePersistence {
   static Future<void> clearPodPlacesCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_podPlacesCacheKey);
-      await prefs.remove(_podPlacesCacheTimestampKey);
+      await Future.wait([
+        prefs.remove(_podPlacesCacheKey),
+        prefs.remove(_podPlacesCacheTimestampKey),
+      ]);
     } catch (_) {
       // Silently fail.
     }

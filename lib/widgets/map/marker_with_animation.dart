@@ -61,6 +61,7 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
   Animation<double>? _scaleAnimation;
   Animation<double>? _fadeAnimation;
   bool _animationStarted = false;
+  bool _animationDone = false;
   bool _isDisposed = false;
 
   @override
@@ -88,6 +89,15 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
       duration: const Duration(milliseconds: 250), // Shorter duration
       vsync: this,
     );
+
+    // Once animation completes, switch back to plain child to eliminate
+    // the FadeTransition/ScaleTransition composited layers, which can cause
+    // markers to drift from their map coordinates during fast panning.
+    _controller!.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted && !_isDisposed) {
+        setState(() => _animationDone = true);
+      }
+    });
 
     // Use lighter curves.
 
@@ -124,8 +134,12 @@ class _MarkerWithAnimationState extends State<MarkerWithAnimation>
 
   @override
   Widget build(BuildContext context) {
-    // Fast path: no animation needed.
-    if (!widget.shouldAnimate || widget.index >= _maxAnimatedMarkers) {
+    // Fast path: no animation needed, or animation already complete.
+    // Returning child directly avoids FadeTransition/ScaleTransition composited
+    // layers that can cause markers to detach from map coordinates during panning.
+    if (!widget.shouldAnimate ||
+        widget.index >= _maxAnimatedMarkers ||
+        _animationDone) {
       return widget.child;
     }
 

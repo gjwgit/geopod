@@ -51,9 +51,12 @@ class PlaceListTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Colors.blue,
-          child: Icon(Icons.place, color: Colors.white),
+        leading: CircleAvatar(
+          backgroundColor: place.isEncrypted ? Colors.purple : Colors.blue,
+          child: Icon(
+            place.isEncrypted ? Icons.lock : Icons.place,
+            color: Colors.white,
+          ),
         ),
         title: Text(
           place.displayTitle,

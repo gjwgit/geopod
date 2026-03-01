@@ -26,9 +26,7 @@ dependencies:
   http: ^1.2.2
   intl: ^0.20.1
   latlong2: ^0.9.1
-  markdown_tooltip: ^0.0.10
   pdf: ^3.11.1
-  printing: ^5.13.4
   shared_preferences: ^2.3.3
   solid_auth: ^0.1.28
   solidpod: ^0.10.1

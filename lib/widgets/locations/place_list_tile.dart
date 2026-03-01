@@ -29,6 +29,7 @@ import 'package:flutter/material.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/widgets/locations/detail_row.dart';
+import 'package:geopod/widgets/media/place_media_section.dart';
 
 /// A list tile widget for displaying a single user place.
 ///
@@ -165,6 +166,8 @@ class PlaceListTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     DetailRow(label: 'Saved', value: place.formattedDate),
+                    // ── Linked audio / video ─────────────────────────────
+                    PlaceMediaSection(placeId: place.id),
                   ],
                 ),
               ),

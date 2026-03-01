@@ -47,9 +47,17 @@ class PodFileSystem {
   /// [relativePath] - Path relative to the data directory.
   /// Example: `places/places.json`
   ///
-  /// Returns the file content as a string, or null if file doesn't exist.
+  /// [silentOnNotFound] - When `true`, suppresses the debug log for 404
+  /// responses.  Use this when the file is expected to not exist yet (e.g. an
+  /// index file before any items have been uploaded).
+  ///
+  /// Returns the file content as a string, or `null` when the file is not
+  /// found, the user is not logged in, or any other error occurs.
 
-  static Future<String?> readFile(String relativePath) async {
+  static Future<String?> readFile(
+    String relativePath, {
+    bool silentOnNotFound = false,
+  }) async {
     if (!await PodAuth.isLoggedIn()) {
       debugPrint('PodFileSystem.readFile() - not logged in');
       return null;
@@ -62,7 +70,11 @@ class PodFileSystem {
       if (response.isSuccess) {
         return response.body;
       } else if (response.isNotFound) {
-        debugPrint('PodFileSystem.readFile() - file not found: $relativePath');
+        if (!silentOnNotFound) {
+          debugPrint(
+            'PodFileSystem.readFile() - file not found: $relativePath',
+          );
+        }
         return null;
       } else {
         debugPrint(

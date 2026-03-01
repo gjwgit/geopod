@@ -55,6 +55,7 @@ class MediaListWidget<T> extends StatefulWidget {
     required this.playerBuilder,
     this.subtitleOf,
     this.onDelete,
+    this.onManageLinks,
     this.emptyMessage = 'No items found.',
     this.accentColor,
   });
@@ -71,6 +72,10 @@ class MediaListWidget<T> extends StatefulWidget {
 
   final Future<void> Function(T item)? onDelete;
   final String emptyMessage;
+
+  /// Optional callback invoked when the user taps "Manage links" for [item].
+  /// Callers (e.g. [AudioPage], [VideoPage]) open a place-picker dialog here.
+  final Future<void> Function(T item)? onManageLinks;
 
   /// Optional accent colour for avatar background and play icon.
   final Color? accentColor;
@@ -204,6 +209,16 @@ class _MediaListWidgetState<T> extends State<MediaListWidget<T>> {
                   ),
                   onPressed: () => _togglePlayer(index),
                 ),
+                // Link to locations – shown when handler is provided.
+                if (widget.onManageLinks != null)
+                  IconButton(
+                    tooltip: 'Link to locations',
+                    icon: Icon(
+                      Icons.add_location_alt_outlined,
+                      color: Colors.teal.shade600,
+                    ),
+                    onPressed: () => widget.onManageLinks!(item),
+                  ),
                 // Delete – shown only when a handler is provided.
                 if (widget.onDelete != null)
                   IconButton(

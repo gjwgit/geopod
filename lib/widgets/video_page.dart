@@ -33,6 +33,7 @@ import 'package:geopod/models/media_item.dart';
 import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/services/pod/pod_auth.dart';
 import 'package:geopod/widgets/media/media_list_widget.dart';
+import 'package:geopod/widgets/media/place_link_picker_dialog.dart';
 import 'package:geopod/widgets/media/upload_media_dialog.dart';
 import 'package:geopod/widgets/media/video_player_widget.dart';
 
@@ -107,6 +108,15 @@ class _VideoPageState extends State<VideoPage> {
     }
   }
 
+  /// Opens the place-link picker dialog for [item] and reloads the index
+  /// so any updated [locationIds] are reflected in the UI.
+  Future<void> _manageLinks(MediaItem item) async {
+    final changed = await showPlaceLinkPickerDialog(context, item);
+    if (changed == true && mounted) {
+      await _loadPodItems();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -130,6 +140,9 @@ class _VideoPageState extends State<VideoPage> {
           playerBuilder: (ctx, i) => VideoPlayerWidget(item: i),
           onDelete: (i) async {
             if (i.isPodItem) await _delete(i);
+          },
+          onManageLinks: (i) async {
+            if (i.isPodItem) await _manageLinks(i);
           },
         ),
 

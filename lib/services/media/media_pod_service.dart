@@ -52,6 +52,48 @@ class MediaPodService {
   static bool _audioKeyReady = false;
   static bool _videoKeyReady = false;
 
+  // ── In-memory index cache ─────────────────────────────────────────────────
+  // Avoids repeated Pod round-trips when querying or updating the same index
+  // within the same session.  Both caches are invalidated on write.
+
+  static List<MediaItem>? _audioCache;
+  static List<MediaItem>? _videoCache;
+
+  /// In-flight fetch futures – ensures only one Pod request per type is
+  /// issued at a time even when many callers ask concurrently.
+  static Future<List<MediaItem>>? _audioFetch;
+  static Future<List<MediaItem>>? _videoFetch;
+
+  static List<MediaItem>? _getCache(MediaType type) =>
+      type == MediaType.audio ? _audioCache : _videoCache;
+
+  static void _setCache(MediaType type, List<MediaItem> items) {
+    if (type == MediaType.audio) {
+      _audioCache = items;
+    } else {
+      _videoCache = items;
+    }
+  }
+
+  static void _invalidateCache(MediaType type) {
+    if (type == MediaType.audio) {
+      _audioCache = null;
+      _audioFetch = null;
+    } else {
+      _videoCache = null;
+      _videoFetch = null;
+    }
+  }
+
+  /// Clears both in-memory caches.  Call when the user logs out or when a
+  /// full refresh is needed.
+  static void clearCache() {
+    _audioCache = null;
+    _videoCache = null;
+    _audioFetch = null;
+    _videoFetch = null;
+  }
+
   // ── Directory initialisation ─────────────────────────────────────────────
 
   /// Call before any encrypted write to ensure the ACL file and encryption
@@ -85,16 +127,65 @@ class MediaPodService {
       type == MediaType.audio ? getAudioIndexPath() : getVideoIndexPath();
 
   static Future<List<MediaItem>> _readIndex(MediaType type) async {
+    // Return cached copy if available – avoids a Pod round-trip.
+    final cached = _getCache(type);
+    if (cached != null) return List<MediaItem>.from(cached);
+
+    // If a fetch is already in-flight, share it instead of issuing a second
+    // identical HTTP request.
+    final existing =
+        type == MediaType.audio ? _audioFetch : _videoFetch;
+    if (existing != null) return List<MediaItem>.from(await existing);
+
+    // No cache, no in-flight request: start a new fetch.
+    final fetch = _fetchFromPod(type);
+    if (type == MediaType.audio) {
+      _audioFetch = fetch;
+    } else {
+      _videoFetch = fetch;
+    }
+    final items = await fetch;
+    // Clear the in-flight reference now that it has settled.
+    if (type == MediaType.audio) {
+      _audioFetch = null;
+    } else {
+      _videoFetch = null;
+    }
+    return List<MediaItem>.from(items);
+  }
+
+  static Future<List<MediaItem>> _fetchFromPod(MediaType type) async {
     try {
-      final content = await PodFileSystem.readFile(_indexPath(type));
-      if (content == null || content.isEmpty) return [];
+      // silentOnNotFound: 404 is the normal state before any media is uploaded.
+      final content = await PodFileSystem.readFile(
+        _indexPath(type),
+        silentOnNotFound: true,
+      );
+      if (content == null) {
+        // null means a hard error (401 unauthorised, network failure, not
+        // logged in).  Do NOT cache – this is a transient failure.  The next
+        // PlaceMediaSection open will retry, and will succeed once auth is
+        // restored or the Pod becomes reachable.
+        debugPrint(
+          'MediaPodService._fetchFromPod: could not read ${_indexPath(type)} – skipping cache',
+        );
+        return [];
+      }
+      if (content.isEmpty) {
+        // File found but empty – or the index was returned as an empty string.
+        // Safe to cache as an empty list.
+        _setCache(type, []);
+        return [];
+      }
       final list = jsonDecode(content) as List<dynamic>;
-      return list
+      final items = list
           .whereType<Map<String, dynamic>>()
           .map(MediaItem.fromJson)
           .toList();
+      _setCache(type, items);
+      return items;
     } catch (e) {
-      debugPrint('MediaPodService._readIndex error: $e');
+      debugPrint('MediaPodService._fetchFromPod error: $e');
       return [];
     }
   }
@@ -102,14 +193,23 @@ class MediaPodService {
   static Future<bool> _writeIndex(MediaType type, List<MediaItem> items) async {
     try {
       final content = jsonEncode(items.map((i) => i.toJson()).toList());
-      return await PodFileSystem.writeFile(
+      final ok = await PodFileSystem.writeFile(
         _indexPath(type),
         content,
         contentType: PodContentType.json,
         createParentDirs: false,
       );
+      if (ok) {
+        // Update the cache so subsequent reads are still fast.
+        _setCache(type, List<MediaItem>.from(items));
+      } else {
+        // Write failed – invalidate so next read fetches fresh data.
+        _invalidateCache(type);
+      }
+      return ok;
     } catch (e) {
       debugPrint('MediaPodService._writeIndex error: $e');
+      _invalidateCache(type);
       return false;
     }
   }
@@ -119,7 +219,7 @@ class MediaPodService {
   /// Returns all [type] media items stored in the Pod.
   /// Includes only Pod-hosted items; bundled assets are managed by the page.
   static Future<List<MediaItem>> listItems(MediaType type) async {
-    if (!await PodAuth.isLoggedIn()) return [];
+    if (!PodAuth.isLoggedInSync()) return [];
     return _readIndex(type);
   }
 
@@ -139,7 +239,7 @@ class MediaPodService {
     required MediaType type,
     bool encrypt = false,
   }) async {
-    if (!await PodAuth.isLoggedIn()) {
+    if (!PodAuth.isLoggedInSync()) {
       debugPrint('MediaPodService.uploadItem: not logged in');
       return null;
     }
@@ -219,7 +319,7 @@ class MediaPodService {
   /// Deletes [item] from the Pod and removes it from the index.
   static Future<bool> deleteItem(MediaItem item) async {
     if (!item.isPodItem) return false;
-    if (!await PodAuth.isLoggedIn()) return false;
+    if (!PodAuth.isLoggedInSync()) return false;
 
     // Delete the actual file.
     final deleted = await PodFileSystem.deleteFile(item.podRelativePath!);
@@ -241,7 +341,7 @@ class MediaPodService {
   /// Returns `null` if downloading or decryption fails.
   static Future<String?> loadPlaybackUrl(MediaItem item) async {
     if (!item.isPodItem) return null;
-    if (!await PodAuth.isLoggedIn()) return null;
+    if (!PodAuth.isLoggedInSync()) return null;
 
     final relPath = item.podRelativePath!;
     Uint8List? bytes;
@@ -286,5 +386,27 @@ class MediaPodService {
   /// Should be called when the player widget is disposed.
   static Future<void> releasePlaybackUrl(String url) async {
     await revokePlaybackUrl(url);
+  }
+
+  /// Updates an existing item's metadata (e.g. [MediaItem.locationIds]) in the
+  /// Pod index.  The item is matched by [MediaItem.podItemId].
+  ///
+  /// Returns `true` if the index was written successfully, `false` otherwise.
+  /// Has no effect on items that are not Pod-hosted (asset / remote-URL items).
+  static Future<bool> updateItem(MediaItem item) async {
+    if (!item.isPodItem) return false;
+    if (!PodAuth.isLoggedInSync()) return false;
+
+    final existing = await _readIndex(item.type);
+    final idx = existing.indexWhere((i) => i.podItemId == item.podItemId);
+    if (idx == -1) {
+      debugPrint(
+        'MediaPodService.updateItem: item not found in index '
+        '(podItemId=${item.podItemId})',
+      );
+      return false;
+    }
+    existing[idx] = item;
+    return _writeIndex(item.type, existing);
   }
 }

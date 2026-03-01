@@ -180,8 +180,13 @@ class EncryptedPlacesService {
       _securityKeyVerified = true;
       _securityKeyAvailableCache = true; // Update cache
 
-      // Notify the status bar that security key is now available.
+      // Directly update the global notifier so the status bar refreshes
+      // immediately.  This is more reliable than dispatching a Notification
+      // (which only works when context is still in the exact subtree that
+      // contains the NotificationListener, which can fail after async gaps).
+      securityKeyNotifier.updateStatus(true);
 
+      // Also dispatch the notification for any other listeners that react to it.
       if (context.mounted) {
         const SecurityKeyStatusChangedNotification(
           isKeySaved: true,

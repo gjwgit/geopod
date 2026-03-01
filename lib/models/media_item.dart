@@ -42,7 +42,7 @@ class MediaItem {
     this.isEncrypted = false,
     this.podItemId,
     this.uploadedAt,
-    this.locationId,
+    this.locationIds = const [],
   }) : assert(
          assetPath != null || remoteUrl != null || podRelativePath != null,
          'MediaItem requires assetPath, remoteUrl, or podRelativePath.',
@@ -76,8 +76,10 @@ class MediaItem {
   /// When this item was uploaded to the Pod.
   final DateTime? uploadedAt;
 
-  /// Optional ID of the map POI this media is linked to (Issue #27).
-  final String? locationId;
+  /// IDs of the map POIs / places this media is linked to (many-to-many).
+  /// A media item can be associated with multiple locations, and a location
+  /// can have multiple media items.
+  final List<String> locationIds;
 
   /// `true` when backed by a remote URL (not a bundled asset or Pod item).
   bool get isRemote => remoteUrl != null;
@@ -86,6 +88,17 @@ class MediaItem {
   bool get isPodItem => podRelativePath != null;
 
   // ── JSON serialisation ───────────────────────────────────────────────────
+
+  /// Parses [locationIds] from JSON, with backward-compat for legacy
+  /// single-string `locationId` field.
+  static List<String> _parseLocationIds(Map<String, dynamic> json) {
+    final list = json['locationIds'];
+    if (list is List) return List<String>.from(list);
+    // Backward compat: legacy single-ID field.
+    final single = json['locationId'] as String?;
+    if (single != null && single.isNotEmpty) return [single];
+    return const [];
+  }
 
   factory MediaItem.fromJson(Map<String, dynamic> json) {
     return MediaItem(
@@ -97,7 +110,7 @@ class MediaItem {
       uploadedAt: json['uploadedAt'] != null
           ? DateTime.tryParse(json['uploadedAt'] as String)
           : null,
-      locationId: json['locationId'] as String?,
+      locationIds: _parseLocationIds(json),
     );
   }
 
@@ -108,7 +121,7 @@ class MediaItem {
     'isEncrypted': isEncrypted,
     if (podItemId != null) 'podItemId': podItemId,
     if (uploadedAt != null) 'uploadedAt': uploadedAt!.toIso8601String(),
-    if (locationId != null) 'locationId': locationId,
+    if (locationIds.isNotEmpty) 'locationIds': locationIds,
   };
 
   /// Create a copy with updated fields.
@@ -121,7 +134,7 @@ class MediaItem {
     bool? isEncrypted,
     String? podItemId,
     DateTime? uploadedAt,
-    String? locationId,
+    List<String>? locationIds,
   }) {
     return MediaItem(
       name: name ?? this.name,
@@ -132,7 +145,7 @@ class MediaItem {
       isEncrypted: isEncrypted ?? this.isEncrypted,
       podItemId: podItemId ?? this.podItemId,
       uploadedAt: uploadedAt ?? this.uploadedAt,
-      locationId: locationId ?? this.locationId,
+      locationIds: locationIds ?? this.locationIds,
     );
   }
 }

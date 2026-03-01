@@ -165,15 +165,49 @@ class _PlaceLinkPickerDialogState extends State<_PlaceLinkPickerDialog> {
       );
     }
 
+    final allIds = places.map((p) => p.id).toSet();
+    final allSelected = allIds.every(_selected.contains);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Select the locations to link this media to:',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Select the locations to link this media to:',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ),
+            // Select-all / deselect-all toggle.
+            TextButton.icon(
+              onPressed: _saving
+                  ? null
+                  : () {
+                      setState(() {
+                        if (allSelected) {
+                          _selected.removeAll(allIds);
+                        } else {
+                          _selected.addAll(allIds);
+                        }
+                      });
+                    },
+              icon: Icon(
+                allSelected
+                    ? Icons.deselect_outlined
+                    : Icons.select_all_outlined,
+                size: 18,
+              ),
+              label: Text(allSelected ? 'Deselect all' : 'Select all'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Flexible(
           child: ListView.builder(
             shrinkWrap: true,

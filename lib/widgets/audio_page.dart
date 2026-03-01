@@ -30,6 +30,7 @@ import 'package:flutter/material.dart';
 import 'package:solidpod/solidpod.dart' show authStateNotifier;
 
 import 'package:geopod/models/media_item.dart';
+import 'package:geopod/services/media/builtin_media.dart';
 import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/services/pod/pod_auth.dart';
 import 'package:geopod/widgets/media/audio_player_widget.dart';
@@ -46,17 +47,9 @@ class AudioPage extends StatefulWidget {
 }
 
 class _AudioPageState extends State<AudioPage> {
-  // Bundled demo assets – always shown first.
-  // Each asset has a stable [podItemId] so that place-links can be stored in
-  // the Pod index (upsert on first link via MediaPodService.updateItem).
-  static const List<MediaItem> _assets = [
-    MediaItem(
-      name: 'Example Audio',
-      type: MediaType.audio,
-      assetPath: 'assets/audio/example.mp3',
-      podItemId: 'builtin-audio-example',
-    ),
-  ];
+  // Bundled demo assets – defined in builtin_media.dart so the same items are
+  // accessible from the media-link picker dialog.
+  static final List<MediaItem> _assets = builtinAudioItems;
 
   List<MediaItem> _podItems = [];
   bool _isLoadingPod = false;

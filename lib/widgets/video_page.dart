@@ -30,6 +30,7 @@ import 'package:flutter/material.dart';
 import 'package:solidpod/solidpod.dart' show authStateNotifier;
 
 import 'package:geopod/models/media_item.dart';
+import 'package:geopod/services/media/builtin_media.dart';
 import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/services/pod/pod_auth.dart';
 import 'package:geopod/widgets/media/media_list_widget.dart';
@@ -46,23 +47,9 @@ class VideoPage extends StatefulWidget {
 }
 
 class _VideoPageState extends State<VideoPage> {
-  // Bundled demo assets.
-  // Each asset has a stable [podItemId] so that place-links can be stored in
-  // the Pod index (upsert on first link via MediaPodService.updateItem).
-  static const List<MediaItem> _assets = [
-    MediaItem(
-      name: 'Example Video 1',
-      type: MediaType.video,
-      assetPath: 'assets/video/example1.mp4',
-      podItemId: 'builtin-video-example1',
-    ),
-    MediaItem(
-      name: 'Example Video 2',
-      type: MediaType.video,
-      assetPath: 'assets/video/example2.mp4',
-      podItemId: 'builtin-video-example2',
-    ),
-  ];
+  // Bundled demo assets – defined in builtin_media.dart so the same items are
+  // accessible from the media-link picker dialog.
+  static final List<MediaItem> _assets = builtinVideoItems;
 
   List<MediaItem> _podItems = [];
   bool _isLoadingPod = false;

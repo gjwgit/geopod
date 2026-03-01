@@ -42,6 +42,7 @@ class PlaceMediaSection extends StatefulWidget {
     super.key,
     required this.placeId,
     this.extraItems = const [],
+    this.onManageLinks,
   });
 
   /// The ID of the place whose linked media should be shown.
@@ -51,6 +52,11 @@ class PlaceMediaSection extends StatefulWidget {
   /// filter.  These are read-only and won't be shown unless they have a
   /// matching [MediaItem.locationIds] entry.
   final List<MediaItem> extraItems;
+
+  /// Optional callback that opens a media-link management dialog.  When
+  /// provided, an edit icon button is shown in the "Linked Media" header.
+  /// The section automatically reloads its list after the callback completes.
+  final Future<void> Function()? onManageLinks;
 
   @override
   State<PlaceMediaSection> createState() => _PlaceMediaSectionState();
@@ -87,6 +93,14 @@ class _PlaceMediaSectionState extends State<PlaceMediaSection> {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
+
+  Future<void> _handleManageLinks() async {
+    if (widget.onManageLinks != null) {
+      await widget.onManageLinks!();
+      // Invalidate the cached index so the reload picks up fresh data.
+      await _load();
+    }
+  }
 
   void _openPlayer(MediaItem item) {
     showModalBottomSheet<void>(
@@ -131,7 +145,12 @@ class _PlaceMediaSectionState extends State<PlaceMediaSection> {
     }
 
     final items = _items ?? [];
-    if (items.isEmpty) return const SizedBox.shrink();
+    // When no manage callback is provided, stay invisible if there is nothing
+    // to show.  When a callback is provided, always render so the user can
+    // open the manager even when the list is empty.
+    if (items.isEmpty && widget.onManageLinks == null) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,22 +171,68 @@ class _PlaceMediaSectionState extends State<PlaceMediaSection> {
                   color: Colors.grey.shade700,
                 ),
               ),
-              const SizedBox(width: 4),
-              Text(
-                '(tap to play)',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-              ),
+              if (items.isNotEmpty) ...
+                [
+                  const SizedBox(width: 4),
+                  Text(
+                    '(tap to play)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              const Spacer(),
+              // Manage-links button – only shown when a callback is wired up.
+              if (widget.onManageLinks != null)
+                InkWell(
+                  onTap: _handleManageLinks,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.edit_outlined,
+                          size: 14,
+                          color: Colors.blue.shade600,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Manage',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: items.map(_buildChip).toList(),
+        if (items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(
+              'No media linked yet.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: items.map(_buildChip).toList(),
+            ),
           ),
-        ),
         const SizedBox(height: 4),
       ],
     );

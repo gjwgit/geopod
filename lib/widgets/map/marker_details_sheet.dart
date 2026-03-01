@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:geopod/widgets/map/marker_data.dart';
+import 'package:geopod/widgets/media/media_link_picker_dialog.dart';
 import 'package:geopod/widgets/media/place_media_section.dart';
 import 'package:geopod/widgets/weather_dialog.dart';
 
@@ -231,7 +232,15 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
           ),
 
           // ── Linked media (audio / video) ───────────────────────────────
-          PlaceMediaSection(placeId: marker.id),
+          if (!marker.isLocal)
+            PlaceMediaSection(
+              placeId: marker.id,
+              onManageLinks: () => showMediaLinkPickerDialog(
+                context,
+                placeId: marker.id,
+                placeTitle: marker.title,
+              ),
+            ),
 
           // ── Action buttons (edit / delete) ─────────────────────────────
           if (!marker.isLocal &&

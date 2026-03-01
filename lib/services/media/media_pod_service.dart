@@ -24,6 +24,7 @@ import 'package:uuid/uuid.dart';
 import 'package:geopod/models/media_item.dart';
 import 'package:geopod/services/media/media_pod_paths.dart';
 import 'package:geopod/services/pod/pod_auth.dart';
+import 'package:geopod/services/pod/pod_directory_service.dart';
 import 'package:geopod/services/pod/pod_file_system.dart';
 import 'package:geopod/services/pod/pod_http.dart';
 import 'package:geopod/services/pod/pod_path.dart';
@@ -312,6 +313,13 @@ class MediaPodService {
     existing.add(item);
     await _writeIndex(type, existing);
 
+    // Notify file browser that the directory contents have changed.
+    final dirPath = type == MediaType.audio
+        ? getAudioDirPath()
+        : getVideoDirPath();
+    PodDirectoryService.invalidateCache(dirPath);
+    PodDirectoryService.notifyChange();
+
     return item;
   }
 
@@ -327,6 +335,13 @@ class MediaPodService {
     final existing = await _readIndex(item.type);
     existing.removeWhere((i) => i.podRelativePath == item.podRelativePath);
     await _writeIndex(item.type, existing);
+
+    // Notify file browser that the directory contents have changed.
+    final dirPath = item.type == MediaType.audio
+        ? getAudioDirPath()
+        : getVideoDirPath();
+    PodDirectoryService.invalidateCache(dirPath);
+    PodDirectoryService.notifyChange();
 
     return deleted;
   }

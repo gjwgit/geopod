@@ -204,8 +204,9 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
                 alignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed:
-                        _saving ? null : () => Navigator.pop(context, false),
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.pop(context, false),
                     child: const Text('Cancel'),
                   ),
                   ElevatedButton(

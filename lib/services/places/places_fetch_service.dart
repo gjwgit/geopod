@@ -47,6 +47,15 @@ class PlacesFetchService {
   /// Cached local places (lazily initialised from compiled constants).
   static List<Place>? _cachedLocalPlaces;
 
+  /// In-flight Pod fetch future — ensures only one network request is issued
+  /// at a time even when multiple callers request concurrently (e.g. GeoMap
+  /// and LocationsPage both reacting to the same authStateNotifier event).
+  static Future<List<Place>>? _podFetch;
+
+  /// Clears the in-flight future reference so the next call issues a fresh
+  /// request.  Called by [PlacesCacheService.clearCache] on logout.
+  static void clearInFlight() => _podFetch = null;
+
   /// Get local example places synchronously.
 
   static List<Place> getLocalPlacesSync() {
@@ -151,25 +160,42 @@ class PlacesFetchService {
   /// from cache so stale data is kept fresh.
 
   static Future<List<Place>> fetchPodPlaces({bool forceRefresh = false}) async {
-    final places = <Place>[];
     final cm = PlacesCacheManager();
+    if (!authStateNotifier.value) return [];
+
+    // Fast path: in-memory cache hit (no network needed).
+    if (!forceRefresh) {
+      final mc = cm.podPlaces;
+      if (mc != null) {
+        _refreshPodPlacesInBackground();
+        return mc;
+      }
+      final c = await PlacesCachePersistence.getCachedPodPlaces();
+      if (c != null) {
+        cm.cachePodPlaces(c);
+        _refreshPodPlacesInBackground();
+        return c;
+      }
+    }
+
+    // In-flight dedup: if a network fetch is already running, await it instead
+    // of issuing a second parallel request (e.g. GeoMap + LocationsPage both
+    // reacting to the same authStateNotifier change).
+    if (_podFetch != null) return _podFetch!;
+
+    _podFetch = _fetchPodPlacesFromNetwork(cm);
     try {
-      if (!authStateNotifier.value) return places;
-      if (!forceRefresh) {
-        final mc = cm.podPlaces;
-        if (mc != null) {
-          _refreshPodPlacesInBackground();
-          return mc;
-        }
-      }
-      if (!forceRefresh) {
-        final c = await PlacesCachePersistence.getCachedPodPlaces();
-        if (c != null) {
-          cm.cachePodPlaces(c);
-          _refreshPodPlacesInBackground();
-          return c;
-        }
-      }
+      return await _podFetch!;
+    } finally {
+      _podFetch = null;
+    }
+  }
+
+  static Future<List<Place>> _fetchPodPlacesFromNetwork(
+    PlacesCacheManager cm,
+  ) async {
+    final places = <Place>[];
+    try {
       final content = await readPlacesJsonFile();
       if (content == null || content.trim().isEmpty) return places;
       final decoded = jsonDecode(content);

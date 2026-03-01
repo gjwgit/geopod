@@ -44,6 +44,7 @@ class PlacesCacheService {
   static Future<void> clearCache() async {
     try {
       PlacesCacheManager().clearCache();
+      PlacesFetchService.clearInFlight();
       // Both are independent — run in parallel.
       await Future.wait([
         PlacesCachePersistence.clearPodPlacesCache(),
@@ -57,6 +58,7 @@ class PlacesCacheService {
   static Future<void> clearPodCacheOnly() async {
     try {
       PlacesCacheManager().clearPodCacheOnly();
+      PlacesFetchService.clearInFlight();
       await PlacesCachePersistence.clearPodPlacesCache();
     } catch (_) {}
   }

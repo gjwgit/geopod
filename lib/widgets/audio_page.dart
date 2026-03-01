@@ -47,18 +47,31 @@ class AudioPage extends StatefulWidget {
 
 class _AudioPageState extends State<AudioPage> {
   // Bundled demo assets – always shown first.
+  // Each asset has a stable [podItemId] so that place-links can be stored in
+  // the Pod index (upsert on first link via MediaPodService.updateItem).
   static const List<MediaItem> _assets = [
     MediaItem(
       name: 'Example Audio',
       type: MediaType.audio,
       assetPath: 'assets/audio/example.mp3',
+      podItemId: 'builtin-audio-example',
     ),
   ];
 
   List<MediaItem> _podItems = [];
   bool _isLoadingPod = false;
 
-  List<MediaItem> get _allItems => [..._assets, ..._podItems];
+  /// Merges assets and Pod items, deduplicating by [podItemId] so that a
+  /// built-in asset registered in the Pod index (after its first link) does
+  /// not appear twice in the list.
+  List<MediaItem> get _allItems {
+    final podIds =
+        _podItems.map((i) => i.podItemId).whereType<String>().toSet();
+    final deduped = _assets
+        .where((a) => a.podItemId == null || !podIds.contains(a.podItemId))
+        .toList();
+    return [...deduped, ..._podItems];
+  }
 
   @override
   void initState() {
@@ -135,11 +148,15 @@ class _AudioPageState extends State<AudioPage> {
             return Icons.audio_file;
           },
           playerBuilder: (ctx, i) => AudioPlayerWidget(item: i),
+          // Hide delete for bundled demo assets (they are not Pod files).
+          canDelete: (i) => i.isPodItem,
           onDelete: (i) async {
             if (i.isPodItem) await _delete(i);
           },
+          // Allow linking for both Pod items and bundled assets (assets with a
+          // stable podItemId are upserted into the index on first link).
           onManageLinks: (i) async {
-            if (i.isPodItem) await _manageLinks(i);
+            if (i.podItemId != null) await _manageLinks(i);
           },
         ),
 

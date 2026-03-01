@@ -388,25 +388,29 @@ class MediaPodService {
     await revokePlaybackUrl(url);
   }
 
-  /// Updates an existing item's metadata (e.g. [MediaItem.locationIds]) in the
-  /// Pod index.  The item is matched by [MediaItem.podItemId].
+  /// Updates (or on first link, inserts) an item's metadata in the Pod index.
+  ///
+  /// **Matching:** the item is located by [MediaItem.podItemId].
+  ///
+  /// **Upsert for bundled assets:** Asset items (`assetPath != null`,
+  /// `podRelativePath == null`) that have been given a stable [podItemId] are
+  /// appended to the index on their first link.  This lets [PlaceMediaSection]
+  /// discover them without needing a separate link store.
   ///
   /// Returns `true` if the index was written successfully, `false` otherwise.
-  /// Has no effect on items that are not Pod-hosted (asset / remote-URL items).
   static Future<bool> updateItem(MediaItem item) async {
-    if (!item.isPodItem) return false;
+    // Remote-URL items with no podItemId cannot be indexed.
+    if (!item.isPodItem && item.podItemId == null) return false;
     if (!PodAuth.isLoggedInSync()) return false;
 
     final existing = await _readIndex(item.type);
     final idx = existing.indexWhere((i) => i.podItemId == item.podItemId);
     if (idx == -1) {
-      debugPrint(
-        'MediaPodService.updateItem: item not found in index '
-        '(podItemId=${item.podItemId})',
-      );
-      return false;
+      // First-time registration of a built-in asset item: append to the index.
+      existing.add(item);
+    } else {
+      existing[idx] = item;
     }
-    existing[idx] = item;
     return _writeIndex(item.type, existing);
   }
 }

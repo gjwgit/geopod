@@ -55,6 +55,7 @@ class MediaListWidget<T> extends StatefulWidget {
     required this.playerBuilder,
     this.subtitleOf,
     this.onDelete,
+    this.canDelete,
     this.onManageLinks,
     this.emptyMessage = 'No items found.',
     this.accentColor,
@@ -72,6 +73,12 @@ class MediaListWidget<T> extends StatefulWidget {
 
   final Future<void> Function(T item)? onDelete;
   final String emptyMessage;
+
+  /// Optional predicate that controls whether the delete button is visible for
+  /// a given item.  When `null`, the button is shown for every item (if
+  /// [onDelete] is also provided).  Use this to hide the delete button for
+  /// read-only items such as bundled demo assets.
+  final bool Function(T item)? canDelete;
 
   /// Optional callback invoked when the user taps "Manage links" for [item].
   /// Callers (e.g. [AudioPage], [VideoPage]) open a place-picker dialog here.
@@ -219,8 +226,10 @@ class _MediaListWidgetState<T> extends State<MediaListWidget<T>> {
                     ),
                     onPressed: () => widget.onManageLinks!(item),
                   ),
-                // Delete – shown only when a handler is provided.
-                if (widget.onDelete != null)
+                // Delete – shown only when a handler is provided AND the
+                // optional canDelete predicate permits it for this item.
+                if (widget.onDelete != null &&
+                    (widget.canDelete == null || widget.canDelete!(item)))
                   IconButton(
                     tooltip: 'Delete',
                     icon: const Icon(Icons.delete_outline, color: Colors.grey),

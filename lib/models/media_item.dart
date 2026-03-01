@@ -104,6 +104,7 @@ class MediaItem {
     return MediaItem(
       name: json['name'] as String,
       type: json['type'] == 'video' ? MediaType.video : MediaType.audio,
+      assetPath: json['assetPath'] as String?,
       podRelativePath: json['podRelativePath'] as String?,
       isEncrypted: (json['isEncrypted'] as bool?) ?? false,
       podItemId: json['podItemId'] as String?,
@@ -117,6 +118,7 @@ class MediaItem {
   Map<String, dynamic> toJson() => {
     'name': name,
     'type': type == MediaType.video ? 'video' : 'audio',
+    if (assetPath != null) 'assetPath': assetPath,
     if (podRelativePath != null) 'podRelativePath': podRelativePath,
     'isEncrypted': isEncrypted,
     if (podItemId != null) 'podItemId': podItemId,

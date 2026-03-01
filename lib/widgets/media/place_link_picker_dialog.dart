@@ -30,6 +30,8 @@ import 'package:flutter/material.dart';
 import 'package:geopod/models/media_item.dart';
 import 'package:geopod/services/media/place_media_service.dart';
 import 'package:geopod/services/places_service.dart';
+import 'package:geopod/services/pod/pod_auth.dart';
+import 'package:geopod/widgets/map/login_required_dialog.dart';
 
 /// Shows a dialog that lets the user toggle which places [item] is linked to.
 ///
@@ -37,7 +39,14 @@ import 'package:geopod/services/places_service.dart';
 /// [MediaItem.locationIds], and persists changes via [PlaceMediaService].
 ///
 /// Returns `true` if any changes were saved, `false` / `null` otherwise.
-Future<bool?> showPlaceLinkPickerDialog(BuildContext context, MediaItem item) {
+Future<bool?> showPlaceLinkPickerDialog(
+  BuildContext context,
+  MediaItem item,
+) async {
+  if (!PodAuth.isLoggedInSync()) {
+    await showLoginRequiredDialog(context);
+    return null;
+  }
   return showDialog<bool>(
     context: context,
     builder: (_) => _PlaceLinkPickerDialog(item: item),
@@ -99,44 +108,75 @@ class _PlaceLinkPickerDialogState extends State<_PlaceLinkPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(
-            widget.item.type == MediaType.audio
-                ? Icons.headphones
-                : Icons.videocam,
-            color: widget.item.type == MediaType.audio
-                ? Colors.teal
-                : Colors.deepPurple,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Link "${widget.item.name}"',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+    final iconColor = widget.item.type == MediaType.audio
+        ? Colors.teal
+        : Colors.deepPurple;
+    final icon = widget.item.type == MediaType.audio
+        ? Icons.headphones
+        : Icons.videocam;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 480, maxWidth: 840),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Title
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Row(
+                children: [
+                  Icon(icon, color: iconColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Link "${widget.item.name}"',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            // Content
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 300),
+                  child: _buildContent(),
+                ),
+              ),
+            ),
+            // Actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+              child: OverflowBar(
+                alignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed:
+                        _saving ? null : () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _saving || _loading ? null : _save,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Save'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      content: SizedBox(width: double.maxFinite, child: _buildContent()),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _saving || _loading ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Save'),
-        ),
-      ],
     );
   }
 
@@ -169,7 +209,6 @@ class _PlaceLinkPickerDialogState extends State<_PlaceLinkPickerDialog> {
     final allSelected = allIds.every(_selected.contains);
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -215,11 +254,10 @@ class _PlaceLinkPickerDialogState extends State<_PlaceLinkPickerDialog> {
             itemBuilder: (_, i) {
               final p = places[i];
               return CheckboxListTile(
-                dense: true,
                 value: _selected.contains(p.id),
                 title: Text(
                   p.displayTitle,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 subtitle: Text(

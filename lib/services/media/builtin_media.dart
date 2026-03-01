@@ -42,4 +42,7 @@ const List<MediaItem> builtinVideoItems = [
 ];
 
 /// All bundled demo items combined.
-const List<MediaItem> allBuiltinItems = [...builtinAudioItems, ...builtinVideoItems];
+const List<MediaItem> allBuiltinItems = [
+  ...builtinAudioItems,
+  ...builtinVideoItems,
+];

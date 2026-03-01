@@ -1,4 +1,4 @@
-﻿/// Inline audio playback widget.
+/// Inline audio playback widget.
 ///
 // Time-stamp: <2026-02-27 GitHub Copilot>
 ///

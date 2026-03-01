@@ -171,20 +171,18 @@ class _PlaceMediaSectionState extends State<PlaceMediaSection> {
                   color: Colors.grey.shade700,
                 ),
               ),
-              if (items.isNotEmpty) ...
-                [
-                  const SizedBox(width: 4),
-                  Text(
-                    '(tap to play)',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                ],
+              if (items.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(
+                  '(tap to play)',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                ),
+              ],
               const Spacer(),
-              // Manage-links button – only shown when a callback is wired up.
-              if (widget.onManageLinks != null)
+              // Manage-links button – only shown when a callback is wired up
+              // AND there are already linked items (empty state shows its own
+              // standalone "Link to media" button instead).
+              if (widget.onManageLinks != null && items.isNotEmpty)
                 InkWell(
                   onTap: _handleManageLinks,
                   borderRadius: BorderRadius.circular(4),
@@ -218,10 +216,21 @@ class _PlaceMediaSectionState extends State<PlaceMediaSection> {
         ),
         if (items.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Text(
-              'No media linked yet.',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: OutlinedButton.icon(
+              onPressed: _handleManageLinks,
+              icon: const Icon(Icons.add_link, size: 16),
+              label: const Text('Link to media'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.blue.shade600,
+                side: BorderSide(color: Colors.blue.shade300),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                textStyle: const TextStyle(fontSize: 13),
+                visualDensity: VisualDensity.compact,
+              ),
             ),
           )
         else

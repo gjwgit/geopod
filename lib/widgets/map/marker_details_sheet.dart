@@ -198,8 +198,7 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
               Icon(
                 Icons.home_outlined,
                 size: 20,
-                color:
-                    marker.isSaving ? Colors.orange.shade600 : markerColor,
+                color: marker.isSaving ? Colors.orange.shade600 : markerColor,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -232,15 +231,16 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
           ),
 
           // ── Linked media (audio / video) ───────────────────────────────
-          if (!marker.isLocal)
-            PlaceMediaSection(
+          // Shown for all markers (including local/demo ones) so users can
+          // always link or view media from the sheet.
+          PlaceMediaSection(
+            placeId: marker.id,
+            onManageLinks: () => showMediaLinkPickerDialog(
+              context,
               placeId: marker.id,
-              onManageLinks: () => showMediaLinkPickerDialog(
-                context,
-                placeId: marker.id,
-                placeTitle: marker.title,
-              ),
+              placeTitle: marker.title,
             ),
+          ),
 
           // ── Action buttons (edit / delete) ─────────────────────────────
           if (!marker.isLocal &&

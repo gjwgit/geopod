@@ -33,6 +33,7 @@ import 'package:geopod/models/media_item.dart';
 import 'package:geopod/services/media/builtin_media.dart';
 import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/services/pod/pod_auth.dart';
+import 'package:geopod/widgets/map/login_required_dialog.dart';
 import 'package:geopod/widgets/media/media_list_widget.dart';
 import 'package:geopod/widgets/media/place_link_picker_dialog.dart';
 import 'package:geopod/widgets/media/upload_media_dialog.dart';
@@ -58,8 +59,10 @@ class _VideoPageState extends State<VideoPage> {
   /// built-in asset registered in the Pod index (after its first link) does
   /// not appear twice in the list.
   List<MediaItem> get _allItems {
-    final podIds =
-        _podItems.map((i) => i.podItemId).whereType<String>().toSet();
+    final podIds = _podItems
+        .map((i) => i.podItemId)
+        .whereType<String>()
+        .toSet();
     final deduped = _assets
         .where((a) => a.podItemId == null || !podIds.contains(a.podItemId))
         .toList();
@@ -112,6 +115,10 @@ class _VideoPageState extends State<VideoPage> {
   /// Opens the place-link picker dialog for [item] and reloads the index
   /// so any updated [locationIds] are reflected in the UI.
   Future<void> _manageLinks(MediaItem item) async {
+    if (!PodAuth.isLoggedInSync()) {
+      await showLoginRequiredDialog(context);
+      return;
+    }
     final changed = await showPlaceLinkPickerDialog(context, item);
     if (changed == true && mounted) {
       await _loadPodItems();

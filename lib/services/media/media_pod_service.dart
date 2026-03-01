@@ -133,8 +133,7 @@ class MediaPodService {
 
     // If a fetch is already in-flight, share it instead of issuing a second
     // identical HTTP request.
-    final existing =
-        type == MediaType.audio ? _audioFetch : _videoFetch;
+    final existing = type == MediaType.audio ? _audioFetch : _videoFetch;
     if (existing != null) return List<MediaItem>.from(await existing);
 
     // No cache, no in-flight request: start a new fetch.

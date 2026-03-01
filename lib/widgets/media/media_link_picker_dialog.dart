@@ -31,6 +31,7 @@ import 'package:geopod/models/media_item.dart';
 import 'package:geopod/services/media/builtin_media.dart';
 import 'package:geopod/services/media/place_media_service.dart';
 import 'package:geopod/services/pod/pod_auth.dart';
+import 'package:geopod/widgets/map/login_required_dialog.dart';
 
 /// Shows a dialog that lets the user toggle which media items are linked to the
 /// place identified by [placeId].
@@ -44,7 +45,11 @@ Future<bool?> showMediaLinkPickerDialog(
   BuildContext context, {
   required String placeId,
   required String placeTitle,
-}) {
+}) async {
+  if (!PodAuth.isLoggedInSync()) {
+    await showLoginRequiredDialog(context);
+    return null;
+  }
   return showDialog<bool>(
     context: context,
     builder: (_) =>
@@ -91,7 +96,10 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
 
       // Merge builtins, deduplicating by podItemId so items that have already
       // been upserted into the Pod index are not shown twice.
-      final podIds = podMedia.map((i) => i.podItemId).whereType<String>().toSet();
+      final podIds = podMedia
+          .map((i) => i.podItemId)
+          .whereType<String>()
+          .toSet();
       final extraBuiltins = allBuiltinItems
           .where((b) => b.podItemId != null && !podIds.contains(b.podItemId))
           .toList();
@@ -101,7 +109,8 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
       // Pre-select items already linked to this place.
       final linked = merged
           .where(
-            (i) => i.podItemId != null && i.locationIds.contains(widget.placeId),
+            (i) =>
+                i.podItemId != null && i.locationIds.contains(widget.placeId),
           )
           .map((i) => i.podItemId!)
           .toSet();
@@ -139,8 +148,10 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
         final ok = await PlaceMediaService.linkToPlace(item, widget.placeId);
         if (ok) anyOk = true;
       } else if (removed.contains(item.podItemId)) {
-        final ok =
-            await PlaceMediaService.unlinkFromPlace(item, widget.placeId);
+        final ok = await PlaceMediaService.unlinkFromPlace(
+          item,
+          widget.placeId,
+        );
         if (ok) anyOk = true;
       }
     }
@@ -153,37 +164,66 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Row(
-        children: [
-          const Icon(Icons.place, color: Colors.blue),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Link media to "${widget.placeTitle}"',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 480, maxWidth: 840),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Title
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.place, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Link media to "${widget.placeTitle}"',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            // Content
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                child: _buildContent(),
+              ),
+            ),
+            // Actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+              child: OverflowBar(
+                alignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed:
+                        _saving ? null : () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _saving || _loading ? null : _save,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Save'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      content: SizedBox(width: double.maxFinite, child: _buildContent()),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _saving || _loading ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Save'),
-        ),
-      ],
     );
   }
 
@@ -201,15 +241,6 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
       return Center(child: Text('Error: $_error'));
     }
 
-    if (!PodAuth.isLoggedInSync()) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('Please log in to manage media links.'),
-        ),
-      );
-    }
-
     if (_allMedia.isEmpty) {
       return const Center(
         child: Padding(
@@ -222,8 +253,10 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
       );
     }
 
-    final allIds =
-        _allMedia.map((m) => m.podItemId).whereType<String>().toSet();
+    final allIds = _allMedia
+        .map((m) => m.podItemId)
+        .whereType<String>()
+        .toSet();
     final allSelected = allIds.every(_selected.contains);
 
     return Column(
@@ -287,10 +320,7 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                subtitle: Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 11),
-                ),
+                subtitle: Text(subtitle, style: const TextStyle(fontSize: 11)),
                 secondary: CircleAvatar(
                   radius: 14,
                   backgroundColor: color,

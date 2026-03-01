@@ -49,24 +49,22 @@ void showMarkerDetailsSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
     builder: (sheetContext) {
-      return DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        minChildSize: 0.3,
-        maxChildSize: 0.9,
-        expand: false,
-        // Builder is called on every drag frame. By returning a single
-        // StatefulWidget (instead of an inline Column), Flutter reconciles
-        // by type and reuses the existing State – PlaceMediaSection only
-        // loads once, and no widget subtree is rebuilt on every frame.
-        builder: (_, scrollController) {
-          return _MarkerDetailsSheetContent(
-            scrollController: scrollController,
+      // Use a ConstrainedBox instead of DraggableScrollableSheet so the
+      // sheet auto-sizes to its content height and avoids a large empty gap
+      // at the bottom when there is little content.
+      return SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.85,
+          ),
+          child: _MarkerDetailsSheetContent(
             marker: marker,
             sheetContext: sheetContext,
             onDelete: onDelete,
             onEdit: onEdit,
-          );
-        },
+          ),
+        ),
       );
     },
   );
@@ -76,14 +74,12 @@ void showMarkerDetailsSheet(
 
 class _MarkerDetailsSheetContent extends StatelessWidget {
   const _MarkerDetailsSheetContent({
-    required this.scrollController,
     required this.marker,
     required this.sheetContext,
     this.onDelete,
     this.onEdit,
   });
 
-  final ScrollController scrollController;
   final MarkerData marker;
   final BuildContext sheetContext;
   final VoidCallback? onDelete;
@@ -94,7 +90,6 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
     final markerColor = marker.color;
 
     return SingleChildScrollView(
-      controller: scrollController,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

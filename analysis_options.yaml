@@ -28,3 +28,7 @@ analyzer:
   exclude:
     - ignore/**
     - ignore/
+
+dart_code_metrics:
+  metrics-exclude:
+    - lib/utils/fullscreen_web.dart

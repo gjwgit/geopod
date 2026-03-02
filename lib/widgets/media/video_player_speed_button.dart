@@ -32,6 +32,17 @@ class _SpeedButton extends StatelessWidget {
       tooltip: 'Playback speed',
       initialValue: currentSpeed,
       onSelected: onSpeedSelected,
+      // Open the menu to the right of the button so it does not block the
+      // video surface.  The x-offset is slightly wider than the label text.
+      offset: const Offset(80, 0),
+      // Remove the default scale animation on web — it is visibly janky there.
+      // Keep the native animation on other platforms.
+      popUpAnimationStyle: kIsWeb
+          ? const AnimationStyle(
+              duration: Duration.zero,
+              reverseDuration: Duration.zero,
+            )
+          : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: Text(

@@ -127,4 +127,38 @@ class PlacesCacheManager {
   void invalidateCache() {
     _lastCacheTime = null;
   }
+
+  /// Surgically inserts a new place at the front of both in-memory caches.
+  /// Used after addPlace to avoid clearing and re-fetching the full list.
+
+  void insertPlaceIntoCache(Place place) {
+    _allPlacesCache?.insert(0, place);
+    _podPlacesCache?.insert(0, place);
+    _lastCacheTime = DateTime.now();
+  }
+
+  /// Surgically updates a single place in both in-memory caches.
+  /// Avoids a full cache clear + network re-fetch when only one place changes.
+  /// If the place is not found nothing happens (safe to call speculatively).
+
+  void updatePlaceInCache(Place updated) {
+    if (_allPlacesCache != null) {
+      final i = _allPlacesCache!.indexWhere((p) => p.id == updated.id);
+      if (i != -1) _allPlacesCache![i] = updated;
+    }
+    if (_podPlacesCache != null) {
+      final i = _podPlacesCache!.indexWhere((p) => p.id == updated.id);
+      if (i != -1) _podPlacesCache![i] = updated;
+    }
+    // Keep timestamp fresh so the cache is not considered expired.
+    _lastCacheTime = DateTime.now();
+  }
+
+  /// Surgically removes a single place from both in-memory caches by ID.
+
+  void removePlaceFromCache(String placeId) {
+    _allPlacesCache?.removeWhere((p) => p.id == placeId);
+    _podPlacesCache?.removeWhere((p) => p.id == placeId);
+    _lastCacheTime = DateTime.now();
+  }
 }

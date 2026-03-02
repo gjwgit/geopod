@@ -16,15 +16,29 @@ import 'package:flutter_map/flutter_map.dart';
 
 import 'package:geopod/widgets/map/marker_data.dart';
 import 'package:geopod/widgets/map/marker_details_sheet.dart';
-import 'package:geopod/widgets/map/marker_with_animation.dart';
+
+/// Maximum number of markers that receive entrance animations.
+const int _kMaxAnimatedMarkers = 20;
 
 /// Builds a marker layer for places.
+///
+/// Performance design:
+/// - When [shouldAnimate] is false (the common steady-state case) every
+///   Marker.child is a plain stateless widget.  No StatefulWidget, no Ticker,
+///   no SingleTickerProviderStateMixin anywhere in the marker subtree.  This
+///   eliminates the composited-layer artefacts (ghost copies / drift) that
+///   appear during fast map panning.
+/// - When [shouldAnimate] is true (only during initial load / post-login
+///   refresh) the first [_kMaxAnimatedMarkers] use a self-disposing
+///   TweenAnimationBuilder, which also leaves no residual State once the
+///   animation completes.
 
 MarkerLayer buildPlacesMarkerLayer({
   required BuildContext context,
   required List<MarkerData> markers,
   required bool shouldAnimate,
   required void Function(MarkerData) onDelete,
+  required void Function(MarkerData) onEdit,
 }) {
   return MarkerLayer(
     markers: [
@@ -35,6 +49,7 @@ MarkerLayer buildPlacesMarkerLayer({
           index: i,
           shouldAnimate: shouldAnimate,
           onDelete: onDelete,
+          onEdit: onEdit,
         ),
     ],
   );
@@ -48,32 +63,72 @@ Marker _buildMarker({
   required int index,
   required bool shouldAnimate,
   required void Function(MarkerData) onDelete,
+  required void Function(MarkerData) onEdit,
 }) {
-  // Skip entrance animation for markers being saved (they have their own indicator)
-  final animate = shouldAnimate && !marker.isSaving;
+  // Saving markers have their own animated indicator; skip entrance animation.
+  final doAnimate =
+      shouldAnimate && !marker.isSaving && index < _kMaxAnimatedMarkers;
+
+  // Build the visual child (pure stateless widgets when not saving).
+  final Widget icon = marker.isSaving
+      ? _buildSavingMarker()
+      : marker.isEncrypted
+      ? _buildEncryptedMarker(marker.color)
+      : Icon(Icons.location_on, size: 40, color: marker.color);
+
+  final Widget tapTarget = GestureDetector(
+    onTap: () => showMarkerDetailsSheet(
+      context,
+      marker,
+      onDelete: () => onDelete(marker),
+      onEdit: () => onEdit(marker),
+    ),
+    child: icon,
+  );
+
+  // When no animation is needed, pass the stateless widget directly.
+  // This is the steady-state path (shouldAnimate = false after initial load).
+  // No StatefulWidget, no SingleTickerProviderStateMixin in the subtree —
+  // markers cannot create independent composited layers that drift from the map.
+  final Widget child = doAnimate
+      ? _buildAnimatedMarker(tapTarget, index)
+      : tapTarget;
 
   return Marker(
     key: ValueKey('marker_${marker.id}'),
     point: marker.position,
     width: 40,
     height: 40,
-    child: MarkerWithAnimation(
-      key: ValueKey('anim_${marker.id}'),
-      index: index,
-      shouldAnimate: animate,
-      child: GestureDetector(
-        onTap: () => showMarkerDetailsSheet(
-          context,
-          marker,
-          onDelete: () => onDelete(marker),
-        ),
-        child: marker.isSaving
-            ? _buildSavingMarker()
-            : marker.isEncrypted
-            ? _buildEncryptedMarker(marker.color)
-            : Icon(Icons.location_on, size: 40, color: marker.color),
-      ),
-    ),
+    child: child,
+  );
+}
+
+/// Wraps [child] in a staggered scale+fade entrance animation.
+///
+/// Uses [TweenAnimationBuilder] which is stateless from the parent's
+/// perspective: it owns its own internal state and disposes it automatically
+/// when the animation value reaches 1.0 and the widget is removed from the
+/// tree.  No [SingleTickerProviderStateMixin] leaks into the marker subtree.
+
+Widget _buildAnimatedMarker(Widget child, int index) {
+  final delay = Duration(milliseconds: (index * 25).clamp(0, 200));
+  return TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0.0, end: 1.0),
+    duration: const Duration(milliseconds: 250) + delay,
+    curve: Curves.easeOutCubic,
+    builder: (context, value, animChild) {
+      // Clamp the stagger: opacity/scale only starts after the delay fraction.
+      final delayFraction = delay.inMilliseconds / (250 + delay.inMilliseconds);
+      final progress = ((value - delayFraction) / (1.0 - delayFraction)).clamp(
+        0.0,
+        1.0,
+      );
+      return Opacity(
+        opacity: progress,
+        child: Transform.scale(scale: progress, child: animChild),
+      );
+    },
+    child: child,
   );
 }
 

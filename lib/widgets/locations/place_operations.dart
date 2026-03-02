@@ -48,8 +48,8 @@ Future<bool> deletePlaceWithFeedback(BuildContext context, Place place) async {
     duration: const Duration(seconds: 1),
   );
 
-  final success = await PlacesService.deletePlace(
-    place.id,
+  final success = await PlacesService.deletePlaceByPlace(
+    place,
     context,
     const LocationsPage(),
   );

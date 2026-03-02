@@ -100,20 +100,20 @@ class EncryptedPlacesService {
   }
 
   /// Check if security key is available for encryption operations.
-  /// Uses cache to avoid repeated KeyManager calls.
+  /// Only caches positive (true) results to avoid stale 'no key' responses
+  /// during async key verification at startup.
 
   static Future<bool> isSecurityKeyAvailable() async {
-    // Return cached value if available.
-    if (_securityKeyAvailableCache != null) {
-      return _securityKeyAvailableCache!;
-    }
+    // Only return cached value when it's a confirmed positive.
+    if (_securityKeyAvailableCache == true) return true;
 
     try {
       final available = await KeyManager.hasSecurityKey();
-      _securityKeyAvailableCache = available;
+      // Only cache true — false may be temporary (key not yet verified).
+      if (available) _securityKeyAvailableCache = true;
       return available;
     } catch (_) {
-      _securityKeyAvailableCache = false;
+      // Do not cache errors to allow retry.
       return false;
     }
   }
@@ -123,6 +123,15 @@ class EncryptedPlacesService {
   static void clearSecurityKeyCache() {
     _securityKeyAvailableCache = null;
   }
+
+  /// Whether encrypted places have been successfully loaded this session.
+
+  static bool get hasLoadedEncryptedPlaces =>
+      _cachedEncryptedPlaces != null && _cachedEncryptedPlaces!.isNotEmpty;
+
+  /// Returns the in-memory cache of encrypted places, or null if not yet loaded.
+
+  static List<Place>? getCachedEncryptedPlaces() => _cachedEncryptedPlaces;
 
   /// Check if verification key exists (meaning encryption was set up).
 
@@ -177,7 +186,6 @@ class EncryptedPlacesService {
         const SecurityKeyStatusChangedNotification(
           isKeySaved: true,
         ).dispatch(context);
-        debugPrint('Security key status notification dispatched');
       }
     }
     return result;
@@ -238,9 +246,6 @@ class EncryptedPlacesService {
           const SecurityKeyStatusChangedNotification(
             isKeySaved: true,
           ).dispatch(context);
-          debugPrint(
-            'Directory created, security key status notification dispatched',
-          );
         }
       }
     } else {
@@ -292,9 +297,6 @@ class EncryptedPlacesService {
 
       if (_cachedEncryptedPlaces == null) {
         if (!await ensureSecurityKey(context, child)) {
-          debugPrint(
-            'Security key not available, cannot safely add encrypted places',
-          );
           return false;
         }
       }
@@ -322,9 +324,6 @@ class EncryptedPlacesService {
       // Ensure security key is available before fetching/modifying data.
       if (_cachedEncryptedPlaces == null) {
         if (!await ensureSecurityKey(context, child)) {
-          debugPrint(
-            'Security key not available, cannot safely delete encrypted place',
-          );
           return false;
         }
       }
@@ -353,9 +352,6 @@ class EncryptedPlacesService {
       // Ensure security key is available before fetching/modifying data.
       if (_cachedEncryptedPlaces == null) {
         if (!await ensureSecurityKey(context, child)) {
-          debugPrint(
-            'Security key not available, cannot safely update encrypted place',
-          );
           return false;
         }
       }

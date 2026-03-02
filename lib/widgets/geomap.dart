@@ -25,6 +25,7 @@ import 'package:geopod/models/place.dart';
 import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/location_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
+import 'package:geopod/services/navigation_service.dart' show pendingNavTarget;
 import 'package:geopod/services/places_service.dart'
     show placesChangeNotifier, PlacesService;
 import 'package:geopod/utils/widget_utils.dart';
@@ -147,6 +148,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             debugPrint('Failed to load encrypted places: $error');
           }),
         ),
+        onComplete: _consumePendingNavTarget,
       ),
       verifyLoginStateAndLoadData: () async {
         final result = await verifyLoginStateAndLoadData(
@@ -184,6 +186,10 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       },
     );
     WidgetsBinding.instance.addObserver(this);
+
+    // Register pending-navigation listener so that a programmatic "navigate
+    // to this place" from another page is consumed once the map is ready.
+    pendingNavTarget.addListener(_consumePendingNavTarget);
   }
 
   void _onAnimationComplete() {
@@ -196,6 +202,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
 
   @override
   void dispose() {
+    pendingNavTarget.removeListener(_consumePendingNavTarget);
     saveViewportIfEnabled(
       mapController: mapController,
       mapSettings: mapSettings,
@@ -262,6 +269,27 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         },
       ),
     );
+  }
+
+  /// Navigate the map to a specific location with an optional zoom level.
+  ///
+  /// Called externally (e.g., from the Locations page) to jump the map view
+  /// to a saved place.
+
+  void navigateToLocation(LatLng position, {double zoom = 16.0}) {
+    mapController.move(position, zoom);
+  }
+
+  /// Consume a pending navigation target set via [pendingNavTarget].
+  ///
+  /// Called once after the first frame and whenever [pendingNavTarget] changes.
+
+  void _consumePendingNavTarget() {
+    final target = pendingNavTarget.value;
+    if (target == null) return;
+    // Clear before moving so a second listener call is a no-op.
+    pendingNavTarget.value = null;
+    navigateToLocation(target);
   }
 
   /// Handle location button tap - get user location and move map to it.

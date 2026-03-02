@@ -27,7 +27,11 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:latlong2/latlong.dart' show LatLng;
+
 import 'package:geopod/models/place.dart';
+import 'package:geopod/services/navigation_service.dart'
+    show currentPageNotifier, pendingNavTarget;
 import 'package:geopod/widgets/locations/detail_row.dart';
 import 'package:geopod/widgets/media/media_link_picker_dialog.dart';
 import 'package:geopod/widgets/media/place_media_section.dart';
@@ -180,6 +184,21 @@ class PlaceListTile extends StatelessWidget {
                 ),
               ),
               actions: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Set destination BEFORE switching page so GeoMapWidgetState
+                    // picks it up the moment it mounts.
+                    pendingNavTarget.value = LatLng(place.lat, place.lng);
+                    currentPageNotifier.value = 0;
+                  },
+                  icon: const Icon(Icons.near_me),
+                  label: const Text('Navigate'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Close'),

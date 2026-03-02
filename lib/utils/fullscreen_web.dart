@@ -36,7 +36,7 @@ Future<void> exitSystemFullscreen() async {
 /// video_player_widget library).  The Dart analyser does not trace symbol
 /// usage through `part` files when resolving conditional imports, so the
 /// reference is invisible to the linter even though it is real.
-// ignore: unused_element
+// ignore: unused-code
 Stream<bool> get systemFullscreenChanges {
   late StreamController<bool> controller;
   JSFunction? jsListener;

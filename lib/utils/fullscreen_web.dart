@@ -32,11 +32,11 @@ Future<void> exitSystemFullscreen() async {
 
 /// Emits `true` when the browser enters fullscreen and `false` when it exits
 /// (whether the user pressed ESC or code called [exitSystemFullscreen]).
-// ignore: unused_code
-// Used from video_player_fullscreen_page.dart (a `part` file of the
-// video_player_widget library).  The Dart analyser does not trace symbol
-// usage through `part` files when resolving conditional imports, so the
-// reference is invisible to the linter even though it is real.
+/// Used from video_player_fullscreen_page.dart (a `part` file of the
+/// video_player_widget library).  The Dart analyser does not trace symbol
+/// usage through `part` files when resolving conditional imports, so the
+/// reference is invisible to the linter even though it is real.
+// ignore: unused_element
 Stream<bool> get systemFullscreenChanges {
   late StreamController<bool> controller;
   JSFunction? jsListener;

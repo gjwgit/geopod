@@ -1,6 +1,6 @@
 /// Shared catalogue of bundled demo media items.
 ///
-// Time-stamp: <2026-03-01 GitHub Copilot>
+// Time-stamp: <2026-03-01 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///

@@ -1,6 +1,6 @@
 /// Dialog for selecting which places a media item is linked to.
 ///
-// Time-stamp: <2026-03-01 GitHub Copilot>
+// Time-stamp: <2026-03-01 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -21,7 +21,7 @@
 // You should have received a copy of the GNU General Public License along with
 // this program.  If not, see <https://opensource.org/licenses/gpl-3-0>.
 ///
-/// Authors: GitHub Copilot
+/// Authors: Miduo
 
 library;
 

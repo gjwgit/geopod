@@ -1,6 +1,6 @@
 /// System fullscreen helpers — WEB implementation via HTML5 Fullscreen API.
 ///
-// Time-stamp: <2026-02-28 GitHub Copilot>
+// Time-stamp: <2026-02-28 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///

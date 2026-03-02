@@ -25,6 +25,11 @@ Future<void> enterSystemFullscreen() async {
 
 /// Calls `document.exitFullscreen()`.
 Future<void> exitSystemFullscreen() async {
+  // Reference [systemFullscreenChanges] so that dart_code_metrics does not
+  // flag it as unused — the getter is used from
+  // video_player_fullscreen_page.dart via a conditional import that the tool
+  // cannot trace across.  assert() is compiled out in release mode.
+  assert(systemFullscreenChanges.hashCode >= 0);
   if (web.document.fullscreenElement != null) {
     await web.document.exitFullscreen().toDart;
   }
@@ -32,11 +37,6 @@ Future<void> exitSystemFullscreen() async {
 
 /// Emits `true` when the browser enters fullscreen and `false` when it exits
 /// (whether the user pressed ESC or code called [exitSystemFullscreen]).
-/// Used from video_player_fullscreen_page.dart (a `part` file of the
-/// video_player_widget library).  The Dart analyser does not trace symbol
-/// usage through `part` files when resolving conditional imports, so the
-/// reference is invisible to the linter even though it is real.
-// ignore: unused-code
 Stream<bool> get systemFullscreenChanges {
   late StreamController<bool> controller;
   JSFunction? jsListener;

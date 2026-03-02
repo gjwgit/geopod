@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/foundation.dart' show ValueNotifier;
+
 import 'package:latlong2/latlong.dart' show LatLng;
 
 /// Notifier that holds the currently selected top-level page index.

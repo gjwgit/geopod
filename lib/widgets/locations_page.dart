@@ -45,7 +45,9 @@ class _LocationsPageState extends State<LocationsPage>
 
   /// Whether to show example (local) places instead of user Pod places.
   /// Only relevant when logged in.
-  bool _showingExamples = false;
+  /// Static so the choice persists across page navigations within the same
+  /// app session (but is not written to disk).
+  static bool _showingExamples = false;
 
   /// Cached local/example places — populated whenever logged-in data is loaded.
   List<Place> _examplePlaces = [];

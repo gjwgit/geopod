@@ -28,6 +28,7 @@ then please show some ❤️ and tap on the star at
 
 ## 0.1 First beta release
 
++ Add EDIT to point of interest popup [0.0.16 20260302 miduo]
 + Move to latest solidpod dev from anusii [0.0.15 20260203 gjw]
 + Move to latest solidui dev from anusii [0.0.14 20260130 miduo]
 + Update sample point colour on SETTINGS change [0.0.13 20260130 miduo]

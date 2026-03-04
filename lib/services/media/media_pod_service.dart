@@ -7,6 +7,8 @@
 /// Licensed under the GNU General Public License, Version 3 (the "License").
 ///
 /// License: https://opensource.org/license/gpl-3-0.
+///
+/// Authors: Miduo
 
 // ignore_for_file: use_build_context_synchronously
 

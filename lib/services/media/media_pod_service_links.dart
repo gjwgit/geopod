@@ -1,3 +1,15 @@
+/// Solid Pod service for managing audio and video media items.
+///
+// Time-stamp: <2026-03-04 Miduo>
+///
+/// Copyright (C) 2026, Software Innovation Institute, ANU.
+///
+/// Licensed under the GNU General Public License, Version 3 (the "License").
+///
+/// License: https://opensource.org/license/gpl-3-0.
+///
+/// Authors: Miduo
+
 // Part of media_pod_service.dart – place-link management helpers.
 
 part of 'media_pod_service.dart';

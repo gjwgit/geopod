@@ -286,10 +286,10 @@ class EncryptedPlacesService {
       }
 
       // ── Sync individual encrypted place files ──────────────────────────────
-      // Run individual-file sync concurrently with cache update.
-      // Deletions and writes are fire-and-forgot independently (Pod is
-      // eventually consistent; the aggregate is the source of truth).
-      _syncIndividualEncryptedFiles(places, oldPlaces);
+      // Await all individual-file writes/deletes BEFORE notifying the file
+      // browser. If we fire-and-forget, the directory listing refresh triggered
+      // by notifyChange() races with the writes and can show a stale listing.
+      await _syncIndividualEncryptedFiles(places, oldPlaces);
 
       _cachedEncryptedPlaces = places;
 
@@ -330,12 +330,14 @@ class EncryptedPlacesService {
   /// - Writes (or overwrites) individual files for new/changed places.
   /// - Deletes individual files for places that have been removed.
   ///
-  /// This runs fire-and-forget in the background; callers do not need to await.
+  /// All operations run in parallel and are awaited before returning, so the
+  /// caller can rely on the server state being coherent before notifying
+  /// the file browser.
 
-  static void _syncIndividualEncryptedFiles(
+  static Future<void> _syncIndividualEncryptedFiles(
     List<Place> newPlaces,
     List<Place> oldPlaces,
-  ) {
+  ) async {
     // Build lookup maps.
     final oldById = {for (final p in oldPlaces) p.id: p};
     final newById = {for (final p in newPlaces) p.id: p};
@@ -353,13 +355,15 @@ class EncryptedPlacesService {
       return jsonEncode(p.toJson()) != jsonEncode(old.toJson());
     }).toList();
 
-    // Fire-and-forget parallel operations.
-    if (removedIds.isNotEmpty) {
-      deleteAllIndividualEncryptedPlaceFiles(removedIds);
-    }
-    for (final place in toWrite) {
-      writeIndividualEncryptedPlaceFile(place);
-    }
+    // Run all deletions and writes in parallel and wait for all to complete.
+    // This ensures the server state is coherent before the caller notifies
+    // the file browser.
+    final futures = <Future<dynamic>>[
+      if (removedIds.isNotEmpty)
+        deleteAllIndividualEncryptedPlaceFiles(removedIds),
+      ...toWrite.map(writeIndividualEncryptedPlaceFile),
+    ];
+    if (futures.isNotEmpty) await Future.wait(futures);
   }
 
   /// Add a single encrypted place.

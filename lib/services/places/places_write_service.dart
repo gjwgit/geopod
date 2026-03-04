@@ -73,9 +73,10 @@ class PlacesWriteService {
       );
 
       if (mainSuccess) {
-        // Fire-and-forget individual file (non-critical — main file is the
-        // source of truth and is already written above).
-        writeIndividualPlaceFile(place);
+        // Await individual file write BEFORE notifying the file browser.
+        // If we fire-and-forget here, the directory listing refresh triggered
+        // by notifyChange() can race with the write and show a stale listing.
+        await writeIndividualPlaceFile(place);
 
         // Surgically insert into caches — avoids a full clear + re-fetch and
         // preserves the encrypted places cache which is unrelated to this write.

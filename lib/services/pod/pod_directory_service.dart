@@ -45,14 +45,12 @@ class PodDirectoryService {
 
   static void notifyChange() {
     podFilesChangeNotifier.value++;
-    debugPrint('PodDirectoryService: Notified file system change');
   }
 
   /// Clear all cached data.
 
   static void clearCache() {
     _cache.clear();
-    debugPrint('PodDirectoryService: Cache cleared');
   }
 
   /// Clear cache for a specific path and its parent.
@@ -69,7 +67,6 @@ class PodDirectoryService {
             : parentPath,
       );
     }
-    debugPrint('PodDirectoryService: Invalidated cache for: $path');
   }
 
   /// Remove an item from the cache (used after deletion).
@@ -82,7 +79,6 @@ class PodDirectoryService {
       final (items, timestamp) = cached;
       final updated = items.where((i) => i.path != itemPath).toList();
       _cache[parentPath] = (updated, timestamp);
-      debugPrint('PodDirectoryService: Removed from cache: $itemPath');
     }
   }
 
@@ -111,9 +107,6 @@ class PodDirectoryService {
       if (cached != null) {
         final (items, timestamp) = cached;
         if (DateTime.now().difference(timestamp) < _cacheExpiry) {
-          debugPrint(
-            'PodDirectoryService: Using cached data for: $relativePath',
-          );
           return List.from(items); // Return a copy
         }
       }
@@ -129,12 +122,14 @@ class PodDirectoryService {
         dirUrl = '$dirUrl/';
       }
 
-      debugPrint('PodDirectoryService: Listing directory: $dirUrl');
-
       // Get authentication tokens.
       final tokens = await PodAuth.getTokens(dirUrl, 'GET');
 
-      // Make the request with proper headers (matching solidpod's implementation)
+      // Make the request with proper headers (matching solidpod's implementation).
+      // Cache-Control and Pragma headers instruct the browser (Flutter Web) and
+      // any intermediate proxy NOT to serve a cached copy.  Without these, the
+      // browser's HTTP cache will return a stale directory listing even when
+      // forceRefresh is true, making the refresh button appear broken.
       final response = await http.get(
         Uri.parse(dirUrl),
         headers: <String, String>{
@@ -142,11 +137,9 @@ class PodDirectoryService {
           'Authorization': 'DPoP ${tokens.accessToken}',
           'Connection': 'keep-alive',
           'DPoP': tokens.dPopToken,
+          'Cache-Control': 'no-cache, no-store',
+          'Pragma': 'no-cache',
         },
-      );
-
-      debugPrint(
-        'PodDirectoryService: Response status: ${response.statusCode}',
       );
 
       if (response.statusCode == 404) {
@@ -173,9 +166,6 @@ class PodDirectoryService {
       // Update cache.
 
       _cache[relativePath] = (List.from(items), DateTime.now());
-      debugPrint(
-        'PodDirectoryService: Cached ${items.length} items for: $relativePath',
-      );
 
       return items;
     } catch (e) {
@@ -272,7 +262,6 @@ class PodDirectoryService {
 
       try {
         await PodFileSystem.deleteFile('$relativePath.acl');
-        debugPrint('PodDirectoryService: Deleted ACL file for: $relativePath');
       } catch (_) {
         // ACL file may not exist, ignore.
       }
@@ -293,7 +282,6 @@ class PodDirectoryService {
   /// overall operation.
 
   static Future<bool> deleteDirectoryRecursive(String relativePath) async {
-    debugPrint('PodDirectoryService.deleteDirectoryRecursive: $relativePath');
     try {
       // Fetch fresh listing — the directory may not exist at all.
       List<PodFileItem> items;
@@ -330,11 +318,12 @@ class PodDirectoryService {
       _cache.remove(relativePath);
       invalidateCache(relativePath);
 
-      debugPrint(
-        'PodDirectoryService.deleteDirectoryRecursive: '
-        '${containerGone ? "done" : "container delete failed (${response.statusCode})"}'
-        ' – $relativePath',
-      );
+      if (!containerGone) {
+        debugPrint(
+          'PodDirectoryService.deleteDirectoryRecursive: '
+          'container delete failed (${response.statusCode}) – $relativePath',
+        );
+      }
       return containerGone;
     } catch (e) {
       debugPrint('PodDirectoryService.deleteDirectoryRecursive error: $e');
@@ -365,11 +354,8 @@ class PodDirectoryService {
     try {
       // Check if already cached.
       if (_cache.containsKey('') && _cache.containsKey('data')) {
-        debugPrint('PodDirectoryService.preload: skipped (cache exists)');
         return;
       }
-
-      debugPrint('PodDirectoryService.preload: starting...');
 
       // Preload root directory and data directory in parallel.
       await Future.wait([
@@ -377,8 +363,6 @@ class PodDirectoryService {
         listDirectory('data'), // geopod/data/
         listDirectory('data/places'), // geopod/data/places/
       ]);
-
-      debugPrint('PodDirectoryService.preload: completed');
     } catch (e) {
       debugPrint('PodDirectoryService.preload: error $e');
     }

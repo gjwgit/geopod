@@ -87,7 +87,6 @@ class MediaPodService {
     } else {
       _videoFetch = null;
     }
-    debugPrint('MediaPodService: cleared cache for $type');
   }
 
   static void _invalidateCache(MediaType type) {
@@ -107,6 +106,38 @@ class MediaPodService {
     _videoCache = null;
     _audioFetch = null;
     _videoFetch = null;
+  }
+
+  // ── Pod index bootstrapping ───────────────────────────────────────────────
+
+  /// Ensures that both media index files exist on the Pod.
+  ///
+  /// Called once after login so that the first [listItems] request does not
+  /// produce spurious 404 responses.  If the files already exist nothing is
+  /// written.  Safe to call with [unawaited] – failures are logged but do not
+  /// propagate.
+  static Future<void> ensureIndexFiles() async {
+    if (!await PodAuth.isLoggedIn()) return;
+    await Future.wait([
+      _ensureIndexFile(MediaType.audio),
+      _ensureIndexFile(MediaType.video),
+    ]);
+  }
+
+  static Future<void> _ensureIndexFile(MediaType type) async {
+    final path = _indexPath(type);
+    // silentOnNotFound: 404 is the expected state before any media exists.
+    final existing = await PodFileSystem.readFile(path, silentOnNotFound: true);
+    if (existing != null) {
+      // File already exists (empty or with items) – nothing to do.
+      return;
+    }
+    await PodFileSystem.writeFile(
+      path,
+      '[]',
+      contentType: PodContentType.json,
+      createParentDirs: false,
+    );
   }
 
   // ── Directory initialisation ─────────────────────────────────────────────
@@ -170,16 +201,18 @@ class MediaPodService {
 
   static Future<List<MediaItem>> _fetchFromPod(MediaType type) async {
     try {
-      // silentOnNotFound: 404 is the normal state before any media is uploaded.
+      // silentOnNotFound: index files are bootstrapped by ensureIndexFiles() at
+      // login, but a 404 can still occur in edge cases – e.g. the file was
+      // manually deleted via the file browser, or this read races the
+      // (unawaited) ensureIndexFiles() call during the first login.
       final content = await PodFileSystem.readFile(
         _indexPath(type),
         silentOnNotFound: true,
       );
       if (content == null) {
-        // null means a hard error (401 unauthorised, network failure, not
-        // logged in).  Do NOT cache – this is a transient failure.  The next
-        // PlaceMediaSection open will retry, and will succeed once auth is
-        // restored or the Pod becomes reachable.
+        // null means a hard error (401 unauthorised, network failure, 404, or
+        // not logged in).  Do NOT cache – this is a transient failure.  The
+        // next PlaceMediaSection open will retry once the condition clears.
         debugPrint(
           'MediaPodService._fetchFromPod: could not read ${_indexPath(type)} – skipping cache',
         );

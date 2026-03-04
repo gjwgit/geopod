@@ -280,6 +280,68 @@ class PodDirectoryService {
     return success;
   }
 
+  /// Recursively delete a directory and ALL its contents.
+  ///
+  /// Lists the container, deletes every file and recursively deletes every
+  /// sub-container in parallel, then deletes the container itself.
+  ///
+  /// [relativePath] - Path relative to the app data directory
+  ///   (e.g. `'data/audio'`).
+  ///
+  /// Returns `true` when the entire subtree has been removed (or was already
+  /// absent).  Individual file-delete failures are logged but do not abort the
+  /// overall operation.
+
+  static Future<bool> deleteDirectoryRecursive(String relativePath) async {
+    debugPrint('PodDirectoryService.deleteDirectoryRecursive: $relativePath');
+    try {
+      // Fetch fresh listing — the directory may not exist at all.
+      List<PodFileItem> items;
+      try {
+        items = await listDirectory(relativePath, forceRefresh: true);
+      } catch (_) {
+        // 404 or unreachable — treat as already gone.
+        return true;
+      }
+
+      // Delete all children in parallel.
+      await Future.wait(
+        items.map((child) async {
+          if (child.isDirectory) {
+            await deleteDirectoryRecursive(child.path);
+          } else {
+            final ok = await PodFileSystem.deleteFile(child.path);
+            if (!ok) {
+              debugPrint(
+                'PodDirectoryService.deleteDirectoryRecursive: '
+                'failed to delete file ${child.path}',
+              );
+            }
+          }
+        }),
+      );
+
+      // Delete the (now-empty) container itself via a DELETE on its URL.
+      final dirUrl = await PodPath.getDirUrl(relativePath);
+      final response = await PodHttp.delete(dirUrl);
+      final containerGone = response.isSuccess || response.isNotFound;
+
+      // Evict from local cache regardless of server response.
+      _cache.remove(relativePath);
+      invalidateCache(relativePath);
+
+      debugPrint(
+        'PodDirectoryService.deleteDirectoryRecursive: '
+        '${containerGone ? "done" : "container delete failed (${response.statusCode})"}'
+        ' – $relativePath',
+      );
+      return containerGone;
+    } catch (e) {
+      debugPrint('PodDirectoryService.deleteDirectoryRecursive error: $e');
+      return false;
+    }
+  }
+
   /// Check if a path exists in the POD.
   ///
   /// [relativePath] - Path relative to the app data directory.

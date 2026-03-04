@@ -16,7 +16,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import 'package:geopod/models/media_item.dart';
 import 'package:geopod/models/pod_file_item.dart';
+import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/services/places_service.dart';
 import 'package:geopod/services/pod/pod.dart';
 import 'package:geopod/widgets/pod/pod_browser_layouts.dart';
@@ -226,6 +228,83 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
         return;
       }
 
+      // ── Encrypted place file: enc_place_<id>.ttl ────────────────────────────
+      // Route through EncryptedPlacesService so the aggregate is also updated.
+
+      if (_isEncryptedPlaceFile(item.path)) {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _items.removeWhere((i) => i.path == item.path);
+              if (_selectedFile?.path == item.path) _selectedFile = null;
+            });
+          }
+        });
+        if (!mounted) return;
+        final success =
+            await EncryptedPlacesService.deleteEncryptedPlaceByFilePath(
+              item.path,
+              context,
+              widget,
+            );
+        if (mounted) {
+          showFileOperationSnackBar(
+            context,
+            message: success
+                ? 'Deleted ${item.name}'
+                : 'Failed to delete ${item.name}',
+            success: success,
+          );
+          if (!success) _loadDirectory();
+        }
+        return;
+      }
+
+      // ── Audio / Video media file ─────────────────────────────────────────
+      // Route through MediaPodService.deleteItem so the index AND the
+      // in-memory cache are kept in sync (fixes the stale-link bug).
+
+      if (_isAudioMediaFile(item.path) || _isVideoMediaFile(item.path)) {
+        final mediaItem = await _findMediaItemByPath(item.path);
+        if (mediaItem != null) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _items.removeWhere((i) => i.path == item.path);
+                if (_selectedFile?.path == item.path) _selectedFile = null;
+              });
+            }
+            if (mounted) showDeletingSnackBar(context, item.name);
+          });
+          final success = await MediaPodService.deleteItem(mediaItem);
+          if (mounted) {
+            showFileOperationSnackBar(
+              context,
+              message: success
+                  ? 'Deleted ${item.name}'
+                  : 'Failed to delete ${item.name}',
+              success: success,
+            );
+            if (!success) _loadDirectory();
+          }
+          return;
+        }
+        // Not in index – fall through to generic delete below.
+      }
+
+      // ── Media index files (audio_index.json / video_index.json) ─────────────
+      // These are NOT routed through MediaPodService.deleteItem() (they are
+      // not MediaItems themselves), but deleting them must still invalidate
+      // the in-memory cache so that subsequent listItems() calls re-fetch
+      // rather than returning stale data.
+
+      if (_isMediaIndexFile(item.path)) {
+        final type = item.path.startsWith('data/audio/')
+            ? MediaType.audio
+            : MediaType.video;
+        MediaPodService.clearCacheForType(type);
+      }
+
       // Regular file deletion.
 
       SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -253,6 +332,43 @@ class _PodFileBrowserState extends State<PodFileBrowser> {
       // Always reset the flag.
       _skipFilesChangeNotification = false;
     }
+  }
+
+  // ── File-type detection helpers ────────────────────────────────────────
+
+  /// Returns `true` for the audio or video index file itself.
+  bool _isMediaIndexFile(String path) {
+    return path == 'data/audio/audio_index.json' ||
+        path == 'data/video/video_index.json';
+  }
+
+  /// Returns `true` for audio files (excluding the index file).
+  bool _isAudioMediaFile(String path) {
+    if (!path.startsWith('data/audio/')) return false;
+    final n = path.split('/').last;
+    return n != 'audio_index.json';
+  }
+
+  /// Returns `true` for video files (excluding the index file).
+  bool _isVideoMediaFile(String path) {
+    if (!path.startsWith('data/video/')) return false;
+    final n = path.split('/').last;
+    return n != 'video_index.json';
+  }
+
+  /// Returns `true` for individual encrypted place files (`enc_place_*.ttl`).
+  bool _isEncryptedPlaceFile(String path) {
+    final n = path.split('/').last;
+    return n.startsWith('enc_place_') && n.endsWith('.ttl');
+  }
+
+  /// Looks up the [MediaItem] whose [MediaItem.podRelativePath] matches [path]
+  /// in the in-memory index cache.  Returns `null` if not found.
+  Future<MediaItem?> _findMediaItemByPath(String path) async {
+    final type = _isAudioMediaFile(path) ? MediaType.audio : MediaType.video;
+    final items = await MediaPodService.listItems(type);
+    final idx = items.indexWhere((i) => i.podRelativePath == path);
+    return idx >= 0 ? items[idx] : null;
   }
 
   Future<void> _refreshDirectory() async {

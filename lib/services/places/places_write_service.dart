@@ -35,6 +35,7 @@ import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
+import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places/places_cache_manager.dart';
 import 'package:geopod/services/places/places_cache_persistence.dart';
@@ -131,6 +132,9 @@ class PlacesWriteService {
         cm.cachePodPlaces(updated);
         placesChangeNotifier.value++;
 
+        // Fire-and-forget: remove stale place links from all media items.
+        MediaPodService.unlinkAllForPlace(placeId);
+
         // Invalidate directory cache and notify file browser.
         PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
@@ -155,7 +159,11 @@ class PlacesWriteService {
         context,
         returnWidget,
       );
-      if (success) placesChangeNotifier.value++;
+      if (success) {
+        placesChangeNotifier.value++;
+        // Fire-and-forget: remove stale place links from all media items.
+        MediaPodService.unlinkAllForPlace(place.id);
+      }
       return success;
     }
     return deletePlace(place.id, context, returnWidget);
@@ -299,6 +307,9 @@ class PlacesWriteService {
       if (success) {
         // Delete all individual place files.
         await deleteAllIndividualPlaceFiles(placeIds);
+
+        // Fire-and-forget: clear all media-place links since no places remain.
+        MediaPodService.clearAllPlaceLinks();
 
         if (hadEncryptedPlaces) {
           // Clear main/pod cache but keep encrypted session state alive so

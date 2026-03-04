@@ -76,6 +76,20 @@ class MediaPodService {
     }
   }
 
+  /// Clear the in-memory cache for a specific media type.
+  ///
+  /// Use this when an index file is externally deleted (e.g. via the file
+  /// browser) so that the next [listItems] call re-fetches from the Pod.
+  static void clearCacheForType(MediaType type) {
+    _invalidateCache(type);
+    if (type == MediaType.audio) {
+      _audioFetch = null;
+    } else {
+      _videoFetch = null;
+    }
+    debugPrint('MediaPodService: cleared cache for $type');
+  }
+
   static void _invalidateCache(MediaType type) {
     if (type == MediaType.audio) {
       _audioCache = null;
@@ -248,12 +262,25 @@ class MediaPodService {
     if (encrypt) await _ensureDir(type);
 
     final id = _uuid.v4();
+
+    // Read the index up-front so we can (a) detect duplicate filenames and
+    // (b) reuse the list when adding the new item to the index at the end.
+    final existingItems = await _readIndex(type);
+
     final safeFilename = filename.replaceAll(RegExp(r'[^a-zA-Z0-9._\-]'), '_');
     // solidpod writePod requires encrypted files to end with `.ttl` (Turtle
     // format is the only format it accepts for encrypted content).
     // Follow the solidui convention: use `.enc.ttl` suffix so the file is
     // visually identifiable as encrypted while still passing solidpod's check.
-    final storedFilename = encrypt ? '$safeFilename.enc.ttl' : safeFilename;
+    //
+    // _resolveUnique also deduplicates filenames: if a file with the same name
+    // already exists in the index it appends (1), (2), … automatically.
+    final (storedFilename, displayName) = _resolveUnique(
+      safeFilename,
+      name,
+      existingItems,
+      encrypt,
+    );
     final relPath = type == MediaType.audio
         ? getAudioFilePath(storedFilename)
         : getVideoFilePath(storedFilename);
@@ -300,7 +327,7 @@ class MediaPodService {
     if (!uploadOk) return null;
 
     final item = MediaItem(
-      name: name,
+      name: displayName,
       type: type,
       podRelativePath: relPath,
       isEncrypted: encrypt,
@@ -308,10 +335,9 @@ class MediaPodService {
       uploadedAt: DateTime.now(),
     );
 
-    // Update index.
-    final existing = await _readIndex(type);
-    existing.add(item);
-    await _writeIndex(type, existing);
+    // Update index (reuse the pre-read list to avoid a second round-trip).
+    existingItems.add(item);
+    await _writeIndex(type, existingItems);
 
     // Notify file browser that the directory contents have changed.
     final dirPath = type == MediaType.audio
@@ -402,6 +428,56 @@ class MediaPodService {
     await revokePlaybackUrl(url);
   }
 
+  // ── Duplicate-filename resolution ───────────────────────────────────────
+
+  /// Returns a (storedFilename, displayName) pair that is unique within
+  /// [existing].
+  ///
+  /// - [safeFilename]  – already-sanitised base filename (no path component).
+  /// - [displayName]   – user-visible name to display in the media list.
+  /// - [existing]      – current index items (used to detect clashes).
+  /// - [encrypt]       – whether the file will be stored encrypted.
+  ///
+  /// If the filename already exists in the index, appends `(1)`, `(2)`, …
+  /// to the base part (before the extension) until a unique name is found.  The
+  /// display name receives the same numeric suffix so users can tell entries
+  /// apart in the UI.
+
+  static (String storedFilename, String displayName) _resolveUnique(
+    String safeFilename,
+    String displayName,
+    List<MediaItem> existing,
+    bool encrypt,
+  ) {
+    // Build the set of stored filenames already in use.
+    final usedFilenames = existing
+        .map((i) => i.podRelativePath?.split('/').last)
+        .whereType<String>()
+        .toSet();
+
+    String candidate = encrypt ? '$safeFilename.enc.ttl' : safeFilename;
+    if (!usedFilenames.contains(candidate)) {
+      return (candidate, displayName);
+    }
+
+    // Split safeFilename into base + extension (e.g. 'song' + '.mp3').
+    final dotIdx = safeFilename.lastIndexOf('.');
+    final base = dotIdx != -1
+        ? safeFilename.substring(0, dotIdx)
+        : safeFilename;
+    final ext = dotIdx != -1 ? safeFilename.substring(dotIdx) : '';
+
+    int counter = 1;
+    while (true) {
+      final uniqueSafe = '$base($counter)$ext';
+      candidate = encrypt ? '$uniqueSafe.enc.ttl' : uniqueSafe;
+      if (!usedFilenames.contains(candidate)) {
+        return (candidate, '$displayName ($counter)');
+      }
+      counter++;
+    }
+  }
+
   /// Updates (or on first link, inserts) an item's metadata in the Pod index.
   ///
   /// **Matching:** the item is located by [MediaItem.podItemId].
@@ -425,6 +501,115 @@ class MediaPodService {
     } else {
       existing[idx] = item;
     }
-    return _writeIndex(item.type, existing);
+    final ok = await _writeIndex(item.type, existing);
+
+    // Notify the file browser that the index file content has changed so
+    // any open directory views refresh their cached data.
+    if (ok) {
+      final dirPath = item.type == MediaType.audio
+          ? getAudioDirPath()
+          : getVideoDirPath();
+      PodDirectoryService.invalidateCache(dirPath);
+      PodDirectoryService.notifyChange();
+    }
+    return ok;
+  }
+
+  // ── Place-link helpers ──────────────────────────────────────────────
+
+  /// Synchronously checks the in-memory index cache to determine whether
+  /// [placeId] has any linked media items (audio or video).
+  ///
+  /// Returns `null` if either media index has not been loaded into cache yet
+  /// (caller should treat as "unknown", not "no links").
+  /// Returns `true` / `false` once both caches are populated.
+  ///
+  /// This is a pure cache read – no network request is made.
+
+  static bool? hasLinkedMediaSync(String placeId) {
+    final audio = _audioCache;
+    final video = _videoCache;
+    if (audio == null || video == null) return null;
+    return [...audio, ...video].any((i) => i.locationIds.contains(placeId));
+  }
+
+  /// Removes [placeId] from every media item's [MediaItem.locationIds] in
+  /// both audio and video indices and persists the changes to the Pod.
+  ///
+  /// This is a fire-and-forget cleanup called when a place is deleted so that
+  /// media items do not keep stale location references.
+  ///
+  /// Runs in the background without blocking the caller.
+
+  static void unlinkAllForPlace(String placeId) {
+    _unlinkAllForPlaceAsync(placeId);
+  }
+
+  static Future<void> _unlinkAllForPlaceAsync(String placeId) async {
+    try {
+      if (!PodAuth.isLoggedInSync()) return;
+
+      final results = await Future.wait([
+        _readIndex(MediaType.audio),
+        _readIndex(MediaType.video),
+      ]);
+
+      Future<void> cleanType(MediaType type, List<MediaItem> items) async {
+        final changed = items
+            .where((i) => i.locationIds.contains(placeId))
+            .toList();
+        if (changed.isEmpty) return;
+        final updated = items.map((i) {
+          if (!i.locationIds.contains(placeId)) return i;
+          return i.copyWith(
+            locationIds: i.locationIds.where((id) => id != placeId).toList(),
+          );
+        }).toList();
+        await _writeIndex(type, updated);
+      }
+
+      await Future.wait([
+        cleanType(MediaType.audio, results[0]),
+        cleanType(MediaType.video, results[1]),
+      ]);
+    } catch (e) {
+      debugPrint('MediaPodService._unlinkAllForPlaceAsync error: $e');
+    }
+  }
+
+  /// Clears [MediaItem.locationIds] for ALL media items in both indices.
+  ///
+  /// Called when all places are deleted so no media item references a
+  /// now-nonexistent place.
+
+  static void clearAllPlaceLinks() {
+    _clearAllPlaceLinksAsync();
+  }
+
+  static Future<void> _clearAllPlaceLinksAsync() async {
+    try {
+      if (!PodAuth.isLoggedInSync()) return;
+
+      final results = await Future.wait([
+        _readIndex(MediaType.audio),
+        _readIndex(MediaType.video),
+      ]);
+
+      Future<void> clearType(MediaType type, List<MediaItem> items) async {
+        final hasLinks = items.any((i) => i.locationIds.isNotEmpty);
+        if (!hasLinks) return;
+        final updated = items
+            .map((i) => i.copyWith(locationIds: const []))
+            .toList();
+        await _writeIndex(type, updated);
+      }
+
+      await Future.wait([
+        clearType(MediaType.audio, results[0]),
+        clearType(MediaType.video, results[1]),
+      ]);
+    } catch (e) {
+      debugPrint('MediaPodService._clearAllPlaceLinksAsync error: $e');
+    }
   }
 }

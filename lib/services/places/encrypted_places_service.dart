@@ -15,6 +15,9 @@
 
 library;
 
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +27,7 @@ import 'package:solidui/solidui.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places/encrypted_places_io.dart';
 import 'package:geopod/services/places_service.dart' show placesChangeNotifier;
+import 'package:geopod/services/pod/pod_directory_service.dart';
 import 'package:geopod/widgets/encryption/security_key_dialog.dart';
 
 /// Service for managing encrypted places.
@@ -38,6 +42,33 @@ class EncryptedPlacesService {
   /// Cache for encrypted places.
 
   static List<Place>? _cachedEncryptedPlaces;
+
+  // ── Write-lock: serialises concurrent writes to the aggregate file ─────────
+  //
+  // Each call to [writeEncryptedPlaces] chains off the previous operation so
+  // that concurrent callers never race to overwrite each other's data.
+  // (Dart is single-threaded, so the assignment is atomic between await points.)
+
+  static Future<void>? _writeLock;
+
+  /// Runs [fn] after any pending write has completed, then registers itself as
+  /// the new pending operation so the next caller waits for it.
+
+  static Future<T> _withWriteLock<T>(Future<T> Function() fn) {
+    final previous = _writeLock ?? Future<void>.value();
+    final completer = Completer<T>();
+    // Register this operation as the new "pending" lock so the next caller
+    // chains after it, regardless of success or failure.
+    _writeLock = completer.future.then<void>((_) {}).catchError((_) {});
+    previous.whenComplete(() async {
+      try {
+        completer.complete(await fn());
+      } catch (e, st) {
+        completer.completeError(e, st);
+      }
+    });
+    return completer.future;
+  }
 
   /// Flag to track if directory has been verified.
 
@@ -218,11 +249,28 @@ class EncryptedPlacesService {
     List<Place> places,
     BuildContext context,
     Widget child,
+  ) {
+    return _withWriteLock(
+      () => _doWriteEncryptedPlaces(places, context, child),
+    );
+  }
+
+  /// Internal (non-locked) implementation of [writeEncryptedPlaces].
+  /// Must only be called from within [_withWriteLock].
+
+  static Future<bool> _doWriteEncryptedPlaces(
+    List<Place> places,
+    BuildContext context,
+    Widget child,
   ) async {
     // Ensure security key is available.
     if (!await ensureSecurityKey(context, child)) {
       return false;
     }
+
+    // Snapshot the OLD place list before overwriting the cache so we can
+    // compute which individual files need to be deleted.
+    final oldPlaces = _cachedEncryptedPlaces ?? <Place>[];
 
     // Write to Pod using IO helper.
     // The directoryVerified flag (loaded from persistent storage) skips the
@@ -236,11 +284,22 @@ class EncryptedPlacesService {
       if (!_directoryVerified) {
         await _saveDirVerifiedFlag(true);
       }
+
+      // ── Sync individual encrypted place files ──────────────────────────────
+      // Run individual-file sync concurrently with cache update.
+      // Deletions and writes are fire-and-forgot independently (Pod is
+      // eventually consistent; the aggregate is the source of truth).
+      _syncIndividualEncryptedFiles(places, oldPlaces);
+
       _cachedEncryptedPlaces = places;
 
       // Notify places change to trigger UI refresh.
 
       placesChangeNotifier.value++;
+
+      // Notify file browser that encrypted_data directory has changed.
+      PodDirectoryService.invalidateCache('data/encrypted_data');
+      PodDirectoryService.notifyChange();
 
       // If directory was newly created, update security key cache and notify UI
       // (directory creation confirms encryption keys are available)
@@ -264,6 +323,43 @@ class EncryptedPlacesService {
       }
     }
     return success;
+  }
+
+  /// Synchronises individual encrypted place files with the new [places] list.
+  ///
+  /// - Writes (or overwrites) individual files for new/changed places.
+  /// - Deletes individual files for places that have been removed.
+  ///
+  /// This runs fire-and-forget in the background; callers do not need to await.
+
+  static void _syncIndividualEncryptedFiles(
+    List<Place> newPlaces,
+    List<Place> oldPlaces,
+  ) {
+    // Build lookup maps.
+    final oldById = {for (final p in oldPlaces) p.id: p};
+    final newById = {for (final p in newPlaces) p.id: p};
+
+    // Places that were removed → delete their individual files.
+    final removedIds = oldById.keys
+        .where((id) => !newById.containsKey(id))
+        .toList();
+
+    // Places that are new or whose JSON has changed → write individual files.
+    final toWrite = newPlaces.where((p) {
+      final old = oldById[p.id];
+      if (old == null) return true; // New place.
+      // Compare serialised JSON to detect changes.
+      return jsonEncode(p.toJson()) != jsonEncode(old.toJson());
+    }).toList();
+
+    // Fire-and-forget parallel operations.
+    if (removedIds.isNotEmpty) {
+      deleteAllIndividualEncryptedPlaceFiles(removedIds);
+    }
+    for (final place in toWrite) {
+      writeIndividualEncryptedPlaceFile(place);
+    }
   }
 
   /// Add a single encrypted place.
@@ -371,6 +467,24 @@ class EncryptedPlacesService {
       debugPrint('Error updating encrypted place: $e');
       return false;
     }
+  }
+
+  /// Delete an encrypted place by its individual file path.
+  ///
+  /// Called when a user deletes an `enc_place_<id>.ttl` file from the file
+  /// browser. Removes the corresponding entry from the aggregate file too.
+
+  static Future<bool> deleteEncryptedPlaceByFilePath(
+    String filePath,
+    BuildContext context,
+    Widget returnWidget,
+  ) async {
+    final fileName = filePath.split('/').last;
+    final match = RegExp(r'^enc_place_(.+)\.ttl$').firstMatch(fileName);
+    if (match == null) return false;
+
+    final placeId = match.group(1)!;
+    return deleteEncryptedPlace(placeId, context, returnWidget);
   }
 
   /// Clear the cache.

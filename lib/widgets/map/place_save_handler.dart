@@ -119,16 +119,51 @@ Future<AddPlaceResult?> showAddPlaceDialogIfLoggedIn({
   return result;
 }
 
-/// Zoom in the map by a fixed amount.
+// Track ongoing zoom animation to prevent conflicts.
+bool _isZoomAnimating = false;
+
+/// Zoom in the map by a fixed amount with smooth animation.
 
 void zoomIn(MapController mapController) {
-  final z = mapController.camera.zoom;
-  mapController.move(mapController.camera.center, (z + 0.6).clamp(3.0, 18.0));
+  // Ignore clicks while animation is running.
+  if (_isZoomAnimating) return;
+  _animateZoom(mapController, 0.8);
 }
 
-/// Zoom out the map by a fixed amount.
+/// Zoom out the map by a fixed amount with smooth animation.
 
 void zoomOut(MapController mapController) {
-  final z = mapController.camera.zoom;
-  mapController.move(mapController.camera.center, (z - 0.6).clamp(3.0, 18.0));
+  // Ignore clicks while animation is running.
+  if (_isZoomAnimating) return;
+  _animateZoom(mapController, -0.8);
+}
+
+/// Helper function to animate zoom changes smoothly.
+
+void _animateZoom(MapController mapController, double delta) async {
+  _isZoomAnimating = true;
+
+  final startZoom = mapController.camera.zoom;
+  final targetZoom = (startZoom + delta).clamp(3.0, 18.0);
+  final center = mapController.camera.center;
+
+  // Number of steps for smooth animation
+  const steps = 30;
+  const duration = Duration(milliseconds: 120);
+  final stepDelay = duration.inMilliseconds ~/ steps;
+
+  for (int i = 1; i <= steps; i++) {
+    // Ease-in-out curve approximation
+    final t = i / steps;
+    final eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+    final currentZoom = startZoom + (targetZoom - startZoom) * eased;
+    mapController.move(center, currentZoom);
+
+    if (i < steps) {
+      await Future.delayed(Duration(milliseconds: stepDelay));
+    }
+  }
+
+  _isZoomAnimating = false;
 }

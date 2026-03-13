@@ -16,6 +16,7 @@ import 'package:video_player/video_player.dart';
 
 import 'package:geopod/models/media_item.dart';
 import 'package:geopod/services/media/media_pod_service.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 
 /// An inline audio player backed by the `video_player` package.
 ///
@@ -63,6 +64,18 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   Future<void> _initPlayer() async {
     final item = widget.item;
     try {
+      // Check security key for encrypted media before attempting playback
+      if (item.isPodItem && item.isEncrypted) {
+        if (!mounted) return;
+        final hasKey = await EncryptedPlacesService.ensureSecurityKey(
+          context,
+          widget,
+        );
+        if (!hasKey) {
+          throw Exception('Security key required for encrypted media');
+        }
+      }
+
       if (item.isPodItem) {
         // Download (and optionally decrypt) the file, get a local playback URL.
         final url = await MediaPodService.loadPlaybackUrl(item);

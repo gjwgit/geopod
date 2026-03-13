@@ -99,7 +99,10 @@ Marker _buildMarker({
     point: marker.position,
     width: 40,
     height: 40,
-    alignment: const Alignment(0.0, -0.8), // Align the bottom center of the icon to the point.
+    alignment: const Alignment(
+      0.0,
+      -0.8,
+    ), // Align the bottom center of the icon to the point.
     child: child,
   );
 }

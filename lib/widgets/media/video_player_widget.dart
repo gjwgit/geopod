@@ -20,6 +20,7 @@ import 'package:video_player/video_player.dart';
 
 import 'package:geopod/models/media_item.dart';
 import 'package:geopod/services/media/media_pod_service.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/utils/fullscreen_stub.dart'
     if (dart.library.html) 'package:geopod/utils/fullscreen_web.dart';
 
@@ -81,6 +82,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   Future<void> _initVideo() async {
     final item = widget.item;
     try {
+      // Check security key for encrypted media before attempting playback
+      if (item.isPodItem && item.isEncrypted) {
+        if (!mounted) return;
+        final hasKey = await EncryptedPlacesService.ensureSecurityKey(
+          context,
+          widget,
+        );
+        if (!hasKey) {
+          throw Exception('Security key required for encrypted media');
+        }
+      }
+
       if (item.isPodItem) {
         final url = await MediaPodService.loadPlaybackUrl(item);
         if (url == null) throw Exception('Failed to load media from Pod.');

@@ -20,20 +20,17 @@ jobs:
           submodules: true
           lfs: false
 
-      # --- 1. 添加：安装 Flutter 环境 ---
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true # 开启缓存，下次运行会更快
+          cache: true
 
-      # --- 2. 添加：构建 Flutter Web ---
       - name: Build Flutter Web
         run: |
           flutter pub get
           flutter build web
 
-      # --- 3. 原有的部署步骤（注意：确认 output_location 正确） ---
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -43,7 +40,7 @@ jobs:
           action: "upload"
           app_location: "/" 
           api_location: "" 
-          output_location: "build/web" # 这里必须和 flutter build 生成的目录一致
+          output_location: "build/web"
           
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'

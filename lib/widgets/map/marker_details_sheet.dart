@@ -28,9 +28,14 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:geopod/widgets/map/marker_data.dart';
+import 'package:geopod/widgets/media/media_link_picker_dialog.dart';
+import 'package:geopod/widgets/media/place_media_section.dart';
 import 'package:geopod/widgets/weather_dialog.dart';
 
-/// Shows detailed information about a marker in a bottom sheet.
+/// Shows detailed information about a marker in a scrollable bottom sheet.
+///
+/// Includes a [PlaceMediaSection] that lists any audio/video items linked to
+/// this place and lets the user play them inline.
 
 void showMarkerDetailsSheet(
   BuildContext context,
@@ -38,20 +43,59 @@ void showMarkerDetailsSheet(
   VoidCallback? onDelete,
   VoidCallback? onEdit,
 }) {
-  // Use marker's custom color for UI elements.
-  final markerColor = marker.color;
-
-  showModalBottomSheet(
+  showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
-    builder: (sheetContext) => Padding(
-      padding: const EdgeInsets.all(20.0),
+    builder: (sheetContext) {
+      // Use a ConstrainedBox instead of DraggableScrollableSheet so the
+      // sheet auto-sizes to its content height and avoids a large empty gap
+      // at the bottom when there is little content.
+      return SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.85,
+          ),
+          child: _MarkerDetailsSheetContent(
+            marker: marker,
+            sheetContext: sheetContext,
+            onDelete: onDelete,
+            onEdit: onEdit,
+          ),
+        ),
+      );
+    },
+  );
+}
+
+// ── Sheet content widget ─────────────────────────────────────────────────────
+
+class _MarkerDetailsSheetContent extends StatelessWidget {
+  const _MarkerDetailsSheetContent({
+    required this.marker,
+    required this.sheetContext,
+    this.onDelete,
+    this.onEdit,
+  });
+
+  final MarkerData marker;
+  final BuildContext sheetContext;
+  final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final markerColor = marker.color;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header: icon + title + weather + close ─────────────────────
           Row(
             children: [
               Container(
@@ -110,14 +154,12 @@ void showMarkerDetailsSheet(
               ),
               IconButton(
                 icon: const Icon(Icons.cloud_outlined),
-                onPressed: () {
-                  showWeatherDialog(
-                    context: sheetContext,
-                    latitude: marker.position.latitude,
-                    longitude: marker.position.longitude,
-                    address: marker.address,
-                  );
-                },
+                onPressed: () => showWeatherDialog(
+                  context: sheetContext,
+                  latitude: marker.position.latitude,
+                  longitude: marker.position.longitude,
+                  address: marker.address,
+                ),
                 tooltip: 'View Weather',
               ),
               IconButton(
@@ -126,10 +168,12 @@ void showMarkerDetailsSheet(
               ),
             ],
           ),
+
           const SizedBox(height: 16),
           const Divider(),
           const SizedBox(height: 12),
 
+          // ── Description ────────────────────────────────────────────────
           if (marker.description.isNotEmpty) ...[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,6 +191,7 @@ void showMarkerDetailsSheet(
             const SizedBox(height: 12),
           ],
 
+          // ── Address ────────────────────────────────────────────────────
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -173,6 +218,7 @@ void showMarkerDetailsSheet(
           ),
           const SizedBox(height: 12),
 
+          // ── Coordinates ────────────────────────────────────────────────
           Row(
             children: [
               Icon(Icons.location_on, size: 20, color: Colors.grey.shade600),
@@ -184,7 +230,19 @@ void showMarkerDetailsSheet(
             ],
           ),
 
-          // Action buttons for user's saved places only.
+          // ── Linked media (audio / video) ───────────────────────────────
+          // Shown for all markers (including local/demo ones) so users can
+          // always link or view media from the sheet.
+          PlaceMediaSection(
+            placeId: marker.id,
+            onManageLinks: () => showMediaLinkPickerDialog(
+              context,
+              placeId: marker.id,
+              placeTitle: marker.title,
+            ),
+          ),
+
+          // ── Action buttons (edit / delete) ─────────────────────────────
           if (!marker.isLocal &&
               !marker.isSaving &&
               (onEdit != null || onDelete != null)) ...[
@@ -198,7 +256,7 @@ void showMarkerDetailsSheet(
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(sheetContext);
-                        onEdit();
+                        onEdit!();
                       },
                       icon: const Icon(Icons.edit_outlined),
                       label: const Text('Edit'),
@@ -216,7 +274,7 @@ void showMarkerDetailsSheet(
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.pop(sheetContext);
-                        onDelete();
+                        onDelete!();
                       },
                       icon: const Icon(Icons.delete_outline),
                       label: const Text('Delete'),
@@ -230,9 +288,10 @@ void showMarkerDetailsSheet(
               ],
             ),
           ],
+
           const SizedBox(height: 12),
         ],
       ),
-    ),
-  );
+    );
+  }
 }

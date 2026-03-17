@@ -32,6 +32,7 @@ import 'package:solidui/solidui.dart';
 import 'constants/app.dart';
 import 'home.dart';
 import 'services/fullscreen_service.dart';
+import 'services/navigation_service.dart';
 import 'widgets/audio_page.dart';
 import 'widgets/files_page.dart';
 import 'widgets/geomap.dart';
@@ -65,23 +66,27 @@ class AppScaffoldWidget extends StatelessWidget {
   }
 
   Widget _buildFullScaffold() {
-    return SolidScaffold(
-      // MENU.
-      menu: [
-        SolidMenuItem(
-          icon: Icons.home,
-          title: 'Home',
-          tooltip: '''
+    return ValueListenableBuilder<int>(
+      valueListenable: currentPageNotifier,
+      builder: (context, pageIndex, _) => SolidScaffold(
+        selectedIndex: pageIndex,
+        onMenuSelected: (index) => currentPageNotifier.value = index,
+        // MENU.
+        menu: [
+          SolidMenuItem(
+            icon: Icons.home,
+            title: 'Home',
+            tooltip: '''
 
             **Home:** Tap here to return to the main map page for the app.
 
             ''',
-          child: Home(title: appTitle, geoMapKey: geoMapKey),
-        ),
-        const SolidMenuItem(
-          icon: Icons.location_on,
-          title: 'Locations',
-          tooltip: '''
+            child: Home(title: appTitle, geoMapKey: geoMapKey),
+          ),
+          const SolidMenuItem(
+            icon: Icons.location_on,
+            title: 'Locations',
+            tooltip: '''
 
             **Locations:** Tap here to access the list of locations of interest
               you have access to. Here you can add and remove locations and
@@ -89,87 +94,87 @@ class AppScaffoldWidget extends StatelessWidget {
               locations of interest with other users through their Pods.
 
             ''',
-          child: LocationsPage(),
-        ),
-        const SolidMenuItem(
-          icon: Icons.headphones,
-          title: 'Audio',
-          tooltip: '''
+            child: LocationsPage(),
+          ),
+          const SolidMenuItem(
+            icon: Icons.headphones,
+            title: 'Audio',
+            tooltip: '''
 
             **Audio:** Tap here to listen to and review audio commentary for
             specific locations of interest.
 
             ''',
-          child: AudioPage(),
-        ),
-        const SolidMenuItem(
-          icon: Icons.video_library,
-          title: 'Video',
-          tooltip: '''
+            child: AudioPage(),
+          ),
+          const SolidMenuItem(
+            icon: Icons.video_library,
+            title: 'Video',
+            tooltip: '''
 
             **Video:** Tap here to view and review videos for specific locations
               of interest.
 
             ''',
-          child: VideoPage(),
-        ),
-        const SolidMenuItem(
-          icon: Icons.folder,
-          title: 'Files',
-          tooltip: '''
+            child: VideoPage(),
+          ),
+          const SolidMenuItem(
+            icon: Icons.folder,
+            title: 'Files',
+            tooltip: '''
 
             **Files:** Tap here to browse the files for the app on your Pod.
 
             ''',
-          child: FilesPage(),
-        ),
-      ],
-
-      // APP BAR.
-      appBar: SolidAppBarConfig(
-        title: appTitle.split('-')[0],
-
-        // VERSION.
-        versionConfig: const SolidVersionConfig(
-          changelogUrl:
-              'https://raw.githubusercontent.com/gjwgit/geopod/dev/'
-              'CHANGELOG.md',
-          showDate: true,
-        ),
-
-        actions: [
-          SolidAppBarAction(
-            icon: Icons.settings,
-            onPressed: () {
-              // Call the GeoMap's settings dialog.
-              AppScaffoldWidget.geoMapKey.currentState?.showSettingsDialog();
-            },
-            tooltip: 'Settings',
+            child: FilesPage(),
           ),
         ],
-        overflowItems: [],
-      ),
 
-      // STATUS BAR.
-      statusBar: const SolidStatusBarConfig(
-        serverInfo: SolidServerInfo(
-          serverUri: 'https://pods.solidcommunity.au',
-        ),
-        loginStatus: SolidLoginStatus(),
-        securityKeyStatus: SolidSecurityKeyStatus(),
-        showOnNarrowScreens: true, // Show status bar on Android/mobile
-      ),
+        // APP BAR.
+        appBar: SolidAppBarConfig(
+          title: appTitle.split('-')[0],
 
-      // ABOUT.
-      aboutConfig: SolidAboutConfig(
-        applicationName: appTitle.split(' - ')[0],
-        applicationIcon: Image.asset(
-          'assets/images/app_icon.png',
-          width: 64, // Adjust size as needed
-          height: 64,
+          // VERSION.
+          versionConfig: const SolidVersionConfig(
+            changelogUrl:
+                'https://raw.githubusercontent.com/gjwgit/geopod/dev/'
+                'CHANGELOG.md',
+            showDate: true,
+          ),
+
+          actions: [
+            SolidAppBarAction(
+              icon: Icons.settings,
+              onPressed: () {
+                // Call the GeoMap's settings dialog.
+                AppScaffoldWidget.geoMapKey.currentState?.showSettingsDialog();
+              },
+              tooltip: 'Settings',
+            ),
+          ],
+          overflowItems: [],
         ),
-        applicationLegalese: '''Copyright © 2025 Togaware Pty Ltd''',
-        text: '''
+
+        // STATUS BAR.
+        statusBar: const SolidStatusBarConfig(
+          serverInfo: SolidServerInfo(
+            serverUri: 'https://pods.solidcommunity.au',
+          ),
+          loginStatus: SolidLoginStatus(),
+          securityKeyStatus: SolidSecurityKeyStatus(),
+          showOnNarrowScreens: true, // Show status bar on Android/mobile
+        ),
+
+        // ABOUT.
+        aboutConfig: SolidAboutConfig(
+          applicationName: appTitle.split(' - ')[0],
+          applicationIcon: Image.asset(
+            'assets/images/app_icon.png',
+            width: 64, // Adjust size as needed
+            height: 64,
+          ),
+          applicationLegalese: '''Copyright © 2025 Togaware Pty Ltd''',
+          text: '''
 
           GeoPod provides a graphic maps-based interface to locations of
           interest that you have recorded or that are shared with you by their
@@ -178,15 +183,16 @@ class AppScaffoldWidget extends StatelessWidget {
           [Source code.](https://github.com/gjwgit/geopod)
 
           ''',
-      ),
+        ),
 
-      // THEME DARK/LIGHT Mode.
-      themeToggle: const SolidThemeToggleConfig(
-        enabled: true,
-        showInAppBarActions: true,
-      ),
+        // THEME DARK/LIGHT Mode.
+        themeToggle: const SolidThemeToggleConfig(
+          enabled: true,
+          showInAppBarActions: true,
+        ),
 
-      child: const Home(title: appTitle),
+        child: const Home(title: appTitle),
+      ),
     );
   }
 }

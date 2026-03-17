@@ -34,11 +34,15 @@ class LocationsPageHeader extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onRefresh;
 
+  /// Optional override for the header title.
+  final String? title;
+
   const LocationsPageHeader({
     super.key,
     required this.placeCount,
     required this.isLoading,
     required this.onRefresh,
+    this.title,
   });
 
   @override
@@ -50,7 +54,7 @@ class LocationsPageHeader extends StatelessWidget {
           const Icon(Icons.location_on, color: Colors.blue),
           const SizedBox(width: 8),
           Text(
-            'My Places ($placeCount)',
+            title ?? 'My Places ($placeCount)',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const Spacer(),

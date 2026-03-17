@@ -1,6 +1,6 @@
 /// Audio library page – lists audio files and plays them inline.
 ///
-// Time-stamp: <2026-02-28 GitHub Copilot>
+// Time-stamp: <2026-02-28 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -21,7 +21,7 @@
 // You should have received a copy of the GNU General Public License along with
 // this program.  If not, see <https://opensource.org/license/gpl-3-0>.
 ///
-/// Authors: GitHub Copilot
+/// Authors: Miduo
 
 library;
 
@@ -30,10 +30,13 @@ import 'package:flutter/material.dart';
 import 'package:solidpod/solidpod.dart' show authStateNotifier;
 
 import 'package:geopod/models/media_item.dart';
+import 'package:geopod/services/media/builtin_media.dart';
 import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/services/pod/pod_auth.dart';
+import 'package:geopod/widgets/map/login_required_dialog.dart';
 import 'package:geopod/widgets/media/audio_player_widget.dart';
 import 'package:geopod/widgets/media/media_list_widget.dart';
+import 'package:geopod/widgets/media/place_link_picker_dialog.dart';
 import 'package:geopod/widgets/media/upload_media_dialog.dart';
 
 /// Page listing short audio files stored on the user's Pod.
@@ -45,19 +48,26 @@ class AudioPage extends StatefulWidget {
 }
 
 class _AudioPageState extends State<AudioPage> {
-  // Bundled demo assets – always shown first.
-  static const List<MediaItem> _assets = [
-    MediaItem(
-      name: 'Example Audio',
-      type: MediaType.audio,
-      assetPath: 'assets/audio/example.mp3',
-    ),
-  ];
+  // Bundled demo assets – defined in builtin_media.dart so the same items are
+  // accessible from the media-link picker dialog.
+  static final List<MediaItem> _assets = builtinAudioItems;
 
   List<MediaItem> _podItems = [];
   bool _isLoadingPod = false;
 
-  List<MediaItem> get _allItems => [..._assets, ..._podItems];
+  /// Merges assets and Pod items, deduplicating by [podItemId] so that a
+  /// built-in asset registered in the Pod index (after its first link) does
+  /// not appear twice in the list.
+  List<MediaItem> get _allItems {
+    final podIds = _podItems
+        .map((i) => i.podItemId)
+        .whereType<String>()
+        .toSet();
+    final deduped = _assets
+        .where((a) => a.podItemId == null || !podIds.contains(a.podItemId))
+        .toList();
+    return [...deduped, ..._podItems];
+  }
 
   @override
   void initState() {
@@ -103,6 +113,20 @@ class _AudioPageState extends State<AudioPage> {
     }
   }
 
+  /// Opens the place-link picker dialog for [item] and reloads the index
+  /// so any updated [locationIds] are reflected in the UI.
+  Future<void> _manageLinks(MediaItem item) async {
+    if (!PodAuth.isLoggedInSync()) {
+      await showLoginRequiredDialog(context);
+      return;
+    }
+    final changed = await showPlaceLinkPickerDialog(context, item);
+    if (changed == true && mounted) {
+      // Reload Pod index to get the freshly saved locationIds.
+      await _loadPodItems();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -124,8 +148,15 @@ class _AudioPageState extends State<AudioPage> {
             return Icons.audio_file;
           },
           playerBuilder: (ctx, i) => AudioPlayerWidget(item: i),
+          // Hide delete for bundled demo assets (they are not Pod files).
+          canDelete: (i) => i.isPodItem,
           onDelete: (i) async {
             if (i.isPodItem) await _delete(i);
+          },
+          // Allow linking for both Pod items and bundled assets (assets with a
+          // stable podItemId are upserted into the index on first link).
+          onManageLinks: (i) async {
+            if (i.podItemId != null) await _manageLinks(i);
           },
         ),
 

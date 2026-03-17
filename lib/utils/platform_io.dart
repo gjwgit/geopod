@@ -1,6 +1,6 @@
 /// Platform IO utilities for NATIVE (non-web) platforms.
 ///
-// Time-stamp: <2026-02-19 GitHub Copilot>
+// Time-stamp: <2026-02-19 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///

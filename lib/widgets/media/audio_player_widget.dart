@@ -1,6 +1,6 @@
-﻿/// Inline audio playback widget.
+/// Inline audio playback widget.
 ///
-// Time-stamp: <2026-02-27 GitHub Copilot>
+// Time-stamp: <2026-02-27 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///

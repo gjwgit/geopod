@@ -1,6 +1,6 @@
 /// Platform utilities stub for WEB builds.
 ///
-// Time-stamp: <2026-02-19 GitHub Copilot>
+// Time-stamp: <2026-02-19 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -21,7 +21,7 @@
 // You should have received a copy of the GNU General Public License along with
 // this program.  If not, see <https://opensource.org/license/gpl-3-0>.
 ///
-/// Authors: GitHub Copilot
+/// Authors: Miduo
 
 library;
 

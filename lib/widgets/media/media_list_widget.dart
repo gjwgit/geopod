@@ -1,6 +1,6 @@
 /// Generic media list widget for audio and video items.
 ///
-// Time-stamp: <2026-02-19 GitHub Copilot>
+// Time-stamp: <2026-02-19 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -21,7 +21,7 @@
 // You should have received a copy of the GNU General Public License along with
 // this program.  If not, see <https://opensource.org/license/gpl-3-0>.
 ///
-/// Authors: GitHub Copilot
+/// Authors: Miduo
 
 library;
 
@@ -55,6 +55,8 @@ class MediaListWidget<T> extends StatefulWidget {
     required this.playerBuilder,
     this.subtitleOf,
     this.onDelete,
+    this.canDelete,
+    this.onManageLinks,
     this.emptyMessage = 'No items found.',
     this.accentColor,
   });
@@ -71,6 +73,16 @@ class MediaListWidget<T> extends StatefulWidget {
 
   final Future<void> Function(T item)? onDelete;
   final String emptyMessage;
+
+  /// Optional predicate that controls whether the delete button is visible for
+  /// a given item.  When `null`, the button is shown for every item (if
+  /// [onDelete] is also provided).  Use this to hide the delete button for
+  /// read-only items such as bundled demo assets.
+  final bool Function(T item)? canDelete;
+
+  /// Optional callback invoked when the user taps "Manage links" for [item].
+  /// Callers (e.g. [AudioPage], [VideoPage]) open a place-picker dialog here.
+  final Future<void> Function(T item)? onManageLinks;
 
   /// Optional accent colour for avatar background and play icon.
   final Color? accentColor;
@@ -204,8 +216,20 @@ class _MediaListWidgetState<T> extends State<MediaListWidget<T>> {
                   ),
                   onPressed: () => _togglePlayer(index),
                 ),
-                // Delete – shown only when a handler is provided.
-                if (widget.onDelete != null)
+                // Link to locations – shown when handler is provided.
+                if (widget.onManageLinks != null)
+                  IconButton(
+                    tooltip: 'Link to locations',
+                    icon: Icon(
+                      Icons.add_location_alt_outlined,
+                      color: Colors.teal.shade600,
+                    ),
+                    onPressed: () => widget.onManageLinks!(item),
+                  ),
+                // Delete – shown only when a handler is provided AND the
+                // optional canDelete predicate permits it for this item.
+                if (widget.onDelete != null &&
+                    (widget.canDelete == null || widget.canDelete!(item)))
                   IconButton(
                     tooltip: 'Delete',
                     icon: const Icon(Icons.delete_outline, color: Colors.grey),

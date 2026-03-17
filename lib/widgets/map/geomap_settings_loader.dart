@@ -40,8 +40,14 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
   List<Place> get allPlaces;
 
   /// Load settings synchronously with viewport restoration.
+  ///
+  /// [onComplete] is called after the viewport has been restored (i.e., after
+  /// any saved [mapController.move] call), so it can safely override the view.
 
-  void loadSettingsSync(VoidCallback onLoadEncrypted) {
+  void loadSettingsSync(
+    VoidCallback onLoadEncrypted, {
+    VoidCallback? onComplete,
+  }) {
     loadMapSettingsSync(viewportInitialized: viewportInitialized)
         .then((result) {
           if (!mounted) return;
@@ -60,6 +66,9 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
           if (result.initialCenter != null) {
             mapController.move(result.initialCenter!, result.initialZoom!);
           }
+
+          // Notify caller that the viewport has been restored.
+          onComplete?.call();
 
           // Validate encrypted setting if enabled.
 

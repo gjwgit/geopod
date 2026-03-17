@@ -43,6 +43,15 @@ class _LocationsPageState extends State<LocationsPage>
   /// Whether to load and display encrypted places.
   bool _showEncryptedPlaces = false;
 
+  /// Whether to show example (local) places instead of user Pod places.
+  /// Only relevant when logged in.
+  /// Static so the choice persists across page navigations within the same
+  /// app session (but is not written to disk).
+  static bool _showingExamples = false;
+
+  /// Cached local/example places — populated whenever logged-in data is loaded.
+  List<Place> _examplePlaces = [];
+
   List<Place> get _userPlaces => _places.where((p) => !p.isLocal).toList();
 
   @override
@@ -69,6 +78,10 @@ class _LocationsPageState extends State<LocationsPage>
           : cached
                 .where((p) => p.isLocal)
                 .toList(); // Not logged in: local examples
+      // Also populate example places cache when logged in.
+      if (isLoggedIn) {
+        _examplePlaces = cached.where((p) => p.isLocal).toList();
+      }
       _isLoading = false;
       _hasLoadedOnce = true; // Cache is valid, mark as loaded
     } else {
@@ -116,6 +129,10 @@ class _LocationsPageState extends State<LocationsPage>
         // Cache matches current login state - safe to use.
         await _loadPlaces(forceRefresh: false);
       }
+    } else if (loggedIn && _examplePlaces.isEmpty) {
+      // Already loaded once, but example places cache is empty (e.g. page was
+      // initialised from the PlacesCacheManager before _loadPlaces ran).
+      await _loadPlaces(forceRefresh: false);
     }
   }
 
@@ -168,6 +185,13 @@ class _LocationsPageState extends State<LocationsPage>
                   )
                   .toList()
             : places.where((p) => p.isLocal).toList();
+
+        // When logged in, also cache the local/example places so the toggle
+        // can switch to them without a second network request.
+        if (isLoggedIn) {
+          _examplePlaces = places.where((p) => p.isLocal).toList();
+        }
+
         _hasLoadedOnce = true;
       },
     );
@@ -320,9 +344,11 @@ class _LocationsPageState extends State<LocationsPage>
     }
 
     // Get the appropriate places list based on login state
-    // For logged in users: use _userPlaces (excludes local examples)
+    // For logged in users: toggle between user places and example places
     // For not logged in: use _places directly (which contains local examples)
-    final displayPlaces = isLoggedIn ? _userPlaces : _places;
+    final displayPlaces = isLoggedIn
+        ? (_showingExamples ? _examplePlaces : _userPlaces)
+        : _places;
 
     // Show empty view if no places.
 
@@ -330,6 +356,18 @@ class _LocationsPageState extends State<LocationsPage>
       // Show NotLoggedInView for logged-in users with no places
       // Show different message for not-logged-in users.
       if (isLoggedIn) {
+        if (_showingExamples) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Text(
+                'No example places available.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+          );
+        }
         return EmptyPlacesView(onRefresh: _refresh, onImport: _importPlaces);
       } else {
         return const Center(
@@ -353,19 +391,39 @@ class _LocationsPageState extends State<LocationsPage>
             placeCount: displayPlaces.length,
             isLoading: _isLoading,
             onRefresh: _refresh,
+            title: isLoggedIn && _showingExamples
+                ? 'Example Places (${displayPlaces.length})'
+                : null,
           ),
 
           // Only show action buttons when logged in.
           if (isLoggedIn) ...[
-            LocationsActionButtons(
-              isLoading: _isLoading,
-              onExport: _exportPlaces,
-              onImport: _importPlaces,
-              onClearAll: _clearAllPlaces,
-              showEncryptedToggle: true,
-              showEncryptedPlaces: _showEncryptedPlaces,
-              onToggleEncrypted: _toggleShowEncryptedPlaces,
+            // Toggle between user places and example places.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  const Text('Show examples', style: TextStyle(fontSize: 14)),
+                  const SizedBox(width: 8),
+                  Switch(
+                    value: _showingExamples,
+                    onChanged: (v) => setState(() => _showingExamples = v),
+                    activeThumbColor: Colors.orange,
+                  ),
+                ],
+              ),
             ),
+            // Only show export/import/clear when viewing user's own places.
+            if (!_showingExamples)
+              LocationsActionButtons(
+                isLoading: _isLoading,
+                onExport: _exportPlaces,
+                onImport: _importPlaces,
+                onClearAll: _clearAllPlaces,
+                showEncryptedToggle: true,
+                showEncryptedPlaces: _showEncryptedPlaces,
+                onToggleEncrypted: _toggleShowEncryptedPlaces,
+              ),
           ],
           const SizedBox(height: 8),
           const Divider(height: 1),

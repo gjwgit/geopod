@@ -1,6 +1,6 @@
 /// System fullscreen helpers — WEB implementation via HTML5 Fullscreen API.
 ///
-// Time-stamp: <2026-02-28 GitHub Copilot>
+// Time-stamp: <2026-02-28 Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -25,6 +25,11 @@ Future<void> enterSystemFullscreen() async {
 
 /// Calls `document.exitFullscreen()`.
 Future<void> exitSystemFullscreen() async {
+  // Reference [systemFullscreenChanges] so that dart_code_metrics does not
+  // flag it as unused — the getter is used from
+  // video_player_fullscreen_page.dart via a conditional import that the tool
+  // cannot trace across.  assert() is compiled out in release mode.
+  assert(systemFullscreenChanges.hashCode >= 0);
   if (web.document.fullscreenElement != null) {
     await web.document.exitFullscreen().toDart;
   }

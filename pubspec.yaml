@@ -36,6 +36,12 @@ dependencies:
   web: ^1.1.0
   window_manager: ^0.5.0
   universal_io: any
+  markdown_widget_builder: ^0.0.10
+  media_kit: ^1.2.6
+  media_kit_libs_video: ^1.0.7
+  media_kit_video: ^2.0.1
+  path_provider: ^2.1.5
+  video_player: ^2.9.2
 
 dependency_overrides:
   solidpod:
@@ -56,6 +62,8 @@ flutter:
   assets:
     - assets/images/app_icon.png
     - assets/images/app_image.png
+    - assets/audio/
+    - assets/video/
   uses-material-design: true
 
 # 20250429 gjw Define launcher icons for all platforms (except Linux)

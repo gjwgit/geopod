@@ -74,9 +74,16 @@ class PodFileItem {
     return name.substring(dot + 1).toLowerCase();
   }
 
+  /// Returns `true` when this file is an encrypted media file stored by
+  /// MediaPodService (convention: `<original>.enc.ttl`).
+  bool get isEncryptedMedia => name.endsWith('.enc.ttl');
+
   /// Check if this is a text file based on extension.
 
   bool get isTextFile {
+    // Encrypted media files end with .enc.ttl – their bodies are base64-encoded
+    // binary content, not human-readable text. Treat them like binary blobs.
+    if (isEncryptedMedia) return false;
     const textExtensions = {
       'txt',
       'json',
@@ -112,6 +119,7 @@ class PodFileItem {
   /// Check if this is a media file based on extension.
 
   bool get isMediaFile {
+    if (isEncryptedMedia) return true;
     const mediaExtensions = {'mp3', 'wav', 'ogg', 'mp4', 'webm', 'avi'};
     return mediaExtensions.contains(extension);
   }

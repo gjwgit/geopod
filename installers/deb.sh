@@ -35,8 +35,8 @@ EOL
 
 cat > ${APP}_${VER}_amd64/usr/share/applications/com.togaware.${APP}.desktop << EOL
 [Desktop Entry]
-Name=GeoPod
-Comment=Locations of interests captured from your Pod
+Name=${APP}
+Comment=${APP}
 Exec=/usr/bin/${APP}
 Icon=${APP}
 Terminal=false

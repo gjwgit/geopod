@@ -1,8 +1,8 @@
 # Geo Pod Change Log
 
 Noted here are the high level changes for the app.  Each update
-includes a short user-oriented description. The next release is 0.1
-following incremental updates through the 0.0.n series. The `[version
+includes a short user-oriented description. The next release is 0.2
+following incremental updates through the 0.1.n series. The `[version
 timestamp user]` string is utilised by the flutter
 [version_widget](https://pub.dev/packages/version_widget) package.
 
@@ -25,6 +25,10 @@ Pull Request. Coding documentation is
 We make this project available for free so if you appreciate the app
 then please show some ❤️ and tap on the star at
 [GitHub](https://github.com/gjwgit/geopod) to support our work.
+
+## 0.2 Sharing
+
++ Video/audio and smoother animation [0.1.0 20260331 miduo]
 
 ## 0.1 First beta release
 

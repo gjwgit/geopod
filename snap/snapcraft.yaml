@@ -7,7 +7,7 @@ description: |
   Pods. When a point of interest is tapped the data/text associated
   with that point is displayed.
 
-base: core22
+base: core24
 grade: stable
 confinement: strict
 
@@ -25,18 +25,19 @@ apps:
     plugs:
       - desktop
       - desktop-legacy
+      - home
+      - network
+      - opengl
       - wayland
       - x11
-      - opengl
-      - network
-      - home
 
 # 20251013 gjw The `flutter_secure_storage` package (and maybe
 # `vault_storage`) is used by `solidpod/solidui` to save secrets
 # locally, if the app provides this option to the user to do so. Thus
-# `libsecret-1-dev` and `libjsoncpp-dev` are required to build the
-# installer and `libsecret-1-0` and `libjsoncpp1` to run the
-# application. See
+# `libsecret-1-dev`, `libjsoncpp-dev`, `llvm`, and `lld` at least are
+# required to build the installer and `libsecret-1-0` and
+# `libjsoncpp1` to run the application. There may be more that are
+# included below and need to test their removal to test. See
 #
 # https://github.com/juliansteenbakker/flutter_secure_storage/blob/develop/README.md
 # https://pub.dev/packages/vault_storage/versions/2.2.0#platform-setup
@@ -44,6 +45,8 @@ apps:
 #    build-packages:
 #      - libsecret-1-dev
 #      - libjsoncpp-dev
+#      - llvm
+#      - lld
 #
 #    stage-packages:
 #      - libsecret-1-0
@@ -70,22 +73,28 @@ parts:
     plugin: flutter
     flutter-target: lib/main.dart
     build-packages:
+      - binutils
       - clang
       - cmake
-      - ninja-build
-      - libgtk-3-dev
       - libblkid-dev
-      - liblzma-dev
-      - libsecret-1-dev
-      - libjsoncpp-dev
-      - libgstreamer1.0-dev
       - libgstreamer-plugins-base1.0-dev
       - libgstreamer-plugins-good1.0-dev
-    stage-packages:
-      - libsecret-1-0
+      - libgstreamer1.0-dev
+      - libgtk-3-dev
       - libjsoncpp-dev
-      - libgstreamer1.0-0
+      - liblzma-dev
+      - libsecret-1-dev
+      - libssl-dev
+      - lld
+      - llvm
+      - ninja-build
+    stage-packages:
+      - libgtk-3-0
+      - gstreamer1.0-plugins-base
+      - gstreamer1.0-plugins-good
       - libgstreamer-plugins-base1.0-0
       - libgstreamer-plugins-good1.0-0
-      - gstreamer1.0-plugins-good
-      - gstreamer1.0-plugins-base
+      - libgstreamer1.0-0
+      - libjsoncpp-dev
+      - libsecret-1-0
+      - libssl3

@@ -82,6 +82,7 @@ parts:
       - libgstreamer1.0-dev
       - libgtk-3-dev
       - libjsoncpp-dev
+      - libmpv-dev
       - liblzma-dev
       - libsecret-1-dev
       - libssl-dev

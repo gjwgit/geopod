@@ -10,9 +10,15 @@ FILES=(
     .pubignore ${SCRIPTS}/pubignore
     .github/workflows/ci.yaml ${SCRIPTS}/github/workflows/ci.yaml
     .github/workflows/installers.yaml ${SCRIPTS}/github/workflows/installers.yaml
+    .github/pull_request_template.md ${SCRIPTS}/github/pull_request_template.md
+    Makefile ${SCRIPTS}/Makefile.tmpl
+    installers/deb.sh ${SCRIPTS}/installers/deb.sh
+    installers/update.sh ${SCRIPTS}/installers/update.sh
+    support/modules.mk  ${SCRIPTS}/../support/modules.mk
     support/flutter.mk  ${SCRIPTS}/../support/flutter.mk
     support/git.mk  ${SCRIPTS}/../support/git.mk
     support/loc.sh  ${SCRIPTS}/../support/loc.sh
+    support/meld_zip_from_claude.sh  ${SCRIPTS}/../support/meld_zip_from_claude.sh
     support/update.sh  ${SCRIPTS}/../support/update.sh
 )
 
@@ -54,6 +60,42 @@ for ((i=0; i < length; i+=2)); do
 		echo "MELD      $f1 $f2"
 		meld "$f1" "$f2" 2> /dev/null
 	    fi
+
+	# 20260306 gjw For the Makefile we expect the REPO, RLOC, and
+	# DWLD to differ so ignore those lines.
+
+	elif [[ "$f1" == "Makefile" ]]; then
+	    if diff <(grep -v '^REPO=' "$f1" | grep -v '^RLOC=' | grep -v '^DWLD=') <(grep -v '^REPO=' "$f2" | grep -v '^RLOC=' | grep -v '^DWLD=') >/dev/null; then
+		echo "IDENTICAL $f1 $f2"
+	    else
+		echo "MELD      $f1 $f2"
+		meld "$f1" "$f2" 2> /dev/null
+	    fi
+
+	# 20260324 gjw For the deb installers script we expect the
+	# Name= and Comment= to differ so ignore those lines.
+
+	elif [[ "$f1" == "installers/deb.sh" ]]; then
+	    if diff <(grep -v '^Name=' "$f1" | grep -v '^Comment=') <(grep -v '^Name=' "$f2" | grep -v '^Comment=') >/dev/null; then
+		echo "IDENTICAL $f1 $f2"
+	    else
+		echo "MELD      $f1 $f2"
+		meld "$f1" "$f2" 2> /dev/null
+	    fi
+
+	# 20260306 gjw For the installers uploader we expect the HOST
+	# and FLDR to differ so ignore those lines.
+
+	elif [[ "$f1" == "installers/update.sh" ]]; then
+	    if diff <(grep -v '^HOST=' "$f1" | grep -v '^FLDR=') <(grep -v '^HOST=' "$f2" | grep -v '^FLDR=') >/dev/null; then
+		echo "IDENTICAL $f1 $f2"
+	    else
+		echo "MELD      $f1 $f2"
+		meld "$f1" "$f2" 2> /dev/null
+	    fi
+
+	# 20260306 gjw Otherwise do a straightforward comparison.
+
         else
 	   if cmp -s "$f1" "$f2"; then
 		echo "IDENTICAL $f1 $f2"
@@ -67,7 +109,7 @@ for ((i=0; i < length; i+=2)); do
 	    echo "MISSING   $f1 <- $f2"
 	    cp "$f2" "$f1"
 	else
-	    echo "MISSING $f1"
+	    echo "MISSING $f2"
 	fi
     fi
 done

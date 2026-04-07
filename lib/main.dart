@@ -27,9 +27,9 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:media_kit/media_kit.dart';
 import 'package:solidpod/solidpod.dart' show KeyManager, setAppDirName;
 import 'package:solidui/solidui.dart';
+import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:geopod/app.dart';
@@ -55,8 +55,13 @@ void main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialise media_kit (required for video/audio playback via media_kit).
-  MediaKit.ensureInitialized();
+  // Initialise media_kit and register it as the video_player platform
+  // implementation on Linux/macOS/Windows (fixes UnimplementedError on Linux).
+  VideoPlayerMediaKit.ensureInitialized(
+    linux: true,
+    windows: true,
+    macOS: true,
+  );
 
   // CRITICAL: Set app directory name BEFORE any Pod operations
   // This must be called early to prevent double-slash bug in file paths

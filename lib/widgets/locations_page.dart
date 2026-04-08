@@ -26,6 +26,7 @@ import 'package:geopod/widgets/locations/locations_page_header.dart';
 import 'package:geopod/widgets/locations/locations_page_views.dart';
 import 'package:geopod/widgets/locations/place_list_tile.dart';
 import 'package:geopod/widgets/locations/place_operations.dart';
+import 'package:geopod/widgets/sharing/share_place.dart';
 
 class LocationsPage extends StatefulWidget {
   const LocationsPage({super.key});
@@ -439,6 +440,20 @@ class _LocationsPageState extends State<LocationsPage>
                   onEdit: isLoggedIn && !p.isLocal ? () => _editPlace(p) : null,
                   onDelete: isLoggedIn && !p.isLocal
                       ? () => _deletePlace(p)
+                      : null,
+                  // Allow share when logged in and place is not local.
+                  // Encrypted places are also shareable: solidpod's
+                  // grantPermission() automatically shares the individual
+                  // encryption key with the recipient.
+                  onShare: isLoggedIn && !p.isLocal
+                      ? () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => SharePlace(
+                                place: p,
+                                backPage: const LocationsPage(),
+                              ),
+                            ),
+                          )
                       : null,
                 );
               },

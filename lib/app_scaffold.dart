@@ -37,6 +37,7 @@ import 'widgets/audio_page.dart';
 import 'widgets/files_page.dart';
 import 'widgets/geomap.dart';
 import 'widgets/locations_page.dart';
+import 'widgets/sharing/list_external_places_screen.dart';
 import 'widgets/video_page.dart';
 
 /// App scaffold widget that responds to fullscreen mode changes.
@@ -95,6 +96,19 @@ class AppScaffoldWidget extends StatelessWidget {
 
             ''',
             child: LocationsPage(),
+          ),
+          const SolidMenuItem(
+            icon: Icons.share,
+            title: 'Shared',
+            tooltip: '''
+
+            **Shared:** Tap here to see places that other Pod users have shared
+              with you. You can view the place details, coordinates, and your
+              permission level. If you have control access, you can re-share
+              the place with others.
+
+            ''',
+            child: ListExternalPlacesScreen(),
           ),
           const SolidMenuItem(
             icon: Icons.headphones,

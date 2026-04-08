@@ -91,25 +91,23 @@ Future<bool> writePlacesJsonFile(String content) async {
 }
 
 /// Write an individual place file.
+///
+/// Uses solidpod's [writePod] so that:
+/// - The file is created or overwritten via an authenticated PUT.
+/// - A `.acl` file is automatically created when it doesn't exist yet,
+///   which is required before the file can be shared via [GrantPermissionUi].
 
-Future<bool> writeIndividualPlaceFile(Place place) async {
+Future<bool> writeIndividualPlaceFile(Place place, {bool createAcl = true}) async {
   try {
-    final fp = await getIndividualPlaceFilePath(place.id);
-    final url = await getFileUrl(fp);
-    final (:accessToken, :dPopToken) = await getTokensForResource(url, 'PUT');
-    final r = await http.put(
-      Uri.parse(url),
-      headers: {
-        'Accept': '*/*',
-        'Authorization': 'DPoP $accessToken',
-        'Connection': 'keep-alive',
-        'Content-Type': 'application/json',
-        'DPoP': dPopToken,
-      },
-      body: jsonEncode(place.toJson()),
+    await writePod(
+      'places/place_${place.id}.json',
+      jsonEncode(place.toJson()),
+      encrypted: false,
+      createAcl: createAcl,
+      overwrite: true,
     );
-    debugPrint('Write individual place file: $fp, status: ${r.statusCode}');
-    return r.statusCode >= 200 && r.statusCode < 300;
+    debugPrint('Write individual place file: places/place_${place.id}.json');
+    return true;
   } catch (e) {
     debugPrint('Error writing individual place file: $e');
     return false;

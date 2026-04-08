@@ -262,10 +262,11 @@ class PlacesWriteService {
       }
 
       // Update both main file and individual file in parallel.
+      // createAcl: false — ACL already exists from the initial addPlace write.
       final newJson = jsonEncode(list.map((p) => p.toJson()).toList());
       final results = await Future.wait([
         writePlacesJsonFile(newJson),
-        writeIndividualPlaceFile(toSave),
+        writeIndividualPlaceFile(toSave, createAcl: false),
       ]);
       final success = results[0];
 

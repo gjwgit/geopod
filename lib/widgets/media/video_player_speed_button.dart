@@ -1,6 +1,6 @@
 /// Speed selector popup button (part of video_player_widget.dart).
 ///
-// Time-stamp: <2026-02-28 GitHub Copilot>
+// Time-stamp: <2026-02-28 GitHub Miduo>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///

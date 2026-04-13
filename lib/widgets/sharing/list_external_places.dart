@@ -1,6 +1,6 @@
 /// Widget that lists external places shared with the current user.
 ///
-// Time-stamp: <2026-04-08 Copilot>
+// Time-stamp: <2026-04-08 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///

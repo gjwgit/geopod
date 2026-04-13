@@ -1,6 +1,6 @@
 /// Screen that asynchronously loads and displays external places.
 ///
-// Time-stamp: <2026-04-08 Copilot>
+// Time-stamp: <2026-04-08 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -88,7 +88,7 @@ class _ListExternalPlacesScreenState extends State<ListExternalPlacesScreen> {
                     final hasKey =
                         await EncryptedPlacesService.isSecurityKeyAvailable();
                     if (!mounted || hasKey) return;
-                    final got = await showSecurityKeyDialog(context);
+                    final got = await showSecurityKeyDialog(this.context);
                     if (got && mounted) {
                       _reload();
                     }

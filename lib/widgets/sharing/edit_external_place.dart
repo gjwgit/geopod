@@ -1,6 +1,6 @@
 /// Widget for editing an externally owned place shared with the current user.
 ///
-// Time-stamp: <2026-04-13 Copilot>
+// Time-stamp: <2026-04-13 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -15,7 +15,6 @@ library;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:solidpod/solidpod.dart';
 
@@ -85,9 +84,7 @@ class _EditExternalPlaceState extends State<EditExternalPlace> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Place updated successfully.')),
         );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => widget.backPage),
-        );
+        Navigator.of(context).pop();
       }
     } catch (e) {
       debugPrint('[EditExternalPlace] save error: $e');
@@ -115,9 +112,7 @@ class _EditExternalPlaceState extends State<EditExternalPlace> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         leading: BackButton(
-          onPressed: () => Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => widget.backPage),
-          ),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: SafeArea(
@@ -200,11 +195,7 @@ class _EditExternalPlaceState extends State<EditExternalPlace> {
                       label: const Text('Cancel'),
                       onPressed: _isSaving
                           ? null
-                          : () => Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(
-                                  builder: (_) => widget.backPage,
-                                ),
-                              ),
+                          : () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(

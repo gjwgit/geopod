@@ -1,6 +1,6 @@
 /// Sharing service: fetches external places shared with the user.
 ///
-// Time-stamp: <2026-04-08 Copilot>
+// Time-stamp: <2026-04-08 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -229,12 +229,12 @@ Future<ExternalPlacesCallResult> getExternalPlaceList({
 
   // Fetch each place's content with a bounded concurrency (5 at a time) to
   // avoid overwhelming the Pod server or the device's network stack.
-  const _concurrentBatchSize = 5;
+  const concurrentBatchSize = 5;
   final List<dynamic> results = [];
-  for (var i = 0; i < places.length; i += _concurrentBatchSize) {
+  for (var i = 0; i < places.length; i += concurrentBatchSize) {
     final batch = places.sublist(
       i,
-      (i + _concurrentBatchSize).clamp(0, places.length),
+      (i + concurrentBatchSize).clamp(0, places.length),
     );
     results.addAll(await Future.wait(batch.map(getExternalPlaceContent)));
   }

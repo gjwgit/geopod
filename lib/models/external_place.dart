@@ -1,6 +1,6 @@
 /// Data model for an externally owned place shared with the user.
 ///
-// Time-stamp: <2026-04-08 Copilot>
+// Time-stamp: <2026-04-08 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///

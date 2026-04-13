@@ -1,6 +1,6 @@
 /// Widget for viewing the details of an external place.
 ///
-// Time-stamp: <2026-04-08 Copilot>
+// Time-stamp: <2026-04-08 Miduo>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///

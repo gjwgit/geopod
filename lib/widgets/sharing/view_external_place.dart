@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:geopod/models/external_place.dart';
+import 'package:geopod/widgets/sharing/edit_external_place.dart';
 import 'package:geopod/widgets/sharing/share_external_place.dart';
 
 /// A widget that shows the full details of an external place and provides
@@ -138,6 +139,31 @@ class ViewExternalPlace extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // Edit button (only if current user has write permission)
+                  if (accessModes.contains('write')) ...[
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Edit'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: content == null
+                          ? null
+                          : () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => EditExternalPlace(
+                                    place: place,
+                                    backPage: ViewExternalPlace(
+                                      place: place,
+                                      listPage: listPage,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   // Re-share button (only if current user has control)
                   if (accessModes.contains('control')) ...[
                     ElevatedButton.icon(

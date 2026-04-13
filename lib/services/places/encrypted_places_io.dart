@@ -163,15 +163,19 @@ Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(
 Future<bool> writeIndividualEncryptedPlaceFile(Place place) async {
   try {
     final filePath = getEncryptedIndividualPlaceFilePath(place.id);
-    final dirPath = getEncryptedPlacesDirPath();
     final jsonContent = jsonEncode(place.toJson());
 
+    // Use encrypted: true (per-file individual key) so that grantPermission()
+    // can correctly detect this file as encrypted via checkFileEnc() and write
+    // the shared key to the recipient's Pod (copySharedKey). If inheritKeyFrom
+    // were used here, the key would be stored under the directory URL and
+    // checkFileEnc(fileUrl) would return false, silently skipping key sharing.
     await writePod(
       filePath,
       jsonContent,
-      encrypted: false,
+      encrypted: true,
+      createAcl: true,
       overwrite: true,
-      inheritKeyFrom: dirPath,
     );
     return true;
   } catch (e) {

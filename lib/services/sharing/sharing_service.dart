@@ -33,6 +33,20 @@ import 'package:geopod/models/external_place.dart';
 import 'package:geopod/models/external_places_call_result.dart';
 import 'package:geopod/models/place.dart';
 
+// ── In-memory result cache ─────────────────────────────────────────────────
+// Avoids repeating all Pod network requests every time the sharing page is
+// opened within a short period.
+ExternalPlacesCallResult? _cachedResult;
+DateTime? _cacheTime;
+const _cacheTtl = Duration(minutes: 5);
+
+/// Invalidates the in-memory cache, forcing the next call to
+/// [getExternalPlaceList] to re-fetch from the Pod.
+void invalidateExternalPlaceCache() {
+  _cachedResult = null;
+  _cacheTime = null;
+}
+
 /// Reads the shared-resources permission log and returns external places
 /// whose URLs look like geopod place files (`/places/place_`).
 ///
@@ -155,10 +169,24 @@ Future<dynamic> getExternalPlaceContent(ExternalPlace place) async {
 /// place files; all others are silently ignored.
 ///
 /// Skips entries whose access has been revoked (`permissionType == 'revoke'`).
+///
+/// Results are cached in memory for [_cacheTtl] to avoid redundant Pod
+/// requests when the sharing page is reopened repeatedly.
+/// Pass [forceRefresh] = true (or call [invalidateExternalPlaceCache]) to
+/// bypass the cache.
 
 Future<ExternalPlacesCallResult> getExternalPlaceList({
   bool hasCurrentAccess = true,
+  bool forceRefresh = false,
 }) async {
+  // Return cached result if still fresh.
+  if (!forceRefresh &&
+      _cachedResult != null &&
+      _cacheTime != null &&
+      DateTime.now().difference(_cacheTime!) < _cacheTtl) {
+    debugPrint('[SharingService] Returning cached result (${_cachedResult!.places?.length ?? 0} places).');
+    return _cachedResult!;
+  }
   final logMap = await scanPermLogFile();
   if (logMap.isEmpty) return const ExternalPlacesCallResult();
 
@@ -199,9 +227,17 @@ Future<ExternalPlacesCallResult> getExternalPlaceList({
 
   if (places.isEmpty) return const ExternalPlacesCallResult();
 
-  // Fetch each place's content concurrently.
-  final futures = places.map(getExternalPlaceContent).toList();
-  final results = await Future.wait(futures);
+  // Fetch each place's content with a bounded concurrency (5 at a time) to
+  // avoid overwhelming the Pod server or the device's network stack.
+  const _concurrentBatchSize = 5;
+  final List<dynamic> results = [];
+  for (var i = 0; i < places.length; i += _concurrentBatchSize) {
+    final batch = places.sublist(
+      i,
+      (i + _concurrentBatchSize).clamp(0, places.length),
+    );
+    results.addAll(await Future.wait(batch.map(getExternalPlaceContent)));
+  }
 
   final List<ExternalPlace> fullPlaces = [];
   final List<ExternalPlace> nonExistentPlaces = [];
@@ -232,13 +268,19 @@ Future<ExternalPlacesCallResult> getExternalPlaceList({
     '${unparseablePlaces.length} unparseable.',
   );
 
-  return ExternalPlacesCallResult(
+  final callResult = ExternalPlacesCallResult(
     places: fullPlaces,
     nonExistentPlaces: nonExistentPlaces,
     forbiddenPlaces: forbiddenPlaces,
     encryptionErrorPlaces: encryptionErrorPlaces,
     unparseablePlaces: unparseablePlaces,
   );
+
+  // Update cache.
+  _cachedResult = callResult;
+  _cacheTime = DateTime.now();
+
+  return callResult;
 }
 
 /// Status codes recycled from solidpod for internal use.

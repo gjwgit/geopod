@@ -10,6 +10,8 @@
 
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:geopod/models/external_place.dart';
@@ -37,20 +39,24 @@ class ListExternalPlaces extends StatefulWidget {
 }
 
 class _ListExternalPlacesState extends State<ListExternalPlaces> {
+  late List<FoundExternalPlace> _allPlaces;
   late List<FoundExternalPlace> _foundPlaces;
   final TextEditingController _searchController = TextEditingController();
   bool _sortNameAscending = true;
   bool _sortOwnerAscending = true;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
-    _foundPlaces = widget.places.toListFoundExternalPlace();
+    _allPlaces = widget.places.toListFoundExternalPlace();
+    _foundPlaces = List.of(_allPlaces);
     _sortByName(true);
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -78,20 +84,24 @@ class _ListExternalPlacesState extends State<ListExternalPlaces> {
   }
 
   void _searchPlaces(String keyword) {
-    final all = widget.places.toListFoundExternalPlace();
-    setState(() {
-      if (keyword.isEmpty) {
-        _foundPlaces = all;
-      } else {
-        final kw = keyword.toLowerCase();
-        _foundPlaces = all.where((p) {
-          final name = (p.content?.displayTitle ?? p.placeFileName).toLowerCase();
-          return name.contains(kw) ||
-              p.placeOwner.toLowerCase().contains(kw) ||
-              p.permissionGranter.toLowerCase().contains(kw) ||
-              p.permissionList.toLowerCase().contains(kw);
-        }).toList();
-      }
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      setState(() {
+        if (keyword.isEmpty) {
+          _foundPlaces = List.of(_allPlaces);
+        } else {
+          final kw = keyword.toLowerCase();
+          _foundPlaces = _allPlaces.where((p) {
+            final name =
+                (p.content?.displayTitle ?? p.placeFileName).toLowerCase();
+            return name.contains(kw) ||
+                p.placeOwner.toLowerCase().contains(kw) ||
+                p.permissionGranter.toLowerCase().contains(kw) ||
+                p.permissionList.toLowerCase().contains(kw);
+          }).toList();
+        }
+      });
     });
   }
 

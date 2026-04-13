@@ -13,7 +13,9 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:geopod/models/external_places_call_result.dart';
+import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/sharing/sharing_service.dart';
+import 'package:geopod/widgets/encryption/security_key_dialog.dart';
 import 'package:geopod/widgets/sharing/list_external_places.dart';
 
 /// A [StatefulWidget] that fetches external-place data in a [FutureBuilder]
@@ -38,7 +40,9 @@ class _ListExternalPlacesScreenState extends State<ListExternalPlacesScreen> {
 
   void _reload() {
     setState(() {
-      _dataFuture = getExternalPlaceList();
+      // Force-refresh bypasses the in-memory TTL cache so the user always
+      // gets the latest data when they explicitly request a reload.
+      _dataFuture = getExternalPlaceList(forceRefresh: true);
     });
   }
 
@@ -75,6 +79,21 @@ class _ListExternalPlacesScreenState extends State<ListExternalPlacesScreen> {
                 final forbidden = result.forbiddenPlaces ?? [];
                 final encryptionErrors = result.encryptionErrorPlaces ?? [];
                 final unparseable = result.unparseablePlaces ?? [];
+
+                // If encrypted places failed to load due to missing security
+                // key, auto-prompt the user once and then reload.
+                if (encryptionErrors.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) async {
+                    if (!mounted) return;
+                    final hasKey =
+                        await EncryptedPlacesService.isSecurityKeyAvailable();
+                    if (!mounted || hasKey) return;
+                    final got = await showSecurityKeyDialog(context);
+                    if (got && mounted) {
+                      _reload();
+                    }
+                  });
+                }
 
                 // Notify about places whose source files have been deleted.
                 if (nonExistent.isNotEmpty) {

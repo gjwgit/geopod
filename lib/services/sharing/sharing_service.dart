@@ -94,13 +94,15 @@ ExternalPlace? extPlaceDetailsFromLog({
         placeOwner = value;
       } else if (predicate.contains(PermissionLogLiteral.granter.toString())) {
         permissionGranter = value;
-      } else if (predicate
-          .contains(PermissionLogLiteral.recepient.toString())) {
+      } else if (predicate.contains(
+        PermissionLogLiteral.recepient.toString(),
+      )) {
         permissionRecepient = value;
       } else if (predicate.contains(PermissionLogLiteral.type.toString())) {
         permissionType = value;
-      } else if (predicate
-          .contains(PermissionLogLiteral.permissions.toString())) {
+      } else if (predicate.contains(
+        PermissionLogLiteral.permissions.toString(),
+      )) {
         permissionList = value;
       }
     }
@@ -126,10 +128,7 @@ ExternalPlace? extPlaceDetailsFromLog({
 
 Future<dynamic> getExternalPlaceContent(ExternalPlace place) async {
   try {
-    final raw = await readPod(
-      place.placeUrl,
-      pathType: PathType.absoluteUrl,
-    );
+    final raw = await readPod(place.placeUrl, pathType: PathType.absoluteUrl);
 
     // If readPod returned raw encrypted TTL (decryption key missing on
     // recipient's pod — shared-keys.ttl absent or key not found), detect it
@@ -184,7 +183,9 @@ Future<ExternalPlacesCallResult> getExternalPlaceList({
       _cachedResult != null &&
       _cacheTime != null &&
       DateTime.now().difference(_cacheTime!) < _cacheTtl) {
-    debugPrint('[SharingService] Returning cached result (${_cachedResult!.places?.length ?? 0} places).');
+    debugPrint(
+      '[SharingService] Returning cached result (${_cachedResult!.places?.length ?? 0} places).',
+    );
     return _cachedResult!;
   }
   final logMap = await scanPermLogFile();
@@ -201,12 +202,10 @@ Future<ExternalPlacesCallResult> getExternalPlaceList({
     final isEncPlace = urlStr.contains('/encrypted_data/enc_place_');
     if (!isPlainPlace && !isEncPlace) continue;
 
-    final logRecord =
-        logMap[fileUrl] as Map<PermissionLogLiteral, dynamic>;
+    final logRecord = logMap[fileUrl] as Map<PermissionLogLiteral, dynamic>;
 
     // Skip revoked entries if caller only wants current access.
-    if (hasCurrentAccess &&
-        logRecord[PermissionLogLiteral.type] == 'revoke') {
+    if (hasCurrentAccess && logRecord[PermissionLogLiteral.type] == 'revoke') {
       continue;
     }
 
@@ -289,9 +288,11 @@ enum FileCallStatus {
   fail,
   fileNotExists,
   accessForbidden,
+
   /// The resource is an encrypted TTL file but the decryption key is not
   /// available on this user's pod (shared-keys.ttl absent or key not found).
   decryptionKeyMissing,
+
   /// The security key has not been set / cached yet when the read was
   /// attempted.  Refreshing after the key is ready should resolve this.
   securityKeyNotAvailable,

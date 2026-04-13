@@ -97,7 +97,10 @@ Future<bool> writePlacesJsonFile(String content) async {
 /// - A `.acl` file is automatically created when it doesn't exist yet,
 ///   which is required before the file can be shared via [GrantPermissionUi].
 
-Future<bool> writeIndividualPlaceFile(Place place, {bool createAcl = true}) async {
+Future<bool> writeIndividualPlaceFile(
+  Place place, {
+  bool createAcl = true,
+}) async {
   try {
     await writePod(
       'places/place_${place.id}.json',

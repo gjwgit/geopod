@@ -111,9 +111,7 @@ class _EditExternalPlaceState extends State<EditExternalPlace> {
           'Edit Shared Place',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        leading: BackButton(
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: BackButton(onPressed: () => Navigator.of(context).pop()),
       ),
       body: SafeArea(
         child: Padding(
@@ -180,8 +178,9 @@ class _EditExternalPlaceState extends State<EditExternalPlace> {
                   keyboardType: TextInputType.multiline,
                   textInputAction: TextInputAction.newline,
                   enabled: !_isSaving,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Note is required' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Note is required'
+                      : null,
                 ),
 
                 const SizedBox(height: 24),
@@ -253,9 +252,7 @@ class _InfoRow extends StatelessWidget {
             '$label: ',
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
-          Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 13)),
-          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
         ],
       ),
     );

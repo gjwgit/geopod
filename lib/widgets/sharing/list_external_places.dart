@@ -77,9 +77,11 @@ class _ListExternalPlacesState extends State<ListExternalPlaces> {
   void _sortByOwner(bool ascending) {
     setState(() {
       _sortOwnerAscending = ascending;
-      _foundPlaces.sort((a, b) => ascending
-          ? a.placeOwner.toLowerCase().compareTo(b.placeOwner.toLowerCase())
-          : b.placeOwner.toLowerCase().compareTo(a.placeOwner.toLowerCase()));
+      _foundPlaces.sort(
+        (a, b) => ascending
+            ? a.placeOwner.toLowerCase().compareTo(b.placeOwner.toLowerCase())
+            : b.placeOwner.toLowerCase().compareTo(a.placeOwner.toLowerCase()),
+      );
     });
   }
 
@@ -93,8 +95,8 @@ class _ListExternalPlacesState extends State<ListExternalPlaces> {
         } else {
           final kw = keyword.toLowerCase();
           _foundPlaces = _allPlaces.where((p) {
-            final name =
-                (p.content?.displayTitle ?? p.placeFileName).toLowerCase();
+            final name = (p.content?.displayTitle ?? p.placeFileName)
+                .toLowerCase();
             return name.contains(kw) ||
                 p.placeOwner.toLowerCase().contains(kw) ||
                 p.permissionGranter.toLowerCase().contains(kw) ||
@@ -226,10 +228,7 @@ class _ListExternalPlacesState extends State<ListExternalPlaces> {
 /// A card tile for a single external place.
 
 class _ExternalPlaceCard extends StatelessWidget {
-  const _ExternalPlaceCard({
-    required this.place,
-    required this.listPage,
-  });
+  const _ExternalPlaceCard({required this.place, required this.listPage});
 
   final FoundExternalPlace place;
   final Widget listPage;
@@ -260,7 +259,11 @@ class _ExternalPlaceCard extends StatelessWidget {
               const SizedBox(height: 2),
               Row(
                 children: [
-                  Icon(Icons.home_outlined, size: 13, color: Colors.blue.shade600),
+                  Icon(
+                    Icons.home_outlined,
+                    size: 13,
+                    color: Colors.blue.shade600,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
@@ -279,15 +282,16 @@ class _ExternalPlaceCard extends StatelessWidget {
             const SizedBox(height: 2),
             Row(
               children: [
-                Icon(Icons.person_outline, size: 13, color: Colors.grey.shade500),
+                Icon(
+                  Icons.person_outline,
+                  size: 13,
+                  color: Colors.grey.shade500,
+                ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     place.placeOwner,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -316,10 +320,7 @@ class _ExternalPlaceCard extends StatelessWidget {
         isThreeLine: true,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => ViewExternalPlace(
-              place: place,
-              listPage: listPage,
-            ),
+            builder: (_) => ViewExternalPlace(place: place, listPage: listPage),
           ),
         ),
       ),

@@ -41,9 +41,7 @@ class ShareExternalPlace extends StatelessWidget {
           'Re-Share Place',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        leading: BackButton(
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: BackButton(onPressed: () => Navigator.of(context).pop()),
       ),
       body: SafeArea(
         child: Column(
@@ -77,10 +75,7 @@ class ShareExternalPlace extends StatelessWidget {
                 isExternalRes: true,
                 ownerWebId: place.placeOwner,
                 granterWebId: place.permissionGranter,
-                child: ShareExternalPlace(
-                  place: place,
-                  backPage: backPage,
-                ),
+                child: ShareExternalPlace(place: place, backPage: backPage),
               ),
             ),
           ],

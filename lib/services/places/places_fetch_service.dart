@@ -25,7 +25,6 @@
 
 library;
 
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -198,11 +197,7 @@ class PlacesFetchService {
     final places = <Place>[];
     try {
       final content = await readPlacesJsonFile();
-      if (content == null || content.trim().isEmpty) {
-        // Pod has no places.json yet — auto-create an empty one.
-        unawaited(writePlacesJsonFile('[]'));
-        return places;
-      }
+      if (content == null || content.trim().isEmpty) return places;
       final decoded = jsonDecode(content);
       if (decoded is List) {
         for (final i in decoded) {
@@ -231,9 +226,6 @@ class PlacesFetchService {
         final c = await readPlacesJsonFile();
         if (c != null && c.trim().isNotEmpty) {
           await PlacesCachePersistence.cachePodPlaces(c);
-        } else {
-          // Pod returned nothing — auto-create empty places.json.
-          unawaited(writePlacesJsonFile('[]'));
         }
       } catch (_) {}
     });

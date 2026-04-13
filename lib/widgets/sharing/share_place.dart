@@ -25,11 +25,7 @@ import 'package:geopod/models/place.dart';
 /// corresponding `.acl` file.
 
 class SharePlace extends StatelessWidget {
-  const SharePlace({
-    super.key,
-    required this.place,
-    required this.backPage,
-  });
+  const SharePlace({super.key, required this.place, required this.backPage});
 
   /// The place to share.
   final Place place;
@@ -58,9 +54,9 @@ class SharePlace extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         leading: BackButton(
-          onPressed: () => Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => backPage),
-          ),
+          onPressed: () => Navigator.of(
+            context,
+          ).pushReplacement(MaterialPageRoute(builder: (_) => backPage)),
         ),
       ),
       body: SafeArea(
@@ -90,10 +86,7 @@ class SharePlace extends StatelessWidget {
               child: GrantPermissionUi(
                 showAppBar: false,
                 resourceName: resourceName,
-                child: SharePlace(
-                  place: place,
-                  backPage: backPage,
-                ),
+                child: SharePlace(place: place, backPage: backPage),
               ),
             ),
           ],

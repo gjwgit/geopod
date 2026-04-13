@@ -447,13 +447,13 @@ class _LocationsPageState extends State<LocationsPage>
                   // encryption key with the recipient.
                   onShare: isLoggedIn && !p.isLocal
                       ? () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => SharePlace(
-                                place: p,
-                                backPage: const LocationsPage(),
-                              ),
+                          MaterialPageRoute(
+                            builder: (_) => SharePlace(
+                              place: p,
+                              backPage: const LocationsPage(),
                             ),
-                          )
+                          ),
+                        )
                       : null,
                 );
               },

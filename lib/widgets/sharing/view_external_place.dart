@@ -47,9 +47,7 @@ class ViewExternalPlace extends StatelessWidget {
           content?.displayTitle ?? place.placeFileName,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        leading: BackButton(
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: BackButton(onPressed: () => Navigator.of(context).pop()),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -95,7 +93,10 @@ class ViewExternalPlace extends StatelessWidget {
                     padding: EdgeInsets.all(12),
                     child: Row(
                       children: [
-                        Icon(Icons.warning_amber_outlined, color: Colors.orange),
+                        Icon(
+                          Icons.warning_amber_outlined,
+                          color: Colors.orange,
+                        ),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -151,16 +152,16 @@ class ViewExternalPlace extends StatelessWidget {
                       onPressed: content == null
                           ? null
                           : () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => EditExternalPlace(
+                              MaterialPageRoute(
+                                builder: (_) => EditExternalPlace(
+                                  place: place,
+                                  backPage: ViewExternalPlace(
                                     place: place,
-                                    backPage: ViewExternalPlace(
-                                      place: place,
-                                      listPage: listPage,
-                                    ),
+                                    listPage: listPage,
                                   ),
                                 ),
                               ),
+                            ),
                     ),
                     const SizedBox(width: 8),
                   ],
@@ -260,12 +261,7 @@ class _DetailRow extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 13),
-            ),
-          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
         ],
       ),
     );

@@ -48,11 +48,6 @@ void handleOptimisticPlaceSave({
     savingPlaceIds.add(placeToSave.id);
   });
 
-  // Update the cache immediately so that if placesChangeNotifier fires
-  // during the background save, onPlacesChanged() reads the already-updated
-  // list instead of the stale pre-insert cache.
-  PlacesCacheManager().cacheAllPlaces(allPlaces);
-
   // Show snackbar after frame to avoid jank.
 
   SchedulerBinding.instance.addPostFrameCallback((_) {

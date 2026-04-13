@@ -87,7 +87,12 @@ Future<void> performPlaceBackgroundSave({
           if (index != -1) allPlaces[index] = updatedPlace;
           savingPlaceIds.remove(originalPlace.id);
         });
-        PlacesCacheManager().cacheAllPlaces(allPlaces);
+        // Surgically update only this place in the cache (address was resolved).
+        // Do NOT call cacheAllPlaces(allPlaces) here — that local `allPlaces`
+        // reference is captured at call time (before onPlacesChanged may have
+        // expanded it with previously-saved encrypted places), so overwriting
+        // the entire cache with it would silently drop those entries.
+        PlacesCacheManager().updatePlaceInCache(updatedPlace);
         showSaveSuccessSnackbar(context);
       });
     }

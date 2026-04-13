@@ -26,6 +26,7 @@ import 'package:solidui/solidui.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places/encrypted_places_io.dart';
+import 'package:geopod/services/places/places_cache_manager.dart';
 import 'package:geopod/services/places_service.dart' show placesChangeNotifier;
 import 'package:geopod/services/pod/pod_directory_service.dart';
 import 'package:geopod/widgets/encryption/security_key_dialog.dart';
@@ -292,6 +293,18 @@ class EncryptedPlacesService {
       await _syncIndividualEncryptedFiles(places, oldPlaces);
 
       _cachedEncryptedPlaces = places;
+
+      // Sync PlacesCacheManager so the next fetchPlaces() call (triggered by
+      // placesChangeNotifier below) returns the up-to-date merged list.
+      // Without this, when the cache already contains encrypted places,
+      // fetchPlaces hits the `else { return c; }` fast-path and returns the
+      // stale cache — causing newly saved encrypted places to disappear.
+      final cm = PlacesCacheManager();
+      final current = cm.allPlaces;
+      if (current != null) {
+        final nonEncrypted = current.where((p) => !p.isEncrypted).toList();
+        cm.cacheAllPlaces([...nonEncrypted, ...places]);
+      }
 
       // Notify places change to trigger UI refresh.
 

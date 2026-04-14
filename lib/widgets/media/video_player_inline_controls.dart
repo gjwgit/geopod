@@ -105,91 +105,104 @@ class _InlineControlsState extends State<_InlineControls> {
           },
         ),
 
-        //  Controls row
+        //  Controls row – wrapped in LayoutBuilder to hide the fixed-width
+        //  volume slider on narrow screens and prevent bottom overflow.
         // Layout: [time] Expanded([vol ]) [play] Expanded([ speed]) [time] [fs?]
-        Row(
-          children: [
-            const SizedBox(width: 12),
-            Text(fmt(position), style: const TextStyle(fontSize: 11)),
-            const SizedBox(width: 8),
-            // Left half  volume right-aligned against play button
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final showVolumeSlider = constraints.maxWidth >= 360;
+            final showVolumeIcon = constraints.maxWidth >= 280;
+            return Row(
+              children: [
+                const SizedBox(width: 12),
+                Text(fmt(position), style: const TextStyle(fontSize: 11)),
+                const SizedBox(width: 8),
+                // Left half  volume right-aligned against play button
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (showVolumeIcon) ...[
+                        IconButton(
+                          iconSize: 18,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: isMuted ? 'Unmute' : 'Mute',
+                          icon: Icon(
+                            isMuted
+                                ? Icons.volume_off
+                                : volume < 0.5
+                                ? Icons.volume_down
+                                : Icons.volume_up,
+                            size: 18,
+                          ),
+                          onPressed: widget.onToggleMute,
+                        ),
+                        if (showVolumeSlider) ...[
+                          const SizedBox(width: 4),
+                          SizedBox(
+                            width: 80,
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 2,
+                                thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 5,
+                                ),
+                                overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 10,
+                                ),
+                              ),
+                              child: Slider(
+                                value: volume,
+                                min: 0.0,
+                                max: 1.0,
+                                divisions: 100,
+                                label: '${(volume * 100).round()}%',
+                                onChanged: widget.onVolumeChanged,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 12),
+                      ],
+                    ],
+                  ),
+                ),
+                // Center  play/pause
+                IconButton(
+                  iconSize: 40,
+                  icon: Icon(
+                    isPlaying ? Icons.pause_circle : Icons.play_circle,
+                  ),
+                  onPressed: isPlaying ? ctrl.pause : ctrl.play,
+                ),
+                // Right half  speed left-aligned against play button
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      const SizedBox(width: 12),
+                      _SpeedButton(
+                        currentSpeed: speed,
+                        onSpeedSelected: widget.onSpeedChanged,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(fmt(duration), style: const TextStyle(fontSize: 11)),
+                if (showFullscreen) ...[
+                  const SizedBox(width: 8),
                   IconButton(
-                    iconSize: 18,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: isMuted ? 'Unmute' : 'Mute',
-                    icon: Icon(
-                      isMuted
-                          ? Icons.volume_off
-                          : volume < 0.5
-                          ? Icons.volume_down
-                          : Icons.volume_up,
-                      size: 18,
-                    ),
-                    onPressed: widget.onToggleMute,
-                  ),
-                  const SizedBox(width: 4),
-                  SizedBox(
-                    width: 80,
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 10,
-                        ),
-                      ),
-                      child: Slider(
-                        value: volume,
-                        min: 0.0,
-                        max: 1.0,
-                        divisions: 100,
-                        label: '${(volume * 100).round()}%',
-                        onChanged: widget.onVolumeChanged,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-              ),
-            ),
-            // Center  play/pause
-            IconButton(
-              iconSize: 40,
-              icon: Icon(isPlaying ? Icons.pause_circle : Icons.play_circle),
-              onPressed: isPlaying ? ctrl.pause : ctrl.play,
-            ),
-            // Right half  speed left-aligned against play button
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  const SizedBox(width: 12),
-                  _SpeedButton(
-                    currentSpeed: speed,
-                    onSpeedSelected: widget.onSpeedChanged,
+                    icon: const Icon(Icons.fullscreen),
+                    tooltip: 'Fullscreen',
+                    onPressed: widget.onFullscreen,
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(fmt(duration), style: const TextStyle(fontSize: 11)),
-            if (showFullscreen) ...[
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.fullscreen),
-                tooltip: 'Fullscreen',
-                onPressed: widget.onFullscreen,
-              ),
-            ],
-            const SizedBox(width: 12),
-          ],
+                const SizedBox(width: 12),
+              ],
+            );
+          },
         ),
       ],
     );

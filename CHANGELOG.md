@@ -28,6 +28,7 @@ then please show some ❤️ and tap on the star at
 
 ## 0.2 Sharing
 
++ Improve video placement [0.1.2 20260424 gjw]
 + Update building of installers [0.1.1 20260402 gjw]
 + Video/audio and smoother animation [0.1.0 20260331 miduo]
 

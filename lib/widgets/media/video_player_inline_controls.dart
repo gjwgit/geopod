@@ -82,116 +82,131 @@ class _InlineControlsState extends State<_InlineControls> {
       return '$m:$s';
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        //  Video surface – capped at 640 px tall so it fits in the card
-        //  without the user needing to scroll.  Full-screen removes this cap.
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 640),
-          child: AspectRatio(
-            aspectRatio: value.aspectRatio,
-            child: VideoPlayer(ctrl),
-          ),
-        ),
+    // Seek bar + controls row together take ~100 px.  When the widget is
+    // placed inside a bounded container (e.g. the bottom sheet's
+    // ConstrainedBox) we subtract that overhead so the video surface never
+    // causes the Column to overflow.
+    const double controlsOverhead = 110;
 
-        //  Seek bar
-        Slider(
-          value: current.toDouble(),
-          min: 0,
-          max: total > 0 ? total.toDouble() : 1,
-          onChanged: (v) {
-            if (total > 0) ctrl.seekTo(Duration(milliseconds: v.toInt()));
-          },
-        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final videoMaxHeight = constraints.hasBoundedHeight
+            ? (constraints.maxHeight - controlsOverhead).clamp(40.0, 640.0)
+            : 640.0;
 
-        //  Controls row
-        // Layout: [time] Expanded([vol ]) [play] Expanded([ speed]) [time] [fs?]
-        Row(
+        return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(width: 12),
-            Text(fmt(position), style: const TextStyle(fontSize: 11)),
-            const SizedBox(width: 8),
-            // Left half  volume right-aligned against play button
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
+            //  Video surface
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: videoMaxHeight),
+              child: AspectRatio(
+                aspectRatio: value.aspectRatio,
+                child: VideoPlayer(ctrl),
+              ),
+            ),
+
+            //  Seek bar
+            Slider(
+              value: current.toDouble(),
+              min: 0,
+              max: total > 0 ? total.toDouble() : 1,
+              onChanged: (v) {
+                if (total > 0) ctrl.seekTo(Duration(milliseconds: v.toInt()));
+              },
+            ),
+
+            //  Controls row
+            // Layout: [time] Expanded([vol ]) [play] Expanded([ speed]) [time] [fs?]
+            Row(
+              children: [
+                const SizedBox(width: 12),
+                Text(fmt(position), style: const TextStyle(fontSize: 11)),
+                const SizedBox(width: 8),
+                // Left half  volume right-aligned against play button
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        iconSize: 18,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: isMuted ? 'Unmute' : 'Mute',
+                        icon: Icon(
+                          isMuted
+                              ? Icons.volume_off
+                              : volume < 0.5
+                              ? Icons.volume_down
+                              : Icons.volume_up,
+                          size: 18,
+                        ),
+                        onPressed: widget.onToggleMute,
+                      ),
+                      const SizedBox(width: 4),
+                      SizedBox(
+                        width: 80,
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 2,
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 5,
+                            ),
+                            overlayShape: const RoundSliderOverlayShape(
+                              overlayRadius: 10,
+                            ),
+                          ),
+                          child: Slider(
+                            value: volume,
+                            min: 0.0,
+                            max: 1.0,
+                            divisions: 100,
+                            label: '${(volume * 100).round()}%',
+                            onChanged: widget.onVolumeChanged,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                  ),
+                ),
+                // Center  play/pause
+                IconButton(
+                  iconSize: 40,
+                  icon: Icon(
+                    isPlaying ? Icons.pause_circle : Icons.play_circle,
+                  ),
+                  onPressed: isPlaying ? ctrl.pause : ctrl.play,
+                ),
+                // Right half  speed left-aligned against play button
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      const SizedBox(width: 12),
+                      _SpeedButton(
+                        currentSpeed: speed,
+                        onSpeedSelected: widget.onSpeedChanged,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(fmt(duration), style: const TextStyle(fontSize: 11)),
+                if (showFullscreen) ...[
+                  const SizedBox(width: 8),
                   IconButton(
-                    iconSize: 18,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: isMuted ? 'Unmute' : 'Mute',
-                    icon: Icon(
-                      isMuted
-                          ? Icons.volume_off
-                          : volume < 0.5
-                          ? Icons.volume_down
-                          : Icons.volume_up,
-                      size: 18,
-                    ),
-                    onPressed: widget.onToggleMute,
-                  ),
-                  const SizedBox(width: 4),
-                  SizedBox(
-                    width: 80,
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 10,
-                        ),
-                      ),
-                      child: Slider(
-                        value: volume,
-                        min: 0.0,
-                        max: 1.0,
-                        divisions: 100,
-                        label: '${(volume * 100).round()}%',
-                        onChanged: widget.onVolumeChanged,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-              ),
-            ),
-            // Center  play/pause
-            IconButton(
-              iconSize: 40,
-              icon: Icon(isPlaying ? Icons.pause_circle : Icons.play_circle),
-              onPressed: isPlaying ? ctrl.pause : ctrl.play,
-            ),
-            // Right half  speed left-aligned against play button
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  const SizedBox(width: 12),
-                  _SpeedButton(
-                    currentSpeed: speed,
-                    onSpeedSelected: widget.onSpeedChanged,
+                    icon: const Icon(Icons.fullscreen),
+                    tooltip: 'Fullscreen',
+                    onPressed: widget.onFullscreen,
                   ),
                 ],
-              ),
+                const SizedBox(width: 12),
+              ],
             ),
-            const SizedBox(width: 8),
-            Text(fmt(duration), style: const TextStyle(fontSize: 11)),
-            if (showFullscreen) ...[
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.fullscreen),
-                tooltip: 'Fullscreen',
-                onPressed: widget.onFullscreen,
-              ),
-            ],
-            const SizedBox(width: 12),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }

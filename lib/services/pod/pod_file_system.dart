@@ -127,7 +127,6 @@ class PodFileSystem {
       );
 
       if (response.isSuccess) {
-        debugPrint('PodFileSystem.writeFile() - success: $relativePath');
         return true;
       } else {
         debugPrint(
@@ -158,7 +157,6 @@ class PodFileSystem {
       final response = await PodHttp.delete(url);
 
       if (response.isSuccess || response.isNotFound) {
-        debugPrint('PodFileSystem.deleteFile() - success: $relativePath');
         return true;
       } else {
         debugPrint(

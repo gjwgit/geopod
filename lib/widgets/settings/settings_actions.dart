@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:solidpod/solidpod.dart';
 import 'package:solidui/solidui.dart';
 
+import 'package:geopod/services/debug_data_service.dart';
 import 'package:geopod/widgets/settings/encryption_key_operations.dart';
 
 /// Builds the reset to defaults button.
@@ -67,6 +68,18 @@ Widget buildUserActionsSection(BuildContext context) {
               style: TextButton.styleFrom(
                 foregroundColor: Colors.orange.shade700,
               ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // DEBUG: Delete ALL geopod data (places + media) from the Pod.
+          Center(
+            child: TextButton.icon(
+              onPressed: () => DebugDataService.deleteAllGeopodData(context),
+              icon: const Icon(Icons.delete_sweep, size: 18),
+              label: const Text('Delete All Geopod Data (DEBUG)'),
+              style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
             ),
           ),
         ],

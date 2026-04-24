@@ -20,6 +20,7 @@ import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places/encrypted_places_paths.dart';
+import 'package:geopod/services/pod/pod_file_system.dart';
 
 /// Ensure the encrypted places directory's ACL and encryption key are set up.
 /// Uses persistent caching flag to avoid repeated server calls.
@@ -148,4 +149,58 @@ Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(
     debugPrint('Error writing encrypted places: $e');
     return (false, false);
   }
+}
+
+// ── Individual encrypted place file helpers ──────────────────────────────────
+
+/// Write an individual encrypted place file.
+///
+/// Uses the directory's inherited encryption key (same as the aggregate).
+/// File path (relative to data dir): `encrypted_data/enc_place_<id>.ttl`
+///
+/// Returns `true` on success.
+
+Future<bool> writeIndividualEncryptedPlaceFile(Place place) async {
+  try {
+    final filePath = getEncryptedIndividualPlaceFilePath(place.id);
+    final dirPath = getEncryptedPlacesDirPath();
+    final jsonContent = jsonEncode(place.toJson());
+
+    await writePod(
+      filePath,
+      jsonContent,
+      encrypted: false,
+      overwrite: true,
+      inheritKeyFrom: dirPath,
+    );
+    return true;
+  } catch (e) {
+    debugPrint(
+      'Error writing individual encrypted place file (${place.id}): $e',
+    );
+    return false;
+  }
+}
+
+/// Delete an individual encrypted place file from Pod.
+///
+/// Returns `true` if the file was deleted or did not exist (404).
+
+Future<bool> deleteIndividualEncryptedPlaceFile(String placeId) async {
+  try {
+    final relPath = getDataRelativeEncryptedIndividualPlaceFilePath(placeId);
+    return await PodFileSystem.deleteFile(relPath);
+  } catch (e) {
+    debugPrint('Error deleting individual encrypted place file ($placeId): $e');
+    return false;
+  }
+}
+
+/// Delete all individual encrypted place files for the given IDs.
+///
+/// All deletions run in parallel (fire-and-forget per file).
+
+Future<void> deleteAllIndividualEncryptedPlaceFiles(List<String> ids) async {
+  if (ids.isEmpty) return;
+  await Future.wait(ids.map((id) => deleteIndividualEncryptedPlaceFile(id)));
 }

@@ -35,6 +35,7 @@ import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
+import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/services/places/places_cache_manager.dart';
 import 'package:geopod/services/places/places_cache_persistence.dart';
@@ -72,9 +73,10 @@ class PlacesWriteService {
       );
 
       if (mainSuccess) {
-        // Fire-and-forget individual file (non-critical — main file is the
-        // source of truth and is already written above).
-        writeIndividualPlaceFile(place);
+        // Await individual file write BEFORE notifying the file browser.
+        // If we fire-and-forget here, the directory listing refresh triggered
+        // by notifyChange() can race with the write and show a stale listing.
+        await writeIndividualPlaceFile(place);
 
         // Surgically insert into caches — avoids a full clear + re-fetch and
         // preserves the encrypted places cache which is unrelated to this write.
@@ -131,6 +133,9 @@ class PlacesWriteService {
         cm.cachePodPlaces(updated);
         placesChangeNotifier.value++;
 
+        // Fire-and-forget: remove stale place links from all media items.
+        MediaPodService.unlinkAllForPlace(placeId);
+
         // Invalidate directory cache and notify file browser.
         PodDirectoryService.invalidateCache('data/places');
         PodDirectoryService.notifyChange();
@@ -155,7 +160,11 @@ class PlacesWriteService {
         context,
         returnWidget,
       );
-      if (success) placesChangeNotifier.value++;
+      if (success) {
+        placesChangeNotifier.value++;
+        // Fire-and-forget: remove stale place links from all media items.
+        MediaPodService.unlinkAllForPlace(place.id);
+      }
       return success;
     }
     return deletePlace(place.id, context, returnWidget);
@@ -299,6 +308,9 @@ class PlacesWriteService {
       if (success) {
         // Delete all individual place files.
         await deleteAllIndividualPlaceFiles(placeIds);
+
+        // Fire-and-forget: clear all media-place links since no places remain.
+        MediaPodService.clearAllPlaceLinks();
 
         if (hadEncryptedPlaces) {
           // Clear main/pod cache but keep encrypted session state alive so

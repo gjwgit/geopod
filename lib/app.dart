@@ -35,6 +35,7 @@ import 'package:solidui/solidui.dart';
 import 'package:geopod/app_scaffold.dart';
 import 'package:geopod/constants/app.dart';
 import 'package:geopod/services/map_settings_service.dart';
+import 'package:geopod/services/media/media_pod_service.dart';
 import 'package:geopod/services/places_service.dart';
 
 /// The root application widget.
@@ -141,6 +142,11 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
       // Sync settings from POD with delay to avoid network congestion.
 
       unawaited(syncSettingsFromPod());
+
+      // Bootstrap missing index files on first login so that audio/video
+      // pages don't produce spurious 404 responses before any media exists.
+
+      unawaited(MediaPodService.ensureIndexFiles());
     });
   }
 

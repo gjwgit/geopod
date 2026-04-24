@@ -1,6 +1,6 @@
 /// Import and export functionality for places data.
 ///
-// Time-stamp: <Thursday 2026-01-29 10:52:32 +1100 Graham Williams>
+// Time-stamp: <Friday 2026-04-24 21:00:46 +1000 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -105,7 +105,7 @@ class PlacesImportExport {
     final result = ImportResult();
 
     try {
-      final pickResult = await FilePicker.platform.pickFiles(
+      final pickResult = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
         withData: true,

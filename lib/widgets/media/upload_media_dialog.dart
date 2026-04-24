@@ -1,6 +1,6 @@
 /// Dialog for uploading an audio or video file to the user's Solid Pod.
 ///
-// Time-stamp: <2026-02-28 Miduo>
+// Time-stamp: <Friday 2026-04-24 21:01:05 +1000 Graham Williams>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///
@@ -73,7 +73,7 @@ class _UploadMediaDialogState extends State<_UploadMediaDialog> {
         ? ['mp3', 'm4a', 'aac', 'ogg', 'wav', 'webm']
         : ['mp4', 'mov', 'mkv', 'avi', 'webm'];
 
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: allowedExtensions,
       withData: true, // We need bytes for upload.

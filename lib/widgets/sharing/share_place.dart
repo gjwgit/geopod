@@ -85,7 +85,7 @@ class SharePlace extends StatelessWidget {
             Expanded(
               child: GrantPermissionUi(
                 showAppBar: false,
-                resourceName: resourceName,
+                resourceNames: [resourceName],
                 child: SharePlace(place: place, backPage: backPage),
               ),
             ),

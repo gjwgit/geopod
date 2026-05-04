@@ -105,7 +105,7 @@ class PlacesImportExport {
     final result = ImportResult();
 
     try {
-      final pickResult = await FilePicker.platform.pickFiles(
+      final pickResult = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
         withData: true,

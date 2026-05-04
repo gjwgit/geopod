@@ -71,7 +71,7 @@ class ShareExternalPlace extends StatelessWidget {
               // and isExternalRes must be true.
               child: GrantPermissionUi(
                 showAppBar: false,
-                resourceName: place.placeUrl,
+                resourceNames: [place.placeUrl],
                 isExternalRes: true,
                 ownerWebId: place.placeOwner,
                 granterWebId: place.permissionGranter,

@@ -73,7 +73,7 @@ class _UploadMediaDialogState extends State<_UploadMediaDialog> {
         ? ['mp3', 'm4a', 'aac', 'ogg', 'wav', 'webm']
         : ['mp4', 'mov', 'mkv', 'avi', 'webm'];
 
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: allowedExtensions,
       withData: true, // We need bytes for upload.

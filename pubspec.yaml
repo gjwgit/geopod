@@ -20,9 +20,6 @@ dependencies:
   file_saver: ^0.3.1
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  file_picker: ^11.0.2
-  file_saver: ^0.3.1
   flutter_colorpicker: ^1.1.0
   flutter_map: ^8.2.2
   geolocator: ^14.0.2

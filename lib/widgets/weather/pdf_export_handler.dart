@@ -1,6 +1,6 @@
 /// Platform-specific PDF export handling.
 ///
-// Time-stamp: <Thursday 2026-01-29 10:53:08 +1100 Graham Williams>
+// Time-stamp: <Friday 2026-04-24 21:01:30 +1000 Graham Williams>
 ///
 /// Copyright (C) 2026, Software Innovation Institute, ANU.
 ///

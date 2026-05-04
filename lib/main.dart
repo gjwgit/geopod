@@ -28,7 +28,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:solidpod/solidpod.dart' show KeyManager, setAppDirName;
-import 'package:solidui/solidui.dart';
+import 'package:solidui/solidui.dart' hide isDesktop;
 import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 

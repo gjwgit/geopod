@@ -172,70 +172,84 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
         ),
 
         // ── Controls: time | [vol →] | ⏸ | [← empty] | time ────────────────
-        Row(
-          children: [
-            const SizedBox(width: 12),
-            Text(fmt(position), style: const TextStyle(fontSize: 12)),
-            const SizedBox(width: 8),
-            // Left half – volume, right-aligned to hug play button
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    iconSize: 18,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: isMuted ? 'Unmute' : 'Mute',
-                    icon: Icon(
-                      isMuted
-                          ? Icons.volume_off
-                          : _volume < 0.5
-                          ? Icons.volume_down
-                          : Icons.volume_up,
-                      size: 18,
-                    ),
-                    onPressed: _toggleMute,
-                  ),
-                  const SizedBox(width: 4),
-                  SizedBox(
-                    width: 80,
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
+        // Wrapped in LayoutBuilder to hide the fixed-width volume slider on
+        // narrow screens and prevent bottom overflow.
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final showVolumeSlider = constraints.maxWidth >= 360;
+            final showVolumeIcon = constraints.maxWidth >= 280;
+            return Row(
+              children: [
+                const SizedBox(width: 12),
+                Text(fmt(position), style: const TextStyle(fontSize: 12)),
+                const SizedBox(width: 8),
+                // Left half – volume, right-aligned to hug play button
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (showVolumeIcon) ...[
+                        IconButton(
+                          iconSize: 18,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: isMuted ? 'Unmute' : 'Mute',
+                          icon: Icon(
+                            isMuted
+                                ? Icons.volume_off
+                                : _volume < 0.5
+                                ? Icons.volume_down
+                                : Icons.volume_up,
+                            size: 18,
+                          ),
+                          onPressed: _toggleMute,
                         ),
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 10,
-                        ),
-                      ),
-                      child: Slider(
-                        value: _volume,
-                        min: 0.0,
-                        max: 1.0,
-                        divisions: 100,
-                        label: '${(_volume * 100).round()}%',
-                        onChanged: _setVolume,
-                      ),
-                    ),
+                        if (showVolumeSlider) ...[
+                          const SizedBox(width: 4),
+                          SizedBox(
+                            width: 80,
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 2,
+                                thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 5,
+                                ),
+                                overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 10,
+                                ),
+                              ),
+                              child: Slider(
+                                value: _volume,
+                                min: 0.0,
+                                max: 1.0,
+                                divisions: 100,
+                                label: '${(_volume * 100).round()}%',
+                                onChanged: _setVolume,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 12),
+                      ],
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                ],
-              ),
-            ),
-            // Center – play/pause
-            IconButton(
-              iconSize: 40,
-              icon: Icon(isPlaying ? Icons.pause_circle : Icons.play_circle),
-              onPressed: isPlaying ? _controller.pause : _controller.play,
-            ),
-            // Right half – mirror spacer (keeps play centred)
-            const Expanded(child: SizedBox.shrink()),
-            const SizedBox(width: 8),
-            Text(fmt(duration), style: const TextStyle(fontSize: 12)),
-            const SizedBox(width: 12),
-          ],
+                ),
+                // Center – play/pause
+                IconButton(
+                  iconSize: 40,
+                  icon: Icon(
+                    isPlaying ? Icons.pause_circle : Icons.play_circle,
+                  ),
+                  onPressed: isPlaying ? _controller.pause : _controller.play,
+                ),
+                // Right half – mirror spacer (keeps play centred)
+                const Expanded(child: SizedBox.shrink()),
+                const SizedBox(width: 8),
+                Text(fmt(duration), style: const TextStyle(fontSize: 12)),
+                const SizedBox(width: 12),
+              ],
+            );
+          },
         ),
       ],
     );

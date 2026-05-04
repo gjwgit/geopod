@@ -26,7 +26,6 @@ dependencies:
   http: ^1.2.2
   intl: ^0.20.1
   latlong2: ^0.9.1
-  pdf: ^3.11.1
   shared_preferences: ^2.3.3
   solid_auth: ^0.1.28
   solidpod: ^0.12.5
@@ -42,17 +41,8 @@ dependencies:
   media_kit_video: ^2.0.1
   path_provider: ^2.1.5
   pdf: ^3.11.1
-  shared_preferences: ^2.3.3
-  solid_auth: ^0.1.28
-  solidpod: ^0.12.4
-  solidui: ^0.3.24
-  universal_io: any
-  url_launcher: ^6.3.1
-  uuid: ^4.5.1
   video_player: ^2.9.2
   video_player_media_kit: ^2.0.0
-  web: ^1.1.0
-  window_manager: ^0.5.0
 
 dev_dependencies:
   build_runner: ^2.4.7

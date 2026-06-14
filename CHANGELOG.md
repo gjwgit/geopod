@@ -1,10 +1,8 @@
 # Geo Pod Change Log
 
-Noted here are the high level changes for the app.  Each update
-includes a short user-oriented description. The next release is 0.2
-following incremental updates through the 0.1.n series. The `[version
-timestamp user]` string is utilised by the flutter
-[version_widget](https://pub.dev/packages/version_widget) package.
+Noted below are the high level changes for the app.  Each update
+includes a short user-oriented description, version number, date, and
+developer.
 
 You can run the app in your
 [**browser**](https://geopod.solidcommunity.au) or else download and
@@ -26,13 +24,17 @@ We make this project available for free so if you appreciate the app
 then please show some ❤️ and tap on the star at
 [GitHub](https://github.com/gjwgit/geopod) to support our work.
 
-## 0.2 Sharing
+## 1.0 Updated key management
+
++ Use solid_auth 1.0.0 for improved key management [1.0.0 20260615 gjw]
+
+## 0.1 Sharing
 
 + Improve video placement [0.1.2 20260424 gjw]
 + Update building of installers [0.1.1 20260402 gjw]
 + Video/audio and smoother animation [0.1.0 20260331 miduo]
 
-## 0.1 First beta release
+## 0.0 First beta release
 
 + Add EDIT to point of interest popup [0.0.16 20260302 miduo]
 + Move to latest solidpod dev from anusii [0.0.15 20260203 gjw]

@@ -1,6 +1,6 @@
 /// The primary [MaterialApp] widget.
 ///
-// Time-stamp: <Wednesday 2026-02-04 08:15:51 +1100 Graham Williams>
+// Time-stamp: <Monday 2026-06-15 07:33:53 +1000 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -69,6 +69,12 @@ class App extends StatelessWidget {
         'video',
         'encrypted_data',
         'places',
+      ],
+      clientId: 'https://solidcommunity.au/apps/geopod/client-profile.jsonld',
+      redirectUris: [
+        'https://solidcommunity.au/apps/geopod/redirect.html',
+        'com.togaware.geopod://redirect',
+        'http://localhost:4400/redirect',
       ],
       child: appWithPreload,
     );

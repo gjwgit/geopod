@@ -1,6 +1,6 @@
 /// Define the main entry point for the app.
 ///
-// Time-stamp: <Friday 2025-11-21 09:08:56 +1100 Graham Williams>
+// Time-stamp: <Monday 2026-06-15 07:40:01 +1000 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -36,7 +36,6 @@ import 'package:geopod/app.dart';
 import 'package:geopod/app_scaffold.dart';
 import 'package:geopod/constants/app.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
-import 'package:geopod/utils/is_desktop.dart';
 
 /// Main entry point for the application.
 

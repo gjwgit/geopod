@@ -34,7 +34,6 @@ import 'home.dart';
 import 'services/fullscreen_service.dart';
 import 'services/navigation_service.dart';
 import 'widgets/audio_page.dart';
-import 'widgets/files_page.dart';
 import 'widgets/geomap.dart';
 import 'widgets/locations_page.dart';
 import 'widgets/video_page.dart';
@@ -117,16 +116,6 @@ class AppScaffoldWidget extends StatelessWidget {
 
             ''',
             child: VideoPage(),
-          ),
-          const SolidMenuItem(
-            icon: Icons.folder,
-            title: 'Files',
-            tooltip: '''
-
-            **Files:** Tap here to browse the files for the app on your Pod.
-
-            ''',
-            child: FilesPage(),
           ),
         ],
 

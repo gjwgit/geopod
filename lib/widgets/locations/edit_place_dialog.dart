@@ -27,6 +27,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:emacs_text_field/emacs_text_field.dart';
+
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
 
@@ -49,6 +51,13 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
   bool _isLoading = false;
   String? _previewAddress;
 
+  // Snapshot of the initial field values for change detection. The Save button
+  // is enabled only once the user has actually modified something.
+  late final String _initLat;
+  late final String _initLng;
+  late final String _initNote;
+  String? _initAddress;
+
   @override
   void initState() {
     super.initState();
@@ -60,10 +69,32 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
     );
     _noteController = TextEditingController(text: widget.place.note);
     _previewAddress = widget.place.address;
+
+    // Record the initial state, then rebuild on any text edit so the Save
+    // button updates live. The address-preview action calls setState itself.
+    _initLat = _latController.text;
+    _initLng = _lngController.text;
+    _initNote = _noteController.text;
+    _initAddress = _previewAddress;
+    for (final c in [_latController, _lngController, _noteController]) {
+      c.addListener(_onChanged);
+    }
   }
+
+  void _onChanged() => setState(() {});
+
+  /// Whether any editable field differs from its initial value.
+  bool get _hasChanges =>
+      _latController.text != _initLat ||
+      _lngController.text != _initLng ||
+      _noteController.text != _initNote ||
+      _previewAddress != _initAddress;
 
   @override
   void dispose() {
+    for (final c in [_latController, _lngController, _noteController]) {
+      c.removeListener(_onChanged);
+    }
     _latController.dispose();
     _lngController.dispose();
     _noteController.dispose();
@@ -126,155 +157,144 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
           Expanded(child: Text('Edit Place')),
         ],
       ),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextFormField(
-                controller: _noteController,
-                decoration: const InputDecoration(
-                  labelText: 'Note',
-                  hintText: 'Enter a description',
-                  prefixIcon: Icon(Icons.notes),
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _latController,
-                      decoration: const InputDecoration(
-                        labelText: 'Latitude',
-                        hintText: '-90 to 90',
-                        prefixIcon: Icon(Icons.north),
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Required';
-                        }
-                        final lat = double.tryParse(value);
-                        if (lat == null || lat < -90 || lat > 90) {
-                          return 'Invalid';
-                        }
-                        return null;
-                      },
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Note is the primary field, so give it plenty of room. A
+                // fixed-height box with expands:true makes the editor large and
+                // stable (EmacsTextField has no maxLines parameter).
+                SizedBox(
+                  height: 260,
+                  child: EmacsTextField(
+                    controller: _noteController,
+                    expands: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Note',
+                      hintText: 'Enter a description',
+                      alignLabelWithHint: true,
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _lngController,
-                      decoration: const InputDecoration(
-                        labelText: 'Longitude',
-                        hintText: '-180 to 180',
-                        prefixIcon: Icon(Icons.east),
-                        border: OutlineInputBorder(),
+                ),
+                const SizedBox(height: 16),
+
+                // Coordinates: compact two-up row.
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _latController,
+                        decoration: const InputDecoration(
+                          labelText: 'Latitude',
+                          hintText: '-90 to 90',
+                          prefixIcon: Icon(Icons.north),
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Required';
+                          }
+                          final lat = double.tryParse(value);
+                          if (lat == null || lat < -90 || lat > 90) {
+                            return 'Invalid';
+                          }
+                          return null;
+                        },
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Required';
-                        }
-                        final lng = double.tryParse(value);
-                        if (lng == null || lng < -180 || lng > 180) {
-                          return 'Invalid';
-                        }
-                        return null;
-                      },
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Preview address button.
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _previewAddressForCoordinates,
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.location_searching, size: 18),
-                  label: const Text('Preview Address'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.blue.shade700,
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _lngController,
+                        decoration: const InputDecoration(
+                          labelText: 'Longitude',
+                          hintText: '-180 to 180',
+                          prefixIcon: Icon(Icons.east),
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Required';
+                          }
+                          final lng = double.tryParse(value);
+                          if (lng == null || lng < -180 || lng > 180) {
+                            return 'Invalid';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Preview address as a compact icon button beside coords.
+                    IconButton.outlined(
+                      onPressed: _isLoading
+                          ? null
+                          : _previewAddressForCoordinates,
+                      tooltip: 'Preview address for these coordinates',
+                      icon: _isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.location_searching, size: 18),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              // Address preview.
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Column(
+                // Address preview (compact single row).
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.home_outlined,
-                          size: 16,
-                          color: Colors.grey.shade600,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Address:',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
+                    Icon(
+                      Icons.home_outlined,
+                      size: 16,
+                      color: Colors.grey.shade600,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _previewAddress ?? 'Not available',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: _previewAddress != null
-                            ? Colors.black87
-                            : Colors.grey.shade500,
-                        fontStyle: _previewAddress != null
-                            ? FontStyle.normal
-                            : FontStyle.italic,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _previewAddress ?? 'Address not available',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: _previewAddress != null
+                              ? Colors.black87
+                              : Colors.grey.shade500,
+                          fontStyle: _previewAddress != null
+                              ? FontStyle.normal
+                              : FontStyle.italic,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Note: Address will be automatically updated when you save if coordinates change.',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontStyle: FontStyle.italic,
-                  color: Colors.grey.shade600,
+                const SizedBox(height: 8),
+                Text(
+                  'The address is updated automatically on save if the '
+                  'coordinates change.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -284,7 +304,7 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
           child: const Text('Cancel'),
         ),
         ElevatedButton.icon(
-          onPressed: _save,
+          onPressed: (_isLoading || !_hasChanges) ? null : _save,
           icon: const Icon(Icons.save, size: 18),
           label: const Text('Save'),
           style: ElevatedButton.styleFrom(

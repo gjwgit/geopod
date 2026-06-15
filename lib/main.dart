@@ -36,6 +36,8 @@ import 'package:geopod/app.dart';
 import 'package:geopod/app_scaffold.dart';
 import 'package:geopod/constants/app.dart';
 import 'package:geopod/services/places/encrypted_places_service.dart';
+import 'package:geopod/utils/platform_io.dart'
+    if (dart.library.html) 'package:geopod/utils/platform_web.dart';
 
 /// Main entry point for the application.
 
@@ -53,6 +55,12 @@ void main() async {
   // to set the Linux desktop window [title].
 
   WidgetsFlutterBinding.ensureInitialized();
+
+  // CRITICAL (Linux): force LC_NUMERIC to "C" before initialising media_kit.
+  // libmpv aborts with "Non-C locale detected" under locales like en_AU.UTF-8
+  // because it requires '.' as the decimal separator. Must run before the
+  // media_kit init below. No-op on non-Linux/web.
+  fixNumericLocale();
 
   // Initialise media_kit and register it as the video_player platform
   // implementation on Linux/macOS/Windows (fixes UnimplementedError on Linux).

@@ -50,3 +50,7 @@ Future<void> revokePlaybackUrl(String url) async {
     web.URL.revokeObjectURL(url);
   }
 }
+
+/// No-op on web: the LC_NUMERIC/libmpv locale workaround applies to native
+/// Linux only. Present so callers can use the conditional import uniformly.
+void fixNumericLocale() {}

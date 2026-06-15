@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Fix audio/vido on Linux [1.0.4 20260615 gjw]
 + SAVE initially inactive. Use emacs_text_field [1.0.3 20260615 gjw]
 + Refactor Pod I/O to use solidpod API [1.0.2 20260615 gjw]
 + Use solidpod API rather than DPoP + raw HTTP [1.0.1 20260615 gjw]

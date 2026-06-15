@@ -10,10 +10,44 @@
 
 library;
 
+import 'dart:ffi';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:ffi/ffi.dart';
 import 'package:path_provider/path_provider.dart';
+
+// C: char* setlocale(int category, const char* locale);
+typedef _SetLocaleC = Pointer<Utf8> Function(Int32, Pointer<Utf8>);
+typedef _SetLocaleDart = Pointer<Utf8> Function(int, Pointer<Utf8>);
+
+// LC_NUMERIC category value on glibc (Linux).
+const int _lcNumeric = 1;
+
+/// Force the C locale for numeric formatting on Linux.
+///
+/// libmpv (used by media_kit for audio/video) aborts the process with
+/// "Non-C locale detected" when LC_NUMERIC is anything other than "C",
+/// because it relies on '.' as the decimal separator. Systems with e.g.
+/// en_AU.UTF-8 trigger this. Calling setlocale(LC_NUMERIC, "C") via libc
+/// before media_kit initialises avoids the crash. No-op on non-Linux.
+void fixNumericLocale() {
+  if (!Platform.isLinux) return;
+  try {
+    final libc = DynamicLibrary.open('libc.so.6');
+    final setlocale = libc.lookupFunction<_SetLocaleC, _SetLocaleDart>(
+      'setlocale',
+    );
+    final c = 'C'.toNativeUtf8();
+    try {
+      setlocale(_lcNumeric, c);
+    } finally {
+      malloc.free(c);
+    }
+  } catch (_) {
+    // If libc/setlocale is unavailable for any reason, leave the locale as is.
+  }
+}
 
 /// Writes [bytes] to a platform temporary file named [filename] and
 /// returns the absolute path to the written file.

@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Ensure all locations and media is encrypted [1.0.6 20260615 gjw]
 + All settings saved locally on devince, not in pod [1.0.5 20260615 gjw]
 + Fix audio/video on Linux [1.0.4 20260615 gjw]
 + SAVE initially inactive. Use emacs_text_field [1.0.3 20260615 gjw]

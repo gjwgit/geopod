@@ -63,7 +63,8 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
   /// Whether to encrypt imported places.
   /// Defaults to true for consistency with add place form.
 
-  bool _encrypt = true;
+  // Imported places are always stored encrypted; no opt-out.
+  static const bool _encrypt = true;
 
   @override
   void initState() {
@@ -178,57 +179,34 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
               ),
               const SizedBox(height: 12),
 
-              // Encryption option.
+              // Encryption indicator. Imported places are always stored
+              // encrypted; sharing is handled separately via Pod permissions.
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: _encrypt ? Colors.green.shade50 : Colors.grey.shade50,
+                  color: Colors.green.shade50,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _encrypt
-                        ? Colors.green.shade300
-                        : Colors.grey.shade300,
-                  ),
+                  border: Border.all(color: Colors.green.shade300),
                 ),
                 child: Row(
                   children: [
-                    Checkbox(
-                      value: _encrypt,
-                      onChanged: (value) {
-                        setState(() {
-                          _encrypt = value ?? false;
-                        });
-                      },
-                      activeColor: Colors.green,
-                    ),
+                    Icon(Icons.lock, size: 18, color: Colors.green.shade700),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                _encrypt ? Icons.lock : Icons.lock_open,
-                                size: 18,
-                                color: _encrypt ? Colors.green : Colors.grey,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Encrypt imported places',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: _encrypt
-                                      ? Colors.green.shade700
-                                      : Colors.grey.shade700,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'Encrypted',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade700,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _encrypt
-                                ? 'Places will be stored securely with encryption'
-                                : 'Enable to store imported places with encryption',
+                            'Imported places are stored securely with '
+                            'encryption.',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade600,
@@ -393,14 +371,10 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                     encrypted: _encrypt,
                   ),
                 ),
-          icon: Icon(_encrypt ? Icons.lock : Icons.download, size: 18),
-          label: Text(
-            _encrypt
-                ? 'Import ${_editablePlaces.length} (Encrypted)'
-                : 'Import ${_editablePlaces.length} Places',
-          ),
+          icon: const Icon(Icons.lock, size: 18),
+          label: Text('Import ${_editablePlaces.length} (Encrypted)'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: _encrypt ? Colors.green.shade700 : Colors.green,
+            backgroundColor: Colors.green.shade700,
             foregroundColor: Colors.white,
           ),
         ),

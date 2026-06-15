@@ -1,7 +1,7 @@
 name: geopod
 description: "Map interface to Solid Server Data Vault Pods."
 publish_to: 'none'
-version: 1.0.5+22
+version: 1.0.6+22
 
 environment:
   sdk: ^3.10.0

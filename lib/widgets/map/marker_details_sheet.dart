@@ -153,7 +153,7 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.cloud_outlined),
+                icon: const Icon(Icons.wb_sunny_outlined),
                 onPressed: () => showWeatherDialog(
                   context: sheetContext,
                   latitude: marker.position.latitude,

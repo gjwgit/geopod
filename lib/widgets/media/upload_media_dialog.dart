@@ -53,7 +53,8 @@ class _UploadMediaDialogState extends State<_UploadMediaDialog> {
 
   // Form state.
   final _nameController = TextEditingController();
-  bool _encrypt = false;
+  // Media is always stored encrypted; no opt-out.
+  static const bool _encrypt = true;
   bool _uploading = false;
   String? _errorText;
 
@@ -202,31 +203,30 @@ class _UploadMediaDialogState extends State<_UploadMediaDialog> {
 
             const SizedBox(height: 12),
 
-            // ── Encrypt toggle ─────────────────────────────────────────────
+            // ── Encryption indicator ───────────────────────────────────────
+            // Media is always encrypted; sharing is via Pod permissions.
             Row(
               children: [
-                const Icon(Icons.lock_outline, size: 18),
+                Icon(Icons.lock, size: 18, color: Colors.green.shade700),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Encrypt file',
-                        style: TextStyle(fontWeight: FontWeight.w500),
+                        'Encrypted',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.green.shade700,
+                        ),
                       ),
-                      Text(
-                        'Requires your security key to play back.',
+                      const Text(
+                        'Stored securely; requires your security key to '
+                        'play back.',
                         style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                     ],
                   ),
-                ),
-                Switch(
-                  value: _encrypt,
-                  onChanged: _uploading
-                      ? null
-                      : (v) => setState(() => _encrypt = v),
                 ),
               ],
             ),

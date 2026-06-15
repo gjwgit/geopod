@@ -22,7 +22,7 @@ Future<MediaItem?> _uploadItem({
   required String filename,
   required Uint8List bytes,
   required MediaType type,
-  bool encrypt = false,
+  bool encrypt = true,
 }) async {
   if (!PodAuth.isLoggedInSync()) {
     debugPrint('MediaPodService.uploadItem: not logged in');

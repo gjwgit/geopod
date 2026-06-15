@@ -156,7 +156,7 @@ class MediaPodService {
     required String filename,
     required Uint8List bytes,
     required MediaType type,
-    bool encrypt = false,
+    bool encrypt = true,
   }) => _uploadItem(
     name: name,
     filename: filename,

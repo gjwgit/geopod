@@ -85,7 +85,9 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
 
   /// Whether to encrypt this place.
 
-  bool _encrypt = true;
+  // All places are stored encrypted; there is no opt-out. Sharing is handled
+  // separately via Pod permissions.
+  static const bool _encrypt = true;
 
   @override
   void initState() {
@@ -261,7 +263,7 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
           const Text('Add New Place'),
           const Spacer(),
           IconButton(
-            icon: const Icon(Icons.cloud_outlined),
+            icon: const Icon(Icons.wb_sunny_outlined),
             onPressed: () {
               final lat = double.tryParse(_latitudeController.text.trim());
               final lng = double.tryParse(_longitudeController.text.trim());
@@ -411,59 +413,35 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
                 ),
                 const SizedBox(height: 16),
 
-                // Encryption checkbox.
+                // Encryption indicator. All places are stored encrypted;
+                // sharing is handled separately via Pod permissions.
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _encrypt
-                        ? Colors.green.shade50
-                        : Colors.grey.shade50,
+                    color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _encrypt
-                          ? Colors.green.shade300
-                          : Colors.grey.shade300,
-                    ),
+                    border: Border.all(color: Colors.green.shade300),
                   ),
                   child: Row(
                     children: [
-                      Checkbox(
-                        value: _encrypt,
-                        onChanged: (value) {
-                          setState(() {
-                            _encrypt = value ?? false;
-                          });
-                        },
-                        activeColor: Colors.green,
-                      ),
+                      Icon(Icons.lock, size: 18, color: Colors.green.shade700),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  _encrypt ? Icons.lock : Icons.lock_open,
-                                  size: 18,
-                                  color: _encrypt ? Colors.green : Colors.grey,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Encrypt this place',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: _encrypt
-                                        ? Colors.green.shade700
-                                        : Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              'Encrypted',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade700,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _encrypt
-                                  ? 'This place will be stored securely with encryption'
-                                  : 'Enable to store this place with encryption',
+                              'This place is stored securely with encryption. '
+                              'You can share it with others later using Pod '
+                              'permissions.',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey.shade600,

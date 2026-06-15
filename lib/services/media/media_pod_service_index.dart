@@ -32,18 +32,24 @@ Future<void> _ensureIndexFiles() async {
 }
 
 Future<void> _ensureIndexFile(MediaType type) async {
-  final path = _indexPath(type);
-  // silentOnNotFound: 404 is the expected state before any media exists.
-  final existing = await PodFileSystem.readFile(path, silentOnNotFound: true);
-  if (existing != null) {
+  // readPod throws when the file is absent (the expected state before any
+  // media exists); that is caught so we then create an empty encrypted index.
+  try {
+    await readPod(_indexSolidpodPath(type));
     // File already exists (empty or with items) – nothing to do.
     return;
+  } catch (_) {
+    // Not found – create an empty encrypted index below.
   }
-  await PodFileSystem.writeFile(
-    path,
+  // The index is encrypted with the media directory's inherited key, so make
+  // sure that key/ACL exists before writing.
+  await _ensureDir(type);
+  await writePod(
+    _indexSolidpodPath(type),
     '[]',
-    contentType: ResourceContentType.auto,
-    createParentDirs: false,
+    encrypted: true,
+    overwrite: true,
+    inheritKeyFrom: _indexDirName(type),
   );
 }
 
@@ -104,20 +110,16 @@ Future<List<MediaItem>> _readIndex(MediaType type) async {
 
 Future<List<MediaItem>> _fetchFromPod(MediaType type) async {
   try {
-    // silentOnNotFound: index files are bootstrapped by ensureIndexFiles() at
-    // login, but a 404 can still occur in edge cases – e.g. the file was
-    // manually deleted via the file browser, or this read races the
-    // (unawaited) ensureIndexFiles() call during the first login.
-    final content = await PodFileSystem.readFile(
-      _indexPath(type),
-      silentOnNotFound: true,
-    );
-    if (content == null) {
-      // null means a hard error (401 unauthorised, network failure, 404, or
-      // not logged in).  Do NOT cache – this is a transient failure.  The
-      // next PlaceMediaSection open will retry once the condition clears.
+    // readPod transparently decrypts encrypted indexes and also reads any
+    // legacy plaintext index, so old data keeps working. It throws when the
+    // file is missing; that is the expected pre-bootstrap state and is treated
+    // as an empty/transient result (not cached).
+    String content;
+    try {
+      content = await readPod(_indexSolidpodPath(type));
+    } catch (e) {
       debugPrint(
-        'MediaPodService._fetchFromPod: could not read ${_indexPath(type)} – skipping cache',
+        'MediaPodService._fetchFromPod: could not read ${_indexPath(type)} – skipping cache ($e)',
       );
       return [];
     }
@@ -140,25 +142,38 @@ Future<List<MediaItem>> _fetchFromPod(MediaType type) async {
   }
 }
 
+// ── Index encryption helpers ──────────────────────────────────────────────
+
+/// solidpod relative path for an index file (strips the leading 'data/').
+String _indexSolidpodPath(MediaType type) {
+  final p = _indexPath(type);
+  return p.startsWith('data/') ? p.substring('data/'.length) : p;
+}
+
+/// The directory (under data/) whose inherited key encrypts the index.
+String _indexDirName(MediaType type) =>
+    type == MediaType.audio ? audioDirName : videoDirName;
+
 // ── Index write ───────────────────────────────────────────────────────────
 
 Future<bool> _writeIndex(MediaType type, List<MediaItem> items) async {
   try {
     final content = jsonEncode(items.map((i) => i.toJson()).toList());
-    final ok = await PodFileSystem.writeFile(
-      _indexPath(type),
+    // The index is always encrypted (it lists private items too), so ensure
+    // the media directory's inherited key/ACL exists before writing — even for
+    // unencrypted-media uploads, which would otherwise not have set it up.
+    await _ensureDir(type);
+    await writePod(
+      _indexSolidpodPath(type),
       content,
-      contentType: ResourceContentType.auto,
-      createParentDirs: false,
+      encrypted: true,
+      overwrite: true,
+      inheritKeyFrom: _indexDirName(type),
     );
-    if (ok) {
-      // Update the cache so subsequent reads are still fast.
-      _setCache(type, List<MediaItem>.from(items));
-    } else {
-      // Write failed – invalidate so next read fetches fresh data.
-      _invalidateCache(type);
-    }
-    return ok;
+    // writePod throws on failure (handled below), so reaching here is success.
+    // Update the cache so subsequent reads are still fast.
+    _setCache(type, List<MediaItem>.from(items));
+    return true;
   } catch (e) {
     debugPrint('MediaPodService._writeIndex error: $e');
     _invalidateCache(type);

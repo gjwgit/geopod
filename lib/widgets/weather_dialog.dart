@@ -214,7 +214,7 @@ class _WeatherDialogState extends State<WeatherDialog>
     return AlertDialog(
       title: Row(
         children: [
-          const Icon(Icons.cloud_outlined),
+          const Icon(Icons.wb_sunny_outlined),
           const SizedBox(width: 8),
           const Text('Weather Info'),
           const Spacer(),

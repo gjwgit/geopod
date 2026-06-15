@@ -16,7 +16,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import 'package:http/http.dart' as http;
 import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/models/place.dart';
@@ -92,32 +91,17 @@ Future<bool> writeIndividualPlaceFile(Place place) async {
 
 /// Delete an individual place file.
 ///
-/// NOTE: still uses the raw HTTP path. solidpod's [deleteResource] requires a
-/// (currently non-exported) ResourceContentType argument and throws on 404,
-/// whereas here a missing file is treated as success. Convert to
-/// [deleteResource] once solidpod exports ResourceContentType (same follow-up
-/// as the media-upload MIME work).
+/// A missing file is treated as success: solidpod's [deleteResource] throws on
+/// 404, so the file's existence is checked first via [checkResourceStatus].
 
 Future<bool> deleteIndividualPlaceFile(String placeId) async {
   try {
     final fp = await getIndividualPlaceFilePath(placeId);
     final url = await getFileUrl(fp);
-    final (:accessToken, :dPopToken) = await getTokensForResource(
-      url,
-      'DELETE',
-    );
-    final r = await http.delete(
-      Uri.parse(url),
-      headers: {
-        'Accept': '*/*',
-        'Authorization': 'DPoP $accessToken',
-        'Connection': 'keep-alive',
-        'DPoP': dPopToken,
-      },
-    );
-
-    // 404 means file doesn't exist, which is fine.
-    return r.statusCode >= 200 && r.statusCode < 300 || r.statusCode == 404;
+    final status = await checkResourceStatus(url, isFile: true);
+    if (status == ResourceStatus.notExist) return true;
+    await deleteResource(url, ResourceContentType.any);
+    return true;
   } catch (_) {
     return false;
   }

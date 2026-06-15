@@ -13,50 +13,12 @@
 
 library;
 
-import 'package:solid_auth/solid_auth.dart' show DpopTokenGenerator;
 import 'package:solidpod/solidpod.dart' show AuthDataManager, authStateNotifier;
-
-/// Authentication token pair for POD requests.
-
-typedef TokenPair = ({String accessToken, String dPopToken});
 
 /// Provides authentication utilities for POD access.
 
 class PodAuth {
   PodAuth._();
-
-  /// Get access token and DPoP token for a resource URL.
-  ///
-  /// [resourceUrl] - The URL of the resource to access.
-  /// [method] - HTTP method (GET, PUT, POST, DELETE).
-
-  static Future<TokenPair> getTokens(String resourceUrl, String method) async {
-    final authData = await AuthDataManager.loadAuthData();
-    if (authData == null) {
-      throw Exception('Not authenticated - please log in first');
-    }
-
-    // solid_auth 1.0.2: SolidAuthData is a typed object (was a Map), and the
-    // DPoP proof is generated via DpopTokenGenerator. The proof must be signed
-    // by the same key bound at login, so we use the live SolidAuthManager's
-    // keyManager (exposed by solidpod's AuthDataManager) rather than the
-    // default singleton, whose thumbprint the server would reject.
-    final accessToken = authData.accessToken;
-
-    final authManager = AuthDataManager.getAuthManager();
-    if (authManager == null) {
-      throw Exception('Not authenticated - please log in first');
-    }
-
-    final dPopToken = await DpopTokenGenerator.generateForRequest(
-      endpointUrl: resourceUrl,
-      httpMethod: method,
-      accessToken: accessToken,
-      keyManager: authManager.keyManager,
-    );
-
-    return (accessToken: accessToken, dPopToken: dPopToken);
-  }
 
   /// Get the current user's WebID.
 

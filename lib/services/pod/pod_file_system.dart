@@ -13,10 +13,13 @@
 
 library;
 
+import 'dart:convert' show utf8;
+
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import 'package:solidpod/solidpod.dart';
+
 import 'package:geopod/services/pod/pod_auth.dart';
-import 'package:geopod/services/pod/pod_http.dart';
 import 'package:geopod/services/pod/pod_path.dart';
 
 /// Result of a file operation.
@@ -37,7 +40,8 @@ class FileOperationResult {
 
 /// High-level POD file system operations.
 ///
-/// Provides simple read/write operations without encryption.
+/// Provides simple read/write operations without encryption, layered over
+/// solidpod's REST helpers (which handle DPoP/auth internally).
 
 class PodFileSystem {
   PodFileSystem._();
@@ -47,9 +51,9 @@ class PodFileSystem {
   /// [relativePath] - Path relative to the data directory.
   /// Example: `places/places.json`
   ///
-  /// [silentOnNotFound] - When `true`, suppresses the debug log for 404
-  /// responses.  Use this when the file is expected to not exist yet (e.g. an
-  /// index file before any items have been uploaded).
+  /// [silentOnNotFound] - retained for API compatibility. solidpod's
+  /// getResource throws when a resource is missing; that is caught below and
+  /// reported as null, with the log suppressed when this flag is set.
   ///
   /// Returns the file content as a string, or `null` when the file is not
   /// found, the user is not logged in, or any other error occurs.
@@ -65,25 +69,12 @@ class PodFileSystem {
 
     try {
       final url = await PodPath.getFileUrl(relativePath);
-      final response = await PodHttp.get(url, accept: PodContentType.any);
-
-      if (response.isSuccess) {
-        return response.body;
-      } else if (response.isNotFound) {
-        if (!silentOnNotFound) {
-          debugPrint(
-            'PodFileSystem.readFile() - file not found: $relativePath',
-          );
-        }
-        return null;
-      } else {
-        debugPrint(
-          'PodFileSystem.readFile() - error ${response.statusCode}: ${response.body}',
-        );
-        return null;
-      }
+      final bytes = await getResource(url);
+      return utf8.decode(bytes);
     } catch (e) {
-      debugPrint('PodFileSystem.readFile() - exception: $e');
+      if (!silentOnNotFound) {
+        debugPrint('PodFileSystem.readFile() - $relativePath: $e');
+      }
       return null;
     }
   }
@@ -92,7 +83,8 @@ class PodFileSystem {
   ///
   /// [relativePath] - Path relative to the data directory.
   /// [content] - Content to write.
-  /// [contentType] - MIME type of the content.
+  /// [contentType] - MIME type of the content (defaults to auto-detection
+  /// from the file extension).
   /// [createParentDirs] - Whether to create parent directories if missing.
   ///
   /// Returns true if write was successful.
@@ -100,7 +92,7 @@ class PodFileSystem {
   static Future<bool> writeFile(
     String relativePath,
     String content, {
-    PodContentType contentType = PodContentType.json,
+    ResourceContentType contentType = ResourceContentType.auto,
     bool createParentDirs = true,
   }) async {
     if (!await PodAuth.isLoggedIn()) {
@@ -120,20 +112,10 @@ class PodFileSystem {
         await _ensureDirectoryExists(parentPath);
       }
 
-      final response = await PodHttp.put(
-        url,
-        content,
-        contentType: contentType,
-      );
-
-      if (response.isSuccess) {
-        return true;
-      } else {
-        debugPrint(
-          'PodFileSystem.writeFile() - error ${response.statusCode}: ${response.body}',
-        );
-        return false;
-      }
+      // createResource PUTs the content (replacing any existing file) with
+      // DPoP handled by solidpod, and throws on failure.
+      await createResource(url, content: content, contentType: contentType);
+      return true;
     } catch (e) {
       debugPrint('PodFileSystem.writeFile() - exception: $e');
       return false;
@@ -144,7 +126,8 @@ class PodFileSystem {
   ///
   /// [relativePath] - Path relative to the data directory.
   ///
-  /// Returns true if deletion was successful.
+  /// Returns true if deletion was successful (a missing file counts as
+  /// success).
 
   static Future<bool> deleteFile(String relativePath) async {
     if (!await PodAuth.isLoggedIn()) {
@@ -154,16 +137,11 @@ class PodFileSystem {
 
     try {
       final url = await PodPath.getFileUrl(relativePath);
-      final response = await PodHttp.delete(url);
-
-      if (response.isSuccess || response.isNotFound) {
-        return true;
-      } else {
-        debugPrint(
-          'PodFileSystem.deleteFile() - error ${response.statusCode}: ${response.body}',
-        );
-        return false;
-      }
+      // A missing file is an acceptable outcome, so only delete when present.
+      final status = await checkResourceStatus(url, isFile: true);
+      if (status == ResourceStatus.notExist) return true;
+      await deleteResource(url, ResourceContentType.any);
+      return true;
     } catch (e) {
       debugPrint('PodFileSystem.deleteFile() - exception: $e');
       return false;
@@ -181,7 +159,7 @@ class PodFileSystem {
 
     try {
       final url = await PodPath.getFileUrl(relativePath);
-      final status = await PodHttp.checkStatus(url);
+      final status = await checkResourceStatus(url, isFile: true);
       return status == ResourceStatus.exist;
     } catch (e) {
       debugPrint('PodFileSystem.fileExists() - exception: $e');
@@ -200,7 +178,7 @@ class PodFileSystem {
 
     try {
       final url = await PodPath.getDirUrl(relativePath);
-      final status = await PodHttp.checkStatus(url);
+      final status = await checkResourceStatus(url, isFile: false);
       return status == ResourceStatus.exist;
     } catch (e) {
       debugPrint('PodFileSystem.directoryExists() - exception: $e');
@@ -228,7 +206,8 @@ class PodFileSystem {
     }
   }
 
-  /// Ensure a directory exists, creating it and any parent directories if needed.
+  /// Ensure a directory exists, creating it and any parent directories if
+  /// needed.
 
   static Future<bool> _ensureDirectoryExists(String dirPath) async {
     // Split path into parts and create each level.
@@ -239,31 +218,16 @@ class PodFileSystem {
       currentPath += '${parts[i]}/';
 
       final url = await _getAbsoluteUrl(currentPath);
-      final status = await PodHttp.checkStatus(url);
+      final status = await checkResourceStatus(url, isFile: false);
 
       if (status == ResourceStatus.notExist) {
-        // Get parent URL and create this directory.
-        final parentPath = i == 0 ? '' : '${parts.sublist(0, i).join('/')}/';
-        final parentUrl = await _getAbsoluteUrl(
-          parentPath.isEmpty ? '' : parentPath,
+        // createResource with isFile:false POSTs a new container; the URL must
+        // end with "/" and the content type must be directory.
+        await createResource(
+          url,
+          isFile: false,
+          contentType: ResourceContentType.directory,
         );
-        final actualParentUrl = parentPath.isEmpty
-            ? (await PodAuth.getPodBaseUrl())!
-            : parentUrl;
-
-        final response = await PodHttp.post(
-          actualParentUrl,
-          parts[i],
-          '',
-          isDirectory: true,
-        );
-
-        if (!response.isSuccess) {
-          debugPrint(
-            'PodFileSystem._ensureDirectoryExists() - failed to create: $currentPath',
-          );
-          return false;
-        }
         debugPrint(
           'PodFileSystem._ensureDirectoryExists() - created: $currentPath',
         );

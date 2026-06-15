@@ -20,7 +20,14 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'package:solidpod/solidpod.dart'
-    show readPod, writePod, setInheritKeyDir, SolidFunctionCallStatus;
+    show
+        readPod,
+        writePod,
+        setInheritKeyDir,
+        createResource,
+        getResource,
+        ResourceContentType,
+        SolidFunctionCallStatus;
 import 'package:uuid/uuid.dart';
 
 import 'package:geopod/models/media_item.dart';
@@ -28,7 +35,6 @@ import 'package:geopod/services/media/media_pod_paths.dart';
 import 'package:geopod/services/pod/pod_auth.dart';
 import 'package:geopod/services/pod/pod_directory_service.dart';
 import 'package:geopod/services/pod/pod_file_system.dart';
-import 'package:geopod/services/pod/pod_http.dart';
 import 'package:geopod/services/pod/pod_path.dart';
 import 'package:geopod/utils/platform_io.dart'
     if (dart.library.html) 'package:geopod/utils/platform_web.dart';

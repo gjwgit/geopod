@@ -20,12 +20,7 @@ export 'pod_auth.dart';
 
 export 'pod_path.dart';
 
-// HTTP client.
-
-export 'pod_http.dart'
-    show PodResponse, ResourceStatus, PodContentType, PodHttp;
-
-// High-level file system API.
+// High-level file system API (layered over solidpod's REST helpers).
 
 export 'pod_file_system.dart';
 

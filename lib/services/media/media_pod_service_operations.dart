@@ -83,15 +83,20 @@ Future<MediaItem?> _uploadItem({
       uploadOk = false;
     }
   } else {
-    // Raw binary PUT.
-    final mimeType = mimeTypeForFilename(filename);
+    // Raw binary upload. createResource with auto content-type detects the
+    // MIME from the file extension (matching mimeTypeForFilename) and PUTs the
+    // bytes with DPoP handled by solidpod; it throws on failure.
     final url = await PodPath.getFileUrl(relPath);
-    final response = await PodHttp.putBinary(url, bytes, mimeType);
-    uploadOk = response.isSuccess;
-    if (!uploadOk) {
-      debugPrint(
-        'MediaPodService.uploadItem putBinary failed: ${response.statusCode} ${response.body}',
+    try {
+      await createResource(
+        url,
+        content: bytes,
+        contentType: ResourceContentType.auto,
       );
+      uploadOk = true;
+    } catch (e) {
+      debugPrint('MediaPodService.uploadItem createResource failed: $e');
+      uploadOk = false;
     }
   }
 
@@ -172,9 +177,15 @@ Future<String?> _loadPlaybackUrl(MediaItem item) async {
       return null;
     }
   } else {
-    // Download raw bytes with auth headers.
+    // Download raw bytes. getResource handles DPoP/auth via solidpod and
+    // returns the bytes, throwing if the resource is missing.
     final url = await PodPath.getFileUrl(relPath);
-    bytes = await PodHttp.getBytes(url);
+    try {
+      bytes = await getResource(url);
+    } catch (e) {
+      debugPrint('MediaPodService.loadPlaybackUrl: download error: $e');
+      bytes = null;
+    }
   }
 
   if (bytes == null) return null;

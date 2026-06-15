@@ -42,7 +42,7 @@ Future<void> _ensureIndexFile(MediaType type) async {
   await PodFileSystem.writeFile(
     path,
     '[]',
-    contentType: PodContentType.json,
+    contentType: ResourceContentType.auto,
     createParentDirs: false,
   );
 }
@@ -148,7 +148,7 @@ Future<bool> _writeIndex(MediaType type, List<MediaItem> items) async {
     final ok = await PodFileSystem.writeFile(
       _indexPath(type),
       content,
-      contentType: PodContentType.json,
+      contentType: ResourceContentType.auto,
       createParentDirs: false,
     );
     if (ok) {

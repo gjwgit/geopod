@@ -15,7 +15,15 @@ library;
 
 import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 
-import 'package:http/http.dart' as http;
+import 'package:solidpod/solidpod.dart'
+    show
+        AccessFailedException,
+        AccessForbiddenException,
+        ResourceContentType,
+        ResourceStatus,
+        checkResourceStatus,
+        deleteResource,
+        getResourcesInContainer;
 
 import 'package:geopod/models/pod_file_item.dart';
 import 'package:geopod/services/pod/pod.dart';
@@ -122,46 +130,25 @@ class PodDirectoryService {
         dirUrl = '$dirUrl/';
       }
 
-      // Get authentication tokens.
-      final tokens = await PodAuth.getTokens(dirUrl, 'GET');
-
-      // Make the request with proper headers (matching solidpod's implementation).
-      // Cache-Control and Pragma headers instruct the browser (Flutter Web) and
-      // any intermediate proxy NOT to serve a cached copy.  Without these, the
-      // browser's HTTP cache will return a stale directory listing even when
-      // forceRefresh is true, making the refresh button appear broken.
-      final response = await http.get(
-        Uri.parse(dirUrl),
-        headers: <String, String>{
-          'Accept': '*/*',
-          'Authorization': 'DPoP ${tokens.accessToken}',
-          'Connection': 'keep-alive',
-          'DPoP': tokens.dPopToken,
-          'Cache-Control': 'no-cache, no-store',
-          'Pragma': 'no-cache',
-        },
-      );
-
-      if (response.statusCode == 404) {
-        // Directory doesn't exist.
-        debugPrint('PodDirectoryService: Directory not found');
+      // getResourcesInContainer handles DPoP/auth via solidpod and parses the
+      // Turtle listing into subdirectory and file name lists. It throws
+      // AccessForbiddenException on 403 and AccessFailedException otherwise
+      // (including 404 for a missing container, which we treat as empty).
+      late final ({List<String> subDirs, List<String> files}) listing;
+      try {
+        listing = await getResourcesInContainer(dirUrl);
+      } on AccessForbiddenException {
+        debugPrint('PodDirectoryService: Access forbidden');
+        throw Exception('Access denied to this directory');
+      } on AccessFailedException catch (e) {
+        // A missing container is a normal "empty" result rather than an error.
+        debugPrint(
+          'PodDirectoryService: listing failed (treating as empty): $e',
+        );
         return [];
       }
 
-      if (response.statusCode == 403) {
-        debugPrint('PodDirectoryService: Access forbidden');
-        throw Exception('Access denied to this directory');
-      }
-
-      if (response.statusCode != 200) {
-        debugPrint(
-          'PodDirectoryService: Failed with status ${response.statusCode}',
-        );
-        throw Exception('Failed to list directory: ${response.statusCode}');
-      }
-
-      // Parse the Turtle/RDF response to extract file list.
-      final items = _parseTurtleResponse(response.body, relativePath);
+      final items = _buildItems(listing, relativePath);
 
       // Update cache.
 
@@ -174,52 +161,30 @@ class PodDirectoryService {
     }
   }
 
-  /// Parse Turtle/RDF response to extract file and directory items.
-  /// Uses the same heuristic as solidpod's _parseGetContainerResponse.
+  /// Build sorted [PodFileItem]s from solidpod's container listing, applying
+  /// the same ACL/meta filtering and directories-first ordering as before.
 
-  static List<PodFileItem> _parseTurtleResponse(
-    String responseBody,
+  static List<PodFileItem> _buildItems(
+    ({List<String> subDirs, List<String> files}) listing,
     String basePath,
   ) {
     final items = <PodFileItem>[];
-    final re = RegExp(
-      '^<[^>]+>',
-    ); // starts with <, ends with >, no > in between
 
-    final lines = responseBody.split('\n');
-    for (final line in lines) {
-      if (line.startsWith('<') && !line.startsWith('<>')) {
-        if (line.contains('ldp:Resource')) {
-          final nameMatch = re.firstMatch(line)?.group(0);
-          if (nameMatch == null) continue;
-
-          final isDirectory = line.contains('ldp:Container');
-
-          // Extract name: <NAME/> for dirs, <NAME> for files.
-
-          String name;
-          if (isDirectory) {
-            // Remove < and />
-            name = nameMatch.substring(1, nameMatch.length - 2);
-          } else {
-            // Remove < and >
-            name = nameMatch.substring(1, nameMatch.length - 1);
-          }
-
-          // Skip ACL and meta files.
-
-          if (name.endsWith('.acl') || name.endsWith('.meta')) {
-            continue;
-          }
-
-          // Build relative path.
-          final itemPath = basePath.isEmpty ? name : '$basePath/$name';
-
-          items.add(
-            PodFileItem(name: name, path: itemPath, isDirectory: isDirectory),
-          );
-        }
+    void add(String name, {required bool isDirectory}) {
+      if (name.isEmpty || name.endsWith('.acl') || name.endsWith('.meta')) {
+        return;
       }
+      final itemPath = basePath.isEmpty ? name : '$basePath/$name';
+      items.add(
+        PodFileItem(name: name, path: itemPath, isDirectory: isDirectory),
+      );
+    }
+
+    for (final d in listing.subDirs) {
+      add(d, isDirectory: true);
+    }
+    for (final f in listing.files) {
+      add(f, isDirectory: false);
     }
 
     // Sort: directories first, then files alphabetically.
@@ -309,21 +274,28 @@ class PodDirectoryService {
         }),
       );
 
-      // Delete the (now-empty) container itself via a DELETE on its URL.
+      // Delete the (now-empty) container itself. deleteResource handles
+      // DPoP/auth via solidpod and throws on failure; a missing container is
+      // treated as already-gone via a status pre-check.
       final dirUrl = await PodPath.getDirUrl(relativePath);
-      final response = await PodHttp.delete(dirUrl);
-      final containerGone = response.isSuccess || response.isNotFound;
+      var containerGone = true;
+      try {
+        final status = await checkResourceStatus(dirUrl, isFile: false);
+        if (status != ResourceStatus.notExist) {
+          await deleteResource(dirUrl, ResourceContentType.directory);
+        }
+      } catch (e) {
+        containerGone = false;
+        debugPrint(
+          'PodDirectoryService.deleteDirectoryRecursive: '
+          'container delete failed ($e) – $relativePath',
+        );
+      }
 
       // Evict from local cache regardless of server response.
       _cache.remove(relativePath);
       invalidateCache(relativePath);
 
-      if (!containerGone) {
-        debugPrint(
-          'PodDirectoryService.deleteDirectoryRecursive: '
-          'container delete failed (${response.statusCode}) – $relativePath',
-        );
-      }
       return containerGone;
     } catch (e) {
       debugPrint('PodDirectoryService.deleteDirectoryRecursive error: $e');

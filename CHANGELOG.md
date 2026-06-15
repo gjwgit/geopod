@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Use solidpod API rather than DPoP + raw HTTP [1.0.1 20260615 gjw]
 + Use solid_auth 1.0.0 for improved key management [1.0.0 20260615 gjw]
 
 ## 0.1 Sharing

@@ -50,17 +50,10 @@ Future<String?> readPlacesJsonFile() async {
   try {
     final fp = await getPlacesFilePath();
     final url = await getFileUrl(fp);
-    final (:accessToken, :dPopToken) = await getTokensForResource(url, 'GET');
-    final r = await http.get(
-      Uri.parse(url),
-      headers: {
-        'Accept': 'application/json, */*',
-        'Authorization': 'DPoP $accessToken',
-        'Connection': 'keep-alive',
-        'DPoP': dPopToken,
-      },
-    );
-    return r.statusCode == 200 ? r.body : null;
+    // getResource handles DPoP/auth via solidpod; it throws when the file is
+    // absent, which the catch treats as "no places file yet".
+    final bytes = await getResource(url);
+    return utf8.decode(bytes);
   } catch (_) {
     return null;
   }
@@ -72,19 +65,11 @@ Future<bool> writePlacesJsonFile(String content) async {
   try {
     final fp = await getPlacesFilePath();
     final url = await getFileUrl(fp);
-    final (:accessToken, :dPopToken) = await getTokensForResource(url, 'PUT');
-    final r = await http.put(
-      Uri.parse(url),
-      headers: {
-        'Accept': '*/*',
-        'Authorization': 'DPoP $accessToken',
-        'Connection': 'keep-alive',
-        'Content-Type': 'application/json',
-        'DPoP': dPopToken,
-      },
-      body: content,
-    );
-    return r.statusCode >= 200 && r.statusCode < 300;
+    // createResource PUTs the content (replacing any existing file) with DPoP
+    // handled by solidpod, and throws on failure. Places data is round-tripped
+    // as JSON by geopod, so the stored content-type label is not significant.
+    await createResource(url, content: content);
+    return true;
   } catch (_) {
     return false;
   }
@@ -96,20 +81,9 @@ Future<bool> writeIndividualPlaceFile(Place place) async {
   try {
     final fp = await getIndividualPlaceFilePath(place.id);
     final url = await getFileUrl(fp);
-    final (:accessToken, :dPopToken) = await getTokensForResource(url, 'PUT');
-    final r = await http.put(
-      Uri.parse(url),
-      headers: {
-        'Accept': '*/*',
-        'Authorization': 'DPoP $accessToken',
-        'Connection': 'keep-alive',
-        'Content-Type': 'application/json',
-        'DPoP': dPopToken,
-      },
-      body: jsonEncode(place.toJson()),
-    );
-    debugPrint('Write individual place file: $fp, status: ${r.statusCode}');
-    return r.statusCode >= 200 && r.statusCode < 300;
+    await createResource(url, content: jsonEncode(place.toJson()));
+    debugPrint('Write individual place file: $fp');
+    return true;
   } catch (e) {
     debugPrint('Error writing individual place file: $e');
     return false;
@@ -117,6 +91,12 @@ Future<bool> writeIndividualPlaceFile(Place place) async {
 }
 
 /// Delete an individual place file.
+///
+/// NOTE: still uses the raw HTTP path. solidpod's [deleteResource] requires a
+/// (currently non-exported) ResourceContentType argument and throws on 404,
+/// whereas here a missing file is treated as success. Convert to
+/// [deleteResource] once solidpod exports ResourceContentType (same follow-up
+/// as the media-upload MIME work).
 
 Future<bool> deleteIndividualPlaceFile(String placeId) async {
   try {

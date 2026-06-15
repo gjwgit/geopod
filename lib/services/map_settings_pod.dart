@@ -16,7 +16,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solidpod/solidpod.dart';
 
@@ -47,19 +46,15 @@ Future<Map<String, dynamic>?> readSettingsFromPod() async {
 
     final fp = await getSettingsFilePath();
     final url = await getFileUrl(fp);
-    final (:accessToken, :dPopToken) = await getTokensForResource(url, 'GET');
-    final r = await http.get(
-      Uri.parse(url),
-      headers: {
-        'Accept': 'application/json, */*',
-        'Authorization': 'DPoP $accessToken',
-        'Connection': 'keep-alive',
-        'DPoP': dPopToken,
-      },
-    );
 
-    if (r.statusCode == 200 && r.body.trim().isNotEmpty) {
-      final decoded = jsonDecode(r.body);
+    // getResource handles DPoP/auth via solidpod and returns the raw bytes;
+    // it throws if the resource is missing, which the catch below treats as
+    // "no settings yet".
+    final bytes = await getResource(url);
+    final body = utf8.decode(bytes);
+
+    if (body.trim().isNotEmpty) {
+      final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic>) return decoded;
     }
     return null;
@@ -76,24 +71,16 @@ Future<bool> writeSettingsToPod(Map<String, dynamic> data) async {
   try {
     final fp = await getSettingsFilePath();
     final url = await getFileUrl(fp);
-    final (:accessToken, :dPopToken) = await getTokensForResource(url, 'PUT');
-    final r = await http.put(
-      Uri.parse(url),
-      headers: {
-        'Accept': '*/*',
-        'Authorization': 'DPoP $accessToken',
-        'Connection': 'keep-alive',
-        'Content-Type': 'application/json',
-        'DPoP': dPopToken,
-      },
-      body: jsonEncode(data),
-    );
-    final success = r.statusCode >= 200 && r.statusCode < 300;
-    if (success) {
-      PodDirectoryService.invalidateCache('data');
-      PodDirectoryService.notifyChange();
-    }
-    return success;
+
+    // createResource handles DPoP/auth via solidpod and PUTs the content,
+    // replacing any existing file. It throws on failure. The settings are
+    // round-tripped as JSON by geopod itself (see readSettingsFromPod), so
+    // the stored content-type label is not significant here.
+    await createResource(url, content: jsonEncode(data));
+
+    PodDirectoryService.invalidateCache('data');
+    PodDirectoryService.notifyChange();
+    return true;
   } catch (e) {
     debugPrint('Error writing settings to POD: $e');
     return false;

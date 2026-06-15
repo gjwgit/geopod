@@ -22,7 +22,6 @@ import 'package:solidpod/solidpod.dart' show authStateNotifier;
 import 'package:solidui/solidui.dart';
 
 import 'package:geopod/models/place.dart';
-import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/location_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/navigation_service.dart' show pendingNavTarget;
@@ -39,7 +38,6 @@ import 'package:geopod/widgets/map/geomap_core.dart' hide buildLoadingIndicator;
 import 'package:geopod/widgets/map/geomap_encrypted_places_loader.dart';
 import 'package:geopod/widgets/map/geomap_event_handlers.dart';
 import 'package:geopod/widgets/map/geomap_initialization.dart';
-import 'package:geopod/widgets/map/geomap_news_mixin.dart';
 import 'package:geopod/widgets/map/geomap_place_handlers.dart';
 import 'package:geopod/widgets/map/geomap_places_loader.dart';
 import 'package:geopod/widgets/map/geomap_settings.dart';
@@ -68,8 +66,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         GeoMapEventHandlers,
         GeoMapActionHandlers,
         GeoMapSettingsLoader,
-        GeoMapEncryptedPlacesLoader,
-        GeoMapNewsMixin {
+        GeoMapEncryptedPlacesLoader {
   // State variables implementation for mixins.
   @override
   final MapController mapController = MapController();
@@ -95,19 +92,11 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   bool initialAnimationComplete = false;
   @override
   bool isPostLoginRefresh = false;
-  @override
-  final GdeltNewsService newsService = GdeltNewsService();
 
   // Debounce timer for persisting the map viewport as the user pans/zooms, so
   // the position survives app exit even on desktop (where dispose/lifecycle
   // callbacks are unreliable on window close).
   Timer? _viewportSaveTimer;
-  @override
-  List<NewsMarker> newsMarkers = [];
-  @override
-  bool showNewsMarkers = false;
-  @override
-  bool isLoadingNews = false;
   @override
   LatLng initialCenter = const LatLng(defaultInitialLat, defaultInitialLng);
   @override
@@ -205,10 +194,9 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     }
   }
 
-  /// Map position changed: forward to the news handler, and (on user gestures)
-  /// debounce-save the viewport so it persists across sessions.
+  /// Map position changed: on user gestures, debounce-save the viewport so it
+  /// persists across sessions.
   void _onMapPositionChanged(MapCamera pos, bool gesture) {
-    onMapPositionChangedForNews(pos, gesture);
     if (!gesture) return;
     _viewportSaveTimer?.cancel();
     _viewportSaveTimer = Timer(const Duration(milliseconds: 600), () {
@@ -228,7 +216,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       mapSettings: mapSettings,
     );
     animationController.dispose();
-    newsService.dispose();
     authStateNotifier.removeListener(onAuthStateChanged);
     placesChangeNotifier.removeListener(onPlacesChanged);
     WidgetsBinding.instance.removeObserver(this);
@@ -514,8 +501,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             applyFilter: applyFilter,
             filteredMarkers: _filteredMarkers,
             shouldAnimate: !initialAnimationComplete || isPostLoginRefresh,
-            showNewsMarkers: showNewsMarkers,
-            visibleNewsMarkers: getVisibleNewsMarkersImpl(),
             onTap: (tp, ll) =>
                 _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude),
             onLongPress: (tp, ll) =>
@@ -541,12 +526,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                 SolidAuthHandler.instance.handleLogin(context);
               }
             },
-          ),
-          NewsOverlayButton(
-            isLoadingNews: isLoadingNews,
-            showNewsMarkers: showNewsMarkers,
-            visibleNewsCount: getVisibleNewsMarkersImpl().length,
-            onTap: toggleNewsMarkers,
           ),
 
           // Fullscreen toggle button.

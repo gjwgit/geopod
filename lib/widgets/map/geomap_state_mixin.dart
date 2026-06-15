@@ -18,7 +18,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'package:geopod/models/place.dart';
-import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 
@@ -43,13 +42,6 @@ mixin GeoMapStateMixin {
   set initialAnimationComplete(bool value);
   bool get isPostLoginRefresh;
   set isPostLoginRefresh(bool value);
-  GdeltNewsService get newsService;
-  List<NewsMarker> get newsMarkers;
-  set newsMarkers(List<NewsMarker> value);
-  bool get showNewsMarkers;
-  set showNewsMarkers(bool value);
-  bool get isLoadingNews;
-  set isLoadingNews(bool value);
   LatLng get initialCenter;
   set initialCenter(LatLng value);
   double get initialZoom;

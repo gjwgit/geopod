@@ -15,11 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:geopod/services/gdelt_news_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/widgets/map/map_tile_layer.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
-import 'package:geopod/widgets/map/news_marker_layer.dart';
 import 'package:geopod/widgets/map/places_marker_layer.dart';
 import 'package:geopod/widgets/map/user_location_marker_layer.dart';
 
@@ -37,8 +35,6 @@ Widget buildFlutterMapWidget({
   required bool applyFilter,
   required List<MarkerData> filteredMarkers,
   required bool shouldAnimate,
-  required bool showNewsMarkers,
-  required List<NewsMarker> visibleNewsMarkers,
   required void Function(TapPosition, LatLng) onTap,
   required void Function(TapPosition, LatLng) onLongPress,
   required void Function(MapCamera, bool) onPositionChanged,
@@ -92,11 +88,6 @@ Widget buildFlutterMapWidget({
             onDelete: onDeletePlace,
             onEdit: onEditPlace,
           ),
-          if (showNewsMarkers)
-            buildNewsMarkerLayer(
-              context: context,
-              newsMarkers: visibleNewsMarkers,
-            ),
 
           // User location marker layer (always on top)
           ...() {

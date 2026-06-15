@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Remove NEWS feature - gdelt no longer accessible [1.0.8 20260615 gjw]
 + Remove FILES menu - not required [1.0.7 20260615 gjw]
 + Ensure all locations and media is encrypted [1.0.6 20260615 gjw]
 + All settings saved locally on devince, not in pod [1.0.5 20260615 gjw]

@@ -97,6 +97,11 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   bool isPostLoginRefresh = false;
   @override
   final GdeltNewsService newsService = GdeltNewsService();
+
+  // Debounce timer for persisting the map viewport as the user pans/zooms, so
+  // the position survives app exit even on desktop (where dispose/lifecycle
+  // callbacks are unreliable on window close).
+  Timer? _viewportSaveTimer;
   @override
   List<NewsMarker> newsMarkers = [];
   @override
@@ -200,9 +205,24 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     }
   }
 
+  /// Map position changed: forward to the news handler, and (on user gestures)
+  /// debounce-save the viewport so it persists across sessions.
+  void _onMapPositionChanged(MapCamera pos, bool gesture) {
+    onMapPositionChangedForNews(pos, gesture);
+    if (!gesture) return;
+    _viewportSaveTimer?.cancel();
+    _viewportSaveTimer = Timer(const Duration(milliseconds: 600), () {
+      saveViewportIfEnabled(
+        mapController: mapController,
+        mapSettings: mapSettings,
+      );
+    });
+  }
+
   @override
   void dispose() {
     pendingNavTarget.removeListener(_consumePendingNavTarget);
+    _viewportSaveTimer?.cancel();
     saveViewportIfEnabled(
       mapController: mapController,
       mapSettings: mapSettings,
@@ -500,7 +520,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
                 _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude),
             onLongPress: (tp, ll) =>
                 _showAddPlaceDialog(lat: ll.latitude, lng: ll.longitude),
-            onPositionChanged: onMapPositionChangedForNews,
+            onPositionChanged: _onMapPositionChanged,
             onDeletePlace: _confirmAndDeletePlace,
             onEditPlace: _editPlaceFromMap,
             context: context,

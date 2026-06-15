@@ -25,8 +25,6 @@
 
 library;
 
-import 'dart:async' show unawaited;
-
 import 'package:flutter/material.dart';
 
 import 'package:solidpod/solidpod.dart' show authStateNotifier;
@@ -75,14 +73,9 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late double _initialZoom;
   bool _isLoadingEncrypted = false;
 
-  // Snapshot of initial settings to detect actual changes.
-
-  late MapSettings _initialSnapshot;
-
   @override
   void initState() {
     super.initState();
-    _initialSnapshot = widget.currentSettings;
     _showLocalPlaces = widget.currentSettings.showLocalPlaces;
     _showEncryptedPlaces = widget.currentSettings.showEncryptedPlaces;
     _hideAllMarkers = widget.currentSettings.hideAllMarkers;
@@ -94,22 +87,6 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     _initialLat = widget.currentSettings.initialLat;
     _initialLng = widget.currentSettings.initialLng;
     _initialZoom = widget.currentSettings.initialZoom;
-  }
-
-  /// Check if current settings differ from initial snapshot.
-
-  bool _hasActualChanges() {
-    return _showLocalPlaces != _initialSnapshot.showLocalPlaces ||
-        _showEncryptedPlaces != _initialSnapshot.showEncryptedPlaces ||
-        _hideAllMarkers != _initialSnapshot.hideAllMarkers ||
-        _userPlacesColor != _initialSnapshot.userPlacesColor ||
-        _localPlacesColor != _initialSnapshot.localPlacesColor ||
-        _encryptedPlacesColor != _initialSnapshot.encryptedPlacesColor ||
-        _mapSource != _initialSnapshot.mapSource ||
-        _rememberViewport != _initialSnapshot.rememberViewport ||
-        _initialLat != _initialSnapshot.initialLat ||
-        _initialLng != _initialSnapshot.initialLng ||
-        _initialZoom != _initialSnapshot.initialZoom;
   }
 
   /// Saves current settings and notifies parent.
@@ -291,12 +268,6 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
         ElevatedButton(
           onPressed: () {
             Navigator.pop(context);
-
-            // Only sync to POD if there were actual changes.
-
-            if (_hasActualChanges()) {
-              unawaited(MapSettingsService.syncToPod());
-            }
           },
           child: const Text('Done'),
         ),

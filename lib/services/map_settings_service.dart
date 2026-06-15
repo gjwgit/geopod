@@ -25,18 +25,15 @@
 
 library;
 
-import 'dart:async' show unawaited;
-
 import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:solidpod/solidpod.dart' show authStateNotifier;
 
-import 'package:geopod/services/map_settings_pod.dart';
 import 'package:geopod/services/map_source.dart';
+import 'package:geopod/services/map_viewport_store.dart';
 
-export 'package:geopod/services/map_settings_pod.dart' show ViewportPosition;
 export 'package:geopod/services/map_source.dart';
+export 'package:geopod/services/map_viewport_store.dart' show ViewportPosition;
 
 /// Keys for SharedPreferences storage.
 
@@ -158,56 +155,6 @@ class MapSettings {
 /// Service for loading and saving map display settings.
 
 class MapSettingsService {
-  /// Convert MapSettings to JSON map.
-  static Map<String, dynamic> _settingsToJson(MapSettings settings) {
-    return {
-      'showLocalPlaces': settings.showLocalPlaces,
-      'showEncryptedPlaces': settings.showEncryptedPlaces,
-      'hideAllMarkers': settings.hideAllMarkers,
-      'userPlacesColor': settings.userPlacesColor.toARGB32(),
-      'localPlacesColor': settings.localPlacesColor.toARGB32(),
-      'encryptedPlacesColor': settings.encryptedPlacesColor.toARGB32(),
-      'mapSource': settings.mapSource.index,
-      'rememberViewport': settings.rememberViewport,
-      'initialLat': settings.initialLat,
-      'initialLng': settings.initialLng,
-      'initialZoom': settings.initialZoom,
-    };
-  }
-
-  /// Create MapSettings from JSON map.
-
-  static MapSettings _settingsFromJson(Map<String, dynamic> json) {
-    final savedSourceIndex = json['mapSource'] as int?;
-    final mapSource =
-        savedSourceIndex != null &&
-            savedSourceIndex >= 0 &&
-            savedSourceIndex < MapSource.values.length
-        ? MapSource.values[savedSourceIndex]
-        : MapSettings.getDefaultMapSource();
-
-    return MapSettings(
-      showLocalPlaces: json['showLocalPlaces'] as bool? ?? true,
-      showEncryptedPlaces: json['showEncryptedPlaces'] as bool? ?? false,
-      hideAllMarkers: json['hideAllMarkers'] as bool? ?? false,
-      userPlacesColor: json['userPlacesColor'] != null
-          ? Color(json['userPlacesColor'] as int)
-          : defaultUserColor,
-      localPlacesColor: json['localPlacesColor'] != null
-          ? Color(json['localPlacesColor'] as int)
-          : defaultLocalColor,
-      encryptedPlacesColor: json['encryptedPlacesColor'] != null
-          ? Color(json['encryptedPlacesColor'] as int)
-          : defaultEncryptedColor,
-      mapSource: mapSource,
-      rememberViewport: json['rememberViewport'] as bool? ?? true,
-      initialLat: (json['initialLat'] as num?)?.toDouble() ?? defaultInitialLat,
-      initialLng: (json['initialLng'] as num?)?.toDouble() ?? defaultInitialLng,
-      initialZoom:
-          (json['initialZoom'] as num?)?.toDouble() ?? defaultInitialZoom,
-    );
-  }
-
   /// Save settings to SharedPreferences.
 
   static Future<void> _saveToPrefs(MapSettings settings) async {
@@ -276,21 +223,10 @@ class MapSettingsService {
     );
   }
 
-  /// Check if we have cached settings in SharedPreferences.
-
-  static Future<bool> _hasLocalCache() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    // Check if any setting key exists (mapSource is always saved)
-    return prefs.containsKey(_keyMapSource);
-  }
-
-  /// Loads settings from SharedPreferences (fast, non-blocking).
-  /// POD sync is done separately via syncFromPod().
+  /// Loads settings from SharedPreferences.
 
   static Future<MapSettings> loadSettings() async {
     try {
-      // Always load from SharedPreferences first (fast, no network)
       return await _loadFromPrefs();
     } catch (e) {
       debugPrint('Error loading settings: $e');
@@ -298,66 +234,31 @@ class MapSettingsService {
     }
   }
 
-  /// Smart load: if no local cache, try POD first (for first login).
-  /// Otherwise load from local cache (fast).
+  /// Load settings from local cache (SharedPreferences).
+  ///
+  /// Map settings are device-local only (not synced to the POD), so this is
+  /// equivalent to [loadSettings]; kept for call-site compatibility.
 
   static Future<MapSettings> loadSettingsSmart() async {
     try {
-      // Check if we have local cache.
-      if (await _hasLocalCache()) {
-        debugPrint('loadSettingsSmart: using local cache');
-        return await _loadFromPrefs();
-      }
-
-      // No local cache - only try POD if logged in.
-
-      if (authStateNotifier.value) {
-        debugPrint('loadSettingsSmart: no local cache, trying POD...');
-        final podData = await readSettingsFromPod();
-        if (podData != null) {
-          debugPrint('loadSettingsSmart: loaded from POD');
-          final settings = _settingsFromJson(podData);
-
-          // Save to local cache.
-          await _saveToPrefs(settings);
-          return settings;
-        }
-        debugPrint('loadSettingsSmart: POD empty, using defaults');
-      } else {
-        debugPrint('loadSettingsSmart: not logged in, using defaults');
-      }
-
-      // Use defaults.
-      return MapSettings(mapSource: MapSettings.getDefaultMapSource());
+      return await _loadFromPrefs();
     } catch (e) {
       debugPrint('Error in loadSettingsSmart: $e');
       return MapSettings(mapSource: MapSettings.getDefaultMapSource());
     }
   }
 
-  /// Saves settings to SharedPreferences only (fast, no network).
-  /// POD sync is done separately via syncToPod() when needed.
+  /// Saves settings to SharedPreferences.
+  ///
+  /// Map settings are device-local preferences and are intentionally not
+  /// synced to the POD.
 
   static Future<bool> saveSettings(MapSettings settings) async {
     try {
-      // Save to SharedPreferences only (fast, no blocking)
       await _saveToPrefs(settings);
       return true;
     } catch (e) {
       debugPrint('Error saving settings: $e');
-      return false;
-    }
-  }
-
-  /// Manually sync current settings to POD.
-  /// Call this when user closes settings dialog or at app exit.
-
-  static Future<bool> syncToPod() async {
-    try {
-      final settings = await _loadFromPrefs();
-      return await writeSettingsToPod(_settingsToJson(settings));
-    } catch (e) {
-      debugPrint('Error syncing settings to POD: $e');
       return false;
     }
   }
@@ -397,97 +298,20 @@ class MapSettingsService {
       await prefs.remove(keyLastLng);
       await prefs.remove(keyLastZoom);
 
-      // Write default settings to POD (not empty object)
-      final defaultSettings = MapSettings(
-        mapSource: MapSettings.getDefaultMapSource(),
-      );
-      unawaited(
-        writeSettingsToPod(_settingsToJson(defaultSettings)).then((success) {
-          debugPrint('resetToDefaults: POD sync ${success ? 'ok' : 'failed'}');
-        }),
-      );
-
       return true;
     } catch (_) {
       return false;
     }
   }
-
-  /// Sync settings from POD to local (background, non-blocking).
-  /// Call this after login to ensure local settings match POD.
-  /// Returns the synced settings if POD has data, null otherwise.
-
-  static Future<MapSettings?> syncFromPod() async {
-    // CRITICAL: Only sync if logged in.
-    if (!authStateNotifier.value) {
-      debugPrint('syncFromPod: skipped (not logged in)');
-      return null;
-    }
-
-    try {
-      final podData = await readSettingsFromPod();
-      if (podData != null) {
-        debugPrint('syncFromPod: updating local with POD settings');
-        final settings = _settingsFromJson(podData);
-        await _saveToPrefs(settings);
-        return settings;
-      } else {
-        // POD has no settings, upload local settings to POD.
-        debugPrint('syncFromPod: POD empty, uploading local settings');
-        final localSettings = await _loadFromPrefs();
-        unawaited(writeSettingsToPod(_settingsToJson(localSettings)));
-        return null;
-      }
-    } catch (e) {
-      debugPrint('Error syncing from POD: $e');
-      return null;
-    }
-  }
-
-  /// Start background sync from POD.
-  /// This is non-blocking and updates settings silently.
-  /// [onSettingsUpdated] is called if POD has newer settings.
-
-  static void startBackgroundSync({
-    void Function(MapSettings)? onSettingsUpdated,
-  }) {
-    unawaited(
-      syncFromPod().then((settings) {
-        if (settings != null && onSettingsUpdated != null) {
-          debugPrint('startBackgroundSync: settings updated from POD');
-          onSettingsUpdated(settings);
-        }
-      }),
-    );
-  }
 }
 
 /// Preloads map settings in the background to warm up cache.
 /// Call this on app startup to make settings instantly available.
-/// Uses smart loading: if no local cache, loads from POD first.
 
 Future<void> preloadMapSettings() async {
   try {
-    // Smart load: if no local cache, try POD first.
-    await MapSettingsService.loadSettingsSmart().catchError((_) {
-      // Silently ignore preload errors - will use defaults.
-      return MapSettings(mapSource: MapSettings.getDefaultMapSource());
-    });
+    await MapSettingsService.loadSettings();
   } catch (_) {
     // Silently ignore preload errors.
-  }
-}
-
-/// Syncs settings from POD in background.
-/// Call this after preloadMapSettings() to keep settings in sync.
-/// Only needed when local cache exists (preloadMapSettings handles first login).
-
-Future<void> syncSettingsFromPod() async {
-  try {
-    // Small delay to let UI settle first.
-    await Future.delayed(const Duration(seconds: 3));
-    await MapSettingsService.syncFromPod();
-  } catch (_) {
-    // Silently ignore sync errors.
   }
 }

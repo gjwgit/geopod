@@ -145,10 +145,6 @@ class _AppScaffoldWrapperState extends State<_AppScaffoldWrapper> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(preloadMapSettings());
 
-      // Sync settings from POD with delay to avoid network congestion.
-
-      unawaited(syncSettingsFromPod());
-
       // Bootstrap missing index files on first login so that audio/video
       // pages don't produce spurious 404 responses before any media exists.
 

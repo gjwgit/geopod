@@ -142,6 +142,15 @@ class MediaPodService {
     return _readIndex(type);
   }
 
+  /// Returns cached media items if available, otherwise fetches from the Pod
+  /// using the async login check (works even when [authStateNotifier] is stale).
+  static Future<List<MediaItem>> listItemsCached(MediaType type) async {
+    final cached = _getCache(type);
+    if (cached != null) return List<MediaItem>.from(cached);
+    if (!await PodAuth.isLoggedIn()) return [];
+    return _readIndex(type);
+  }
+
   /// Uploads [bytes] as a new media item to the Pod.
   ///
   /// * [name]      - display name

@@ -207,4 +207,81 @@ class PlacesImportExport {
       return result;
     }
   }
+
+  /// Parses and validates places from a JSON string (no file picker).
+  ///
+  /// Used by [BackupService] when restoring from a backup ZIP.
+  /// Returns an [ImportResult] containing validated places and any errors.
+  static ImportResult importFromJsonString(String jsonString) {
+    final result = ImportResult();
+    try {
+      final dynamic decoded;
+      try {
+        decoded = jsonDecode(jsonString);
+      } catch (e) {
+        result.errors.add('Invalid JSON format: $e');
+        return result;
+      }
+
+      if (decoded is! List) {
+        result.errors.add('Expected a JSON array of place objects');
+        return result;
+      }
+
+      final uuid = const Uuid();
+
+      for (int i = 0; i < decoded.length; i++) {
+        final item = decoded[i];
+        if (item is! Map<String, dynamic>) {
+          result.errors.add('Item ${i + 1}: Not a valid object, skipped');
+          result.skippedCount++;
+          continue;
+        }
+        final lat = item['lat'];
+        final lng = item['lng'];
+        if (lat == null || lng == null) {
+          result.errors.add(
+            'Item ${i + 1}: Missing required lat/lng fields, skipped',
+          );
+          result.skippedCount++;
+          continue;
+        }
+        if (lat is! num || lng is! num) {
+          result.errors.add('Item ${i + 1}: lat/lng must be numbers, skipped');
+          result.skippedCount++;
+          continue;
+        }
+        if (lat < -90 || lat > 90) {
+          result.errors.add(
+            'Item ${i + 1}: lat must be between -90 and 90, skipped',
+          );
+          result.skippedCount++;
+          continue;
+        }
+        if (lng < -180 || lng > 180) {
+          result.errors.add(
+            'Item ${i + 1}: lng must be between -180 and 180, skipped',
+          );
+          result.skippedCount++;
+          continue;
+        }
+        result.places.add(
+          Place(
+            id: (item['id'] as String?) ?? uuid.v4(),
+            lat: lat.toDouble(),
+            lng: lng.toDouble(),
+            note: (item['note'] as String?) ?? '',
+            timestamp:
+                (item['timestamp'] as String?) ??
+                DateTime.now().toUtc().toIso8601String(),
+            address: null,
+            isLocal: false,
+          ),
+        );
+      }
+    } catch (e) {
+      result.errors.add('Unexpected error: $e');
+    }
+    return result;
+  }
 }

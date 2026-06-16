@@ -34,6 +34,7 @@ import 'home.dart';
 import 'services/fullscreen_service.dart';
 import 'services/navigation_service.dart';
 import 'widgets/audio_page.dart';
+import 'widgets/backup_screen.dart';
 import 'widgets/geomap.dart';
 import 'widgets/locations_page.dart';
 import 'widgets/video_page.dart';
@@ -116,6 +117,17 @@ class AppScaffoldWidget extends StatelessWidget {
 
             ''',
             child: VideoPage(),
+          ),
+          const SolidMenuItem(
+            icon: Icons.save_alt,
+            title: 'Backup',
+            tooltip: '''
+
+            **Backup:** Export all locations and media to a ZIP file, or restore
+              from a previously saved backup.
+
+            ''',
+            child: BackupScreen(),
           ),
         ],
 

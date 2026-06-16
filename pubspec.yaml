@@ -47,6 +47,9 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
 
+dependency_overrides:
+  video_player_avfoundation: 2.9.0
+
 flutter:
   assets:
     - assets/images/app_icon.png

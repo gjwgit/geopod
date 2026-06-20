@@ -12,8 +12,6 @@
 
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import 'package:geopod/models/place.dart';
@@ -21,16 +19,15 @@ import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/map/geomap_places_loader.dart';
 
-/// Handles encrypted places loading.
+/// Handles places loading for GeoMap. All places are stored encrypted.
 
 mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
   bool get isLoggedIn;
   MapSettings get mapSettings;
-  set mapSettings(MapSettings value);
   List<Place> get allPlaces;
   set allPlaces(List<Place> value);
 
-  /// Load all places including encrypted if enabled.
+  /// Load all places (always including encrypted).
 
   Future<void> loadAllPlaces({
     bool forceRefresh = false,
@@ -39,14 +36,12 @@ mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
     final result = await loadPlacesWithState(
       currentPlaces: allPlaces,
       forceRefresh: forceRefresh,
-      includeEncrypted: includeEncrypted ?? mapSettings.showEncryptedPlaces,
+      includeEncrypted: includeEncrypted ?? true,
     );
 
     if (!mounted) return;
 
-    if (result.showLoading) {
-      safeSetState(this, () {});
-    }
+    if (result.showLoading) safeSetState(this, () {});
 
     if (result.hasChanges) {
       safeSetState(this, () {
@@ -55,7 +50,7 @@ mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
     }
   }
 
-  /// Load encrypted places with optional key verification.
+  /// Load encrypted places (called on login / forced refresh).
 
   Future<void> loadEncryptedPlaces({bool skipKeyVerification = false}) async {
     if (!isLoggedIn || !mounted) return;
@@ -66,14 +61,6 @@ mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
       isLoggedIn: isLoggedIn,
       skipKeyVerification: skipKeyVerification,
     );
-
-    if (result.cancelled && mounted) {
-      safeSetState(this, () {
-        mapSettings = mapSettings.copyWith(showEncryptedPlaces: false);
-      });
-      MapSettingsService.saveSettings(mapSettings);
-      return;
-    }
 
     if (mounted && result.encryptedPlaces.isNotEmpty) {
       safeSetState(this, () {

@@ -38,11 +38,9 @@ export 'package:geopod/services/map_viewport_store.dart' show ViewportPosition;
 /// Keys for SharedPreferences storage.
 
 const String _keyShowLocalPlaces = 'map_show_local_places';
-const String _keyShowEncryptedPlaces = 'map_show_encrypted_places';
 const String _keyHideAllMarkers = 'map_hide_all_markers';
 const String _keyUserPlacesColor = 'map_user_places_color';
 const String _keyLocalPlacesColor = 'map_local_places_color';
-const String _keyEncryptedPlacesColor = 'map_encrypted_places_color';
 const String _keyMapSource = 'map_source';
 const String _keyRememberViewport = 'map_remember_viewport';
 const String _keyInitialLat = 'map_initial_lat';
@@ -59,7 +57,6 @@ const double defaultInitialZoom = 11.0;
 
 const Color defaultUserColor = Colors.blue;
 const Color defaultLocalColor = Colors.red;
-const Color defaultEncryptedColor = Colors.purple;
 
 /// Data class holding all map display settings.
 
@@ -67,12 +64,7 @@ class MapSettings {
   /// Whether to show local (canned example) places on the map.
   final bool showLocalPlaces;
 
-  /// Whether to show encrypted places on the map.
-  /// Encrypted places require security key to decrypt.
-  final bool showEncryptedPlaces;
-
   /// Whether to hide all markers on the map.
-  /// When true, no place markers will be displayed.
   final bool hideAllMarkers;
 
   /// Color for user's saved places (from Pod).
@@ -80,9 +72,6 @@ class MapSettings {
 
   /// Color for local canned example places.
   final Color localPlacesColor;
-
-  /// Color for encrypted places.
-  final Color encryptedPlacesColor;
 
   /// Current map tile source.
   final MapSource mapSource;
@@ -101,11 +90,9 @@ class MapSettings {
 
   const MapSettings({
     this.showLocalPlaces = true,
-    this.showEncryptedPlaces = false,
     this.hideAllMarkers = false,
     this.userPlacesColor = defaultUserColor,
     this.localPlacesColor = defaultLocalColor,
-    this.encryptedPlacesColor = defaultEncryptedColor,
     this.rememberViewport = true,
     this.initialLat = defaultInitialLat,
     this.initialLng = defaultInitialLng,
@@ -113,23 +100,17 @@ class MapSettings {
     MapSource? mapSource,
   }) : mapSource = mapSource ?? MapSource.openStreetMap;
 
-  /// Time-based default map source.
   /// Always defaults to OpenStreetMap.
-  /// Night mode styling is handled by app theme + color filter.
 
-  static MapSource getDefaultMapSource() {
-    return MapSource.openStreetMap;
-  }
+  static MapSource getDefaultMapSource() => MapSource.openStreetMap;
 
   /// Creates a copy with optional overrides.
 
   MapSettings copyWith({
     bool? showLocalPlaces,
-    bool? showEncryptedPlaces,
     bool? hideAllMarkers,
     Color? userPlacesColor,
     Color? localPlacesColor,
-    Color? encryptedPlacesColor,
     MapSource? mapSource,
     bool? rememberViewport,
     double? initialLat,
@@ -138,11 +119,9 @@ class MapSettings {
   }) {
     return MapSettings(
       showLocalPlaces: showLocalPlaces ?? this.showLocalPlaces,
-      showEncryptedPlaces: showEncryptedPlaces ?? this.showEncryptedPlaces,
       hideAllMarkers: hideAllMarkers ?? this.hideAllMarkers,
       userPlacesColor: userPlacesColor ?? this.userPlacesColor,
       localPlacesColor: localPlacesColor ?? this.localPlacesColor,
-      encryptedPlacesColor: encryptedPlacesColor ?? this.encryptedPlacesColor,
       mapSource: mapSource ?? this.mapSource,
       rememberViewport: rememberViewport ?? this.rememberViewport,
       initialLat: initialLat ?? this.initialLat,
@@ -155,21 +134,13 @@ class MapSettings {
 /// Service for loading and saving map display settings.
 
 class MapSettingsService {
-  /// Save settings to SharedPreferences.
-
   static Future<void> _saveToPrefs(MapSettings settings) async {
     final prefs = await SharedPreferences.getInstance();
-    // All writes are independent — run in parallel.
     await Future.wait([
       prefs.setBool(_keyShowLocalPlaces, settings.showLocalPlaces),
-      prefs.setBool(_keyShowEncryptedPlaces, settings.showEncryptedPlaces),
       prefs.setBool(_keyHideAllMarkers, settings.hideAllMarkers),
       prefs.setInt(_keyUserPlacesColor, settings.userPlacesColor.toARGB32()),
       prefs.setInt(_keyLocalPlacesColor, settings.localPlacesColor.toARGB32()),
-      prefs.setInt(
-        _keyEncryptedPlacesColor,
-        settings.encryptedPlacesColor.toARGB32(),
-      ),
       prefs.setInt(_keyMapSource, settings.mapSource.index),
       prefs.setBool(_keyRememberViewport, settings.rememberViewport),
       prefs.setDouble(_keyInitialLat, settings.initialLat),
@@ -178,17 +149,13 @@ class MapSettingsService {
     ]);
   }
 
-  /// Load settings from SharedPreferences.
-
   static Future<MapSettings> _loadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
 
     final showLocal = prefs.getBool(_keyShowLocalPlaces) ?? true;
-    final showEncrypted = prefs.getBool(_keyShowEncryptedPlaces) ?? false;
     final hideMarkers = prefs.getBool(_keyHideAllMarkers) ?? false;
     final userColorValue = prefs.getInt(_keyUserPlacesColor);
     final localColorValue = prefs.getInt(_keyLocalPlacesColor);
-    final encryptedColorValue = prefs.getInt(_keyEncryptedPlacesColor);
     final rememberViewport = prefs.getBool(_keyRememberViewport) ?? true;
     final initialLat = prefs.getDouble(_keyInitialLat) ?? defaultInitialLat;
     final initialLng = prefs.getDouble(_keyInitialLng) ?? defaultInitialLng;
@@ -204,7 +171,6 @@ class MapSettingsService {
 
     return MapSettings(
       showLocalPlaces: showLocal,
-      showEncryptedPlaces: showEncrypted,
       hideAllMarkers: hideMarkers,
       userPlacesColor: userColorValue != null
           ? Color(userColorValue)
@@ -212,9 +178,6 @@ class MapSettingsService {
       localPlacesColor: localColorValue != null
           ? Color(localColorValue)
           : defaultLocalColor,
-      encryptedPlacesColor: encryptedColorValue != null
-          ? Color(encryptedColorValue)
-          : defaultEncryptedColor,
       mapSource: mapSource,
       rememberViewport: rememberViewport,
       initialLat: initialLat,
@@ -235,9 +198,6 @@ class MapSettingsService {
   }
 
   /// Load settings from local cache (SharedPreferences).
-  ///
-  /// Map settings are device-local only (not synced to the POD), so this is
-  /// equivalent to [loadSettings]; kept for call-site compatibility.
 
   static Future<MapSettings> loadSettingsSmart() async {
     try {
@@ -249,9 +209,6 @@ class MapSettingsService {
   }
 
   /// Saves settings to SharedPreferences.
-  ///
-  /// Map settings are device-local preferences and are intentionally not
-  /// synced to the POD.
 
   static Future<bool> saveSettings(MapSettings settings) async {
     try {
@@ -264,8 +221,6 @@ class MapSettingsService {
   }
 
   /// Gets the initial viewport based on settings.
-  /// If rememberViewport is ON, returns last viewport if available.
-  /// Otherwise returns the configured initial viewport.
 
   static Future<ViewportPosition> getStartupViewport(
     MapSettings settings,
@@ -286,18 +241,19 @@ class MapSettingsService {
   static Future<bool> resetToDefaults() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_keyShowLocalPlaces);
-      await prefs.remove(_keyUserPlacesColor);
-      await prefs.remove(_keyLocalPlacesColor);
-      await prefs.remove(_keyMapSource);
-      await prefs.remove(_keyRememberViewport);
-      await prefs.remove(_keyInitialLat);
-      await prefs.remove(_keyInitialLng);
-      await prefs.remove(_keyInitialZoom);
-      await prefs.remove(keyLastLat);
-      await prefs.remove(keyLastLng);
-      await prefs.remove(keyLastZoom);
-
+      await Future.wait([
+        prefs.remove(_keyShowLocalPlaces),
+        prefs.remove(_keyUserPlacesColor),
+        prefs.remove(_keyLocalPlacesColor),
+        prefs.remove(_keyMapSource),
+        prefs.remove(_keyRememberViewport),
+        prefs.remove(_keyInitialLat),
+        prefs.remove(_keyInitialLng),
+        prefs.remove(_keyInitialZoom),
+        prefs.remove(keyLastLat),
+        prefs.remove(keyLastLng),
+        prefs.remove(keyLastZoom),
+      ]);
       return true;
     } catch (_) {
       return false;
@@ -306,12 +262,9 @@ class MapSettingsService {
 }
 
 /// Preloads map settings in the background to warm up cache.
-/// Call this on app startup to make settings instantly available.
 
 Future<void> preloadMapSettings() async {
   try {
     await MapSettingsService.loadSettings();
-  } catch (_) {
-    // Silently ignore preload errors.
-  }
+  } catch (_) {}
 }

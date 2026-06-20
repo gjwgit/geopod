@@ -215,6 +215,16 @@ class PlacesFetchService {
       places.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       await PlacesCachePersistence.cachePodPlaces(content);
       cm.cachePodPlaces(places);
+
+      // Log any plain (unencrypted) places found — migration to encrypted
+      // storage requires a BuildContext and is handled at the call site.
+      final plainCount = places.where((p) => !p.isEncrypted).length;
+      if (plainCount > 0) {
+        debugPrint(
+          'PlacesFetchService: $plainCount plain place(s) found; '
+          'migrate them by re-saving from the Locations page.',
+        );
+      }
     } catch (_) {}
     return places;
   }

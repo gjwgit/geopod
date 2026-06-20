@@ -72,8 +72,6 @@ Marker _buildMarker({
   // Build the visual child (pure stateless widgets when not saving).
   final Widget icon = marker.isSaving
       ? _buildSavingMarker()
-      : marker.isEncrypted
-      ? _buildEncryptedMarker(marker.color)
       : Icon(Icons.location_on, size: 40, color: marker.color);
 
   final Widget tapTarget = GestureDetector(
@@ -133,21 +131,6 @@ Widget _buildAnimatedMarker(Widget child, int index) {
       );
     },
     child: child,
-  );
-}
-
-/// Builds marker with encryption indicator.
-
-Widget _buildEncryptedMarker(Color color) {
-  return Stack(
-    alignment: Alignment.center,
-    children: [
-      Icon(Icons.location_on, size: 40, color: color),
-      const Positioned(
-        top: 6,
-        child: Icon(Icons.lock, size: 12, color: Colors.white),
-      ),
-    ],
   );
 }
 

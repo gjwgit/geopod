@@ -7,19 +7,6 @@
 /// Licensed under the GNU General Public License, Version 3 (the "License").
 ///
 /// License: https://opensource.org/license/gpl-3-0.
-//
-// This program is free software: you can redistribute it and/or modify it under
-// the terms of the GNU General Public License as published by the Free Software
-// Foundation, either version 3 of the License, or (at your option) any later
-// version.
-//
-// This program is distributed in the hope that it will be useful, but WITHOUT
-// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-// details.
-//
-// You should have received a copy of the GNU General Public License along with
-// this program.  If not, see <https://opensource.org/license/gpl-3-0>.
 ///
 /// Authors: Graham Williams, Miduo
 
@@ -27,20 +14,11 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:solidpod/solidpod.dart' show authStateNotifier;
-
 import 'package:geopod/services/map_settings_service.dart';
-import 'package:geopod/services/places/encrypted_places_service.dart';
 import 'package:geopod/widgets/settings/settings_actions.dart';
 import 'package:geopod/widgets/settings/settings_sections.dart';
 
 /// Dialog for configuring map display settings.
-///
-/// Allows users to:
-/// - Toggle visibility of local (canned) example places
-/// - Customize colors for user places and example places
-/// - Select map source
-/// - Configure viewport settings.
 
 class MapSettingsDialog extends StatefulWidget {
   const MapSettingsDialog({
@@ -49,10 +27,7 @@ class MapSettingsDialog extends StatefulWidget {
     required this.onSettingsChanged,
   });
 
-  /// Current settings to display.
   final MapSettings currentSettings;
-
-  /// Callback when settings are changed.
   final void Function(MapSettings) onSettingsChanged;
 
   @override
@@ -61,27 +36,22 @@ class MapSettingsDialog extends StatefulWidget {
 
 class _MapSettingsDialogState extends State<MapSettingsDialog> {
   late bool _showLocalPlaces;
-  late bool _showEncryptedPlaces;
   late bool _hideAllMarkers;
   late Color _userPlacesColor;
   late Color _localPlacesColor;
-  late Color _encryptedPlacesColor;
   late MapSource _mapSource;
   late bool _rememberViewport;
   late double _initialLat;
   late double _initialLng;
   late double _initialZoom;
-  bool _isLoadingEncrypted = false;
 
   @override
   void initState() {
     super.initState();
     _showLocalPlaces = widget.currentSettings.showLocalPlaces;
-    _showEncryptedPlaces = widget.currentSettings.showEncryptedPlaces;
     _hideAllMarkers = widget.currentSettings.hideAllMarkers;
     _userPlacesColor = widget.currentSettings.userPlacesColor;
     _localPlacesColor = widget.currentSettings.localPlacesColor;
-    _encryptedPlacesColor = widget.currentSettings.encryptedPlacesColor;
     _mapSource = widget.currentSettings.mapSource;
     _rememberViewport = widget.currentSettings.rememberViewport;
     _initialLat = widget.currentSettings.initialLat;
@@ -89,42 +59,28 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
     _initialZoom = widget.currentSettings.initialZoom;
   }
 
-  /// Saves current settings and notifies parent.
-
   void _saveAndNotify() {
     final newSettings = MapSettings(
       showLocalPlaces: _showLocalPlaces,
-      showEncryptedPlaces: _showEncryptedPlaces,
       hideAllMarkers: _hideAllMarkers,
       userPlacesColor: _userPlacesColor,
       localPlacesColor: _localPlacesColor,
-      encryptedPlacesColor: _encryptedPlacesColor,
       mapSource: _mapSource,
       rememberViewport: _rememberViewport,
       initialLat: _initialLat,
       initialLng: _initialLng,
       initialZoom: _initialZoom,
     );
-
-    // Save to SharedPreferences.
-
     MapSettingsService.saveSettings(newSettings);
-
-    // Notify parent widget.
-
     widget.onSettingsChanged(newSettings);
   }
-
-  /// Resets all settings to defaults.
 
   void _resetToDefaults() {
     setState(() {
       _showLocalPlaces = true;
-      _showEncryptedPlaces = false;
       _hideAllMarkers = false;
       _userPlacesColor = defaultUserColor;
       _localPlacesColor = defaultLocalColor;
-      _encryptedPlacesColor = defaultEncryptedColor;
       _mapSource = MapSettings.getDefaultMapSource();
       _rememberViewport = true;
       _initialLat = defaultInitialLat;
@@ -136,7 +92,6 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Use responsive width: larger on desktop/tablet, adapt on mobile.
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 400 ? screenWidth * 0.9 : 380.0;
 
@@ -155,49 +110,12 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Visibility section.
               buildVisibilitySection(
                 showLocalPlaces: _showLocalPlaces,
-                showEncryptedPlaces: _showEncryptedPlaces,
                 hideAllMarkers: _hideAllMarkers,
-                isLoadingEncrypted: _isLoadingEncrypted,
-                isLoggedIn: authStateNotifier.value,
                 onShowLocalChanged: (value) {
                   setState(() => _showLocalPlaces = value);
                   _saveAndNotify();
-                },
-                onShowEncryptedChanged: (value) async {
-                  if (value) {
-                    // Enabling encrypted places - verify security key first.
-                    setState(() => _isLoadingEncrypted = true);
-
-                    // Check if security key is available, prompt if not.
-                    final hasKey =
-                        await EncryptedPlacesService.ensureSecurityKey(
-                          context,
-                          widget,
-                        );
-
-                    if (!mounted) return;
-
-                    if (hasKey) {
-                      // Security key verified, enable the setting.
-                      setState(() {
-                        _showEncryptedPlaces = true;
-                        _isLoadingEncrypted = false;
-                      });
-                      _saveAndNotify();
-                    } else {
-                      // User cancelled or key verification failed.
-                      setState(() => _isLoadingEncrypted = false);
-
-                      // Don't change _showEncryptedPlaces - it stays false.
-                    }
-                  } else {
-                    // Disabling encrypted places - no verification needed.
-                    setState(() => _showEncryptedPlaces = false);
-                    _saveAndNotify();
-                  }
                 },
                 onHideAllMarkersChanged: (value) {
                   setState(() => _hideAllMarkers = value);
@@ -205,8 +123,6 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 },
               ),
               const Divider(height: 24),
-
-              // Viewport section.
               buildViewportSection(
                 rememberViewport: _rememberViewport,
                 initialLat: _initialLat,
@@ -226,8 +142,6 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 },
               ),
               const Divider(height: 24),
-
-              // Map source section.
               buildMapSourceSection(
                 mapSource: _mapSource,
                 onMapSourceChanged: (source) {
@@ -237,8 +151,6 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
               ),
               const SizedBox(height: 12),
               const Divider(height: 24),
-
-              // Marker colors section.
               buildMarkerColorsSection(
                 context: context,
                 userPlacesColor: _userPlacesColor,
@@ -253,12 +165,8 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
                 },
               ),
               const SizedBox(height: 20),
-
-              // Reset button.
               buildResetButton(onReset: _resetToDefaults),
               const SizedBox(height: 12),
-
-              // User actions (logout, debug buttons)
               buildUserActionsSection(context),
             ],
           ),
@@ -266,9 +174,7 @@ class _MapSettingsDialogState extends State<MapSettingsDialog> {
       ),
       actions: [
         ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
           child: const Text('Done'),
         ),
       ],

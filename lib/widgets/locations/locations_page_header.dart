@@ -85,15 +85,6 @@ class LocationsActionButtons extends StatelessWidget {
   final VoidCallback onImport;
   final VoidCallback onClearAll;
 
-  /// Whether to show the encrypted-places toggle inline.
-  final bool showEncryptedToggle;
-
-  /// Current state of the encrypted-places toggle.
-  final bool showEncryptedPlaces;
-
-  /// Callback when the toggle is changed.
-  final void Function(bool)? onToggleEncrypted;
-
   const LocationsActionButtons({
     super.key,
     required this.isLoading,
@@ -101,9 +92,6 @@ class LocationsActionButtons extends StatelessWidget {
     required this.onExport,
     required this.onImport,
     required this.onClearAll,
-    this.showEncryptedToggle = false,
-    this.showEncryptedPlaces = false,
-    this.onToggleEncrypted,
   });
 
   @override
@@ -155,28 +143,6 @@ class LocationsActionButtons extends StatelessWidget {
               ),
             ),
           ),
-          if (showEncryptedToggle) ...[
-            const SizedBox(width: 8),
-            Tooltip(
-              message: 'Show encrypted places',
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.lock_outline,
-                    size: 16,
-                    color: Colors.purple,
-                  ),
-                  Switch(
-                    value: showEncryptedPlaces,
-                    onChanged: isLoading ? null : onToggleEncrypted,
-                    activeThumbColor: Colors.purple,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );

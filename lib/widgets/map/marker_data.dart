@@ -84,10 +84,6 @@ List<MarkerData> buildFilteredMarkers({
   final visible = allPlaces.where((p) {
     // Filter out local places if disabled.
     if (p.isLocal && !mapSettings.showLocalPlaces) return false;
-
-    // Filter out encrypted places if disabled.
-
-    if (p.isEncrypted && !mapSettings.showEncryptedPlaces) return false;
     return true;
   }).toList();
 
@@ -101,9 +97,7 @@ List<MarkerData> buildFilteredMarkers({
           address: p.address,
           isLocal: p.isLocal,
           isSaving: savingPlaceIds.contains(p.id),
-          color: p.isEncrypted
-              ? mapSettings.encryptedPlacesColor
-              : p.isLocal
+          color: p.isLocal
               ? mapSettings.localPlacesColor
               : mapSettings.userPlacesColor,
           isEncrypted: p.isEncrypted,

@@ -39,7 +39,6 @@ import 'package:geopod/widgets/map/geomap_encrypted_places_loader.dart';
 import 'package:geopod/widgets/map/geomap_event_handlers.dart';
 import 'package:geopod/widgets/map/geomap_initialization.dart';
 import 'package:geopod/widgets/map/geomap_place_handlers.dart';
-import 'package:geopod/widgets/map/geomap_places_loader.dart';
 import 'package:geopod/widgets/map/geomap_settings.dart';
 import 'package:geopod/widgets/map/geomap_settings_loader.dart';
 import 'package:geopod/widgets/map/geomap_state_logic.dart';
@@ -136,14 +135,8 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     initializeMapPostFrame(
       context: context,
       animationController: animationController,
-      loadSettingsSync: () => loadSettingsSync(
-        () => unawaited(
-          loadEncryptedPlaces().catchError((error, stackTrace) {
-            debugPrint('Failed to load encrypted places: $error');
-          }),
-        ),
-        onComplete: _consumePendingNavTarget,
-      ),
+      loadSettingsSync: () =>
+          loadSettingsSync(onComplete: _consumePendingNavTarget),
       verifyLoginStateAndLoadData: () async {
         final result = await verifyLoginStateAndLoadData(
           currentIsLoggedIn: isLoggedIn,
@@ -166,7 +159,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
         if (result.needsRefresh) {
           final places = await loadAllPlaces(
             forceRefresh: false,
-            includeEncrypted: mapSettings.showEncryptedPlaces,
+            includeEncrypted: true,
           );
           if (mounted) {
             setState(() => allPlaces = places);
@@ -257,22 +250,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             }
           });
 
-          // Handle encrypted places toggle.
-
-          if (changes.encryptedToggled && changes.encryptedEnabled) {
-            unawaited(
-              loadEncryptedPlaces(skipKeyVerification: true).catchError((
-                error,
-                stackTrace,
-              ) {
-                debugPrint('Failed to load encrypted places: $error');
-              }),
-            );
-          } else if (changes.encryptedToggled && !changes.encryptedEnabled) {
-            safeSetState(this, () {
-              allPlaces = removeEncryptedPlaces(allPlaces: allPlaces);
-            });
-          }
+          // mapSourceChanged is handled by the tile provider update above.
         },
       ),
     );
@@ -379,13 +357,6 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       longitude: lng,
     );
     if (result != null && mounted) {
-      // If adding encrypted place, auto-enable showEncryptedPlaces so user can see it.
-      if (result.encrypted && !mapSettings.showEncryptedPlaces) {
-        safeSetState(this, () {
-          mapSettings = mapSettings.copyWith(showEncryptedPlaces: true);
-        });
-        MapSettingsService.saveSettings(mapSettings);
-      }
       _handleOptimisticSave(result.place, encrypted: result.encrypted);
     }
   }
@@ -470,7 +441,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
           // Reload to get the updated address from the server.
           final places = await loadAllPlaces(
             forceRefresh: true,
-            includeEncrypted: mapSettings.showEncryptedPlaces,
+            includeEncrypted: true,
           );
           if (mounted) setState(() => allPlaces = places);
         }

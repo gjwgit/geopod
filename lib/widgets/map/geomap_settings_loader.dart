@@ -12,19 +12,16 @@
 
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:geopod/models/place.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/map/geomap_settings.dart';
 
-/// Handles settings loading and validation.
+/// Handles settings loading and viewport restoration for GeoMap.
 
 mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
   MapController get mapController;
@@ -36,18 +33,13 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
   set initialZoom(double value);
   bool get viewportInitialized;
   set viewportInitialized(bool value);
-  bool get isLoggedIn;
-  List<Place> get allPlaces;
 
   /// Load settings synchronously with viewport restoration.
   ///
-  /// [onComplete] is called after the viewport has been restored (i.e., after
-  /// any saved [mapController.move] call), so it can safely override the view.
+  /// [onComplete] is called after the viewport has been restored so it can
+  /// safely override the view.
 
-  void loadSettingsSync(
-    VoidCallback onLoadEncrypted, {
-    VoidCallback? onComplete,
-  }) {
+  void loadSettingsSync({VoidCallback? onComplete}) {
     loadMapSettingsSync(viewportInitialized: viewportInitialized)
         .then((result) {
           if (!mounted) return;
@@ -61,53 +53,12 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
             }
           });
 
-          // Move map after state update if viewport was loaded.
-
           if (result.initialCenter != null) {
             mapController.move(result.initialCenter!, result.initialZoom!);
           }
 
-          // Notify caller that the viewport has been restored.
           onComplete?.call();
-
-          // Validate encrypted setting if enabled.
-
-          if (result.settings.showEncryptedPlaces) {
-            Future.delayed(const Duration(milliseconds: 200), () {
-              if (mounted) {
-                validateSavedEncryptedSettingAndLoad(onLoadEncrypted);
-              }
-            });
-          }
         })
         .catchError((_) {});
-  }
-
-  /// Validate saved encrypted setting and load if valid.
-
-  Future<void> validateSavedEncryptedSettingAndLoad(
-    VoidCallback onLoadEncrypted,
-  ) async {
-    final shouldLoad = await validateSavedEncryptedSetting(
-      mapSettings: mapSettings,
-      isLoggedIn: isLoggedIn,
-      allPlaces: allPlaces,
-    );
-
-    if (!shouldLoad) {
-      // Reset setting if validation failed.
-      if (!isLoggedIn) {
-        safeSetState(this, () {
-          mapSettings = mapSettings.copyWith(showEncryptedPlaces: false);
-        });
-      }
-      return;
-    }
-
-    // Load encrypted places, then reset the in-progress guard.
-
-    onLoadEncrypted();
-    // Allow a new load after 5 s to handle race conditions during initial auth.
-    Future.delayed(const Duration(seconds: 5), encryptedLoadInProgressReset);
   }
 }

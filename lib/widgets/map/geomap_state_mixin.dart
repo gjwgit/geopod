@@ -63,11 +63,9 @@ mixin MarkerCacheMixin {
   int _lastPlacesHash = 0;
   int _lastSavingIdsHash = 0;
   bool _lastShowLocalPlaces = true;
-  bool _lastShowEncryptedPlaces = false;
   bool _lastHideAllMarkers = false;
   Color _lastUserPlacesColor = Colors.blue;
   Color _lastLocalPlacesColor = Colors.red;
-  Color _lastEncryptedPlacesColor = Colors.purple;
 
   /// Get filtered markers with caching to avoid expensive rebuilds.
 
@@ -77,43 +75,31 @@ mixin MarkerCacheMixin {
     required Set<String> savingPlaceIds,
     required List<MarkerData> Function() builder,
   }) {
-    // Compute hashes to detect changes.
-    // Include note and coordinates so content edits invalidate the cache.
     final placesHash = Object.hashAll(
       allPlaces.map((p) => '${p.id}_${p.note}_${p.lat}_${p.lng}'),
     );
     final savingHash = Object.hashAll(savingPlaceIds);
     final showLocal = mapSettings.showLocalPlaces;
-    final showEncrypted = mapSettings.showEncryptedPlaces;
     final hideMarkers = mapSettings.hideAllMarkers;
     final userColor = mapSettings.userPlacesColor;
     final localColor = mapSettings.localPlacesColor;
-    final encryptedColor = mapSettings.encryptedPlacesColor;
-
-    // Return cached if nothing changed.
 
     if (_cachedFilteredMarkers != null &&
         placesHash == _lastPlacesHash &&
         savingHash == _lastSavingIdsHash &&
         showLocal == _lastShowLocalPlaces &&
-        showEncrypted == _lastShowEncryptedPlaces &&
         hideMarkers == _lastHideAllMarkers &&
         userColor == _lastUserPlacesColor &&
-        localColor == _lastLocalPlacesColor &&
-        encryptedColor == _lastEncryptedPlacesColor) {
+        localColor == _lastLocalPlacesColor) {
       return _cachedFilteredMarkers!;
     }
-
-    // Rebuild and cache.
 
     _lastPlacesHash = placesHash;
     _lastSavingIdsHash = savingHash;
     _lastShowLocalPlaces = showLocal;
-    _lastShowEncryptedPlaces = showEncrypted;
     _lastHideAllMarkers = hideMarkers;
     _lastUserPlacesColor = userColor;
     _lastLocalPlacesColor = localColor;
-    _lastEncryptedPlacesColor = encryptedColor;
     _cachedFilteredMarkers = builder();
     return _cachedFilteredMarkers!;
   }

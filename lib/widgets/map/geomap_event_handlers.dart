@@ -105,7 +105,7 @@ mixin GeoMapEventHandlers<T extends StatefulWidget> on State<T> {
   Future<void> loadAllPlaces() async {
     final places = await PlacesService.fetchPlaces(
       forceRefresh: false,
-      includeEncrypted: mapSettings.showEncryptedPlaces,
+      includeEncrypted: true,
     );
 
     if (mounted) {
@@ -120,7 +120,7 @@ mixin GeoMapEventHandlers<T extends StatefulWidget> on State<T> {
   Future<void> verifyLoginStateAndLoadData() async {
     if (!mounted || !isLoggedIn) return;
 
-    if (mapSettings.showEncryptedPlaces) {
+    if (isLoggedIn) {
       // Fetch encrypted places - this will reload from pod if needed.
       await EncryptedPlacesService.fetchEncryptedPlaces(forceRefresh: true);
       if (!mounted) return;

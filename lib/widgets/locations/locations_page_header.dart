@@ -80,6 +80,7 @@ class LocationsPageHeader extends StatelessWidget {
 
 class LocationsActionButtons extends StatelessWidget {
   final bool isLoading;
+  final VoidCallback onAdd;
   final VoidCallback onExport;
   final VoidCallback onImport;
   final VoidCallback onClearAll;
@@ -96,6 +97,7 @@ class LocationsActionButtons extends StatelessWidget {
   const LocationsActionButtons({
     super.key,
     required this.isLoading,
+    required this.onAdd,
     required this.onExport,
     required this.onImport,
     required this.onClearAll,
@@ -110,6 +112,14 @@ class LocationsActionButtons extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
         children: [
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: isLoading ? null : onAdd,
+              icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+              label: const Text('Add'),
+            ),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: OutlinedButton.icon(
               onPressed: isLoading ? null : onExport,

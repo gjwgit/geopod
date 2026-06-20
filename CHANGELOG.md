@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Add ability to add new locations manually [0.1.10 20260620 gjw]
 + Add a BACKUP feature [1.0.9 20260616 gjw]
 + Remove NEWS feature - gdelt no longer accessible [1.0.8 20260615 gjw]
 + Remove FILES menu - not required [1.0.7 20260615 gjw]

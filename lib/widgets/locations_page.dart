@@ -26,6 +26,7 @@ import 'package:geopod/widgets/locations/locations_page_header.dart';
 import 'package:geopod/widgets/locations/locations_page_views.dart';
 import 'package:geopod/widgets/locations/place_list_tile.dart';
 import 'package:geopod/widgets/locations/place_operations.dart';
+import 'package:geopod/widgets/map/place_save_handler.dart';
 
 class LocationsPage extends StatefulWidget {
   const LocationsPage({super.key});
@@ -230,6 +231,29 @@ class _LocationsPageState extends State<LocationsPage>
 
   Future<void> _refresh() async => await _loadPlaces(forceRefresh: true);
 
+  Future<void> _addPlace() async {
+    final result = await showAddPlaceDialogIfLoggedIn(context: context);
+    if (result == null || !mounted) return;
+    // Optimistic update: show immediately, save in background.
+    safeSetState(this, () => _places = [..._places, result.place]);
+    final saved = await performBackgroundSave(result.place, context);
+    if (!mounted) return;
+    if (saved != null) {
+      safeSetState(
+        this,
+        () => _places = [
+          for (final p in _places)
+            if (p.id == result.place.id) saved else p,
+        ],
+      );
+    } else {
+      safeSetState(
+        this,
+        () => _places = _places.where((p) => p.id != result.place.id).toList(),
+      );
+    }
+  }
+
   Future<void> _exportPlaces() async {
     if (_userPlaces.isEmpty) {
       if (mounted) {
@@ -417,6 +441,7 @@ class _LocationsPageState extends State<LocationsPage>
             if (!_showingExamples)
               LocationsActionButtons(
                 isLoading: _isLoading,
+                onAdd: _addPlace,
                 onExport: _exportPlaces,
                 onImport: _importPlaces,
                 onClearAll: _clearAllPlaces,

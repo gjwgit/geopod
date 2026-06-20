@@ -401,6 +401,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       id: m.id,
       lat: m.position.latitude,
       lng: m.position.longitude,
+      title: m.title,
       note: m.description,
       timestamp: DateTime.now().toIso8601String(),
       address: m.address,

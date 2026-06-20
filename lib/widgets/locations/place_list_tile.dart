@@ -27,6 +27,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:gap/gap.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 
 import 'package:geopod/models/place.dart';
@@ -57,12 +59,9 @@ class PlaceListTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: place.isEncrypted ? Colors.purple : Colors.blue,
-          child: Icon(
-            place.isEncrypted ? Icons.lock : Icons.place,
-            color: Colors.white,
-          ),
+        leading: const CircleAvatar(
+          backgroundColor: Colors.blue,
+          child: Icon(Icons.place, color: Colors.white),
         ),
         title: Text(
           place.displayTitle,
@@ -71,7 +70,16 @@ class PlaceListTile extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
+            if (place.note.isNotEmpty) ...[
+              const Gap(2),
+              Text(
+                place.note,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const Gap(4),
             Row(
               children: [
                 Icon(
@@ -79,7 +87,7 @@ class PlaceListTile extends StatelessWidget {
                   size: 14,
                   color: place.address != null ? Colors.blue : Colors.grey,
                 ),
-                const SizedBox(width: 4),
+                const Gap(4),
                 Expanded(
                   child: Text(
                     place.shortAddress,
@@ -95,22 +103,22 @@ class PlaceListTile extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 2),
+            const Gap(2),
             Row(
               children: [
                 const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
+                const Gap(4),
                 Text(
                   place.coordinates,
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),
-            const SizedBox(height: 2),
+            const Gap(2),
             Row(
               children: [
                 const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
+                const Gap(4),
                 Text(
                   place.formattedDate,
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
@@ -141,11 +149,11 @@ class PlaceListTile extends StatelessWidget {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.place, color: Colors.blue),
-                  SizedBox(width: 8),
-                  Expanded(child: Text('Place Details')),
+                  const Icon(Icons.place, color: Colors.blue),
+                  const Gap(8),
+                  Expanded(child: Text(place.displayTitle)),
                 ],
               ),
               content: SingleChildScrollView(
@@ -153,25 +161,35 @@ class PlaceListTile extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    DetailRow(label: 'Note', value: place.note),
-                    const SizedBox(height: 12),
+                    if (place.note.isNotEmpty) ...[
+                      Text(
+                        'Notes',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const Gap(4),
+                      MarkdownBody(data: place.note),
+                      const Gap(12),
+                    ],
                     DetailRow(
                       label: 'Address',
                       value: place.address ?? 'No address available',
                     ),
-                    const SizedBox(height: 12),
+                    const Gap(12),
                     DetailRow(
                       label: 'Latitude',
                       value: place.lat.toStringAsFixed(6),
                     ),
-                    const SizedBox(height: 8),
+                    const Gap(8),
                     DetailRow(
                       label: 'Longitude',
                       value: place.lng.toStringAsFixed(6),
                     ),
-                    const SizedBox(height: 8),
+                    const Gap(8),
                     DetailRow(label: 'Saved', value: place.formattedDate),
-                    // ── Linked audio / video ─────────────────────────────
                     PlaceMediaSection(
                       placeId: place.id,
                       onManageLinks: () => showMediaLinkPickerDialog(
@@ -187,8 +205,6 @@ class PlaceListTile extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
-                    // Set destination BEFORE switching page so GeoMapWidgetState
-                    // picks it up the moment it mounts.
                     pendingNavTarget.value = LatLng(place.lat, place.lng);
                     currentPageNotifier.value = 0;
                   },

@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Include a title for ech location [1.0.12 20260620 gjw]
 + All locations will be encrypted [1.0.11 20260620 gjw]
 + Add ability to add new locations manually [0.1.10 20260620 gjw]
 + Add a BACKUP feature [1.0.9 20260616 gjw]

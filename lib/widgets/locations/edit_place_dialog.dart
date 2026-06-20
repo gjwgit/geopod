@@ -1,25 +1,12 @@
-/// Dialog for editing a place's lat, lng, and note.
+/// Dialog for editing a place's title, note, and coordinates.
 ///
-// Time-stamp: <2025-12-04 Miduo>
+// Time-stamp: <2026-06-20 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
 /// Licensed under the GNU General Public License, Version 3 (the "License").
 ///
 /// License: https://opensource.org/license/gpl-3-0.
-//
-// This program is free software: you can redistribute it and/or modify it under
-// the terms of the GNU General Public License as published by the Free Software
-// Foundation, either version 3 of the License, or (at your option) any later
-// version.
-//
-// This program is distributed in the hope that it will be useful, but WITHOUT
-// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-// details.
-//
-// You should have received a copy of the GNU General Public License along with
-// this program.  If not, see <https://opensource.org/license/gpl-3-0>.
 ///
 /// Authors: Graham Williams, Miduo
 
@@ -28,11 +15,13 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:emacs_text_field/emacs_text_field.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:gap/gap.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
 
-/// Dialog for editing a place's lat, lng, and note.
+/// Dialog for editing a place's title, note, and coordinates.
 
 class EditPlaceDialog extends StatefulWidget {
   const EditPlaceDialog({super.key, required this.place});
@@ -44,15 +33,16 @@ class EditPlaceDialog extends StatefulWidget {
 }
 
 class _EditPlaceDialogState extends State<EditPlaceDialog> {
+  late final TextEditingController _titleController;
   late final TextEditingController _latController;
   late final TextEditingController _lngController;
   late final TextEditingController _noteController;
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _showPreview = false;
   String? _previewAddress;
 
-  // Snapshot of the initial field values for change detection. The Save button
-  // is enabled only once the user has actually modified something.
+  late final String _initTitle;
   late final String _initLat;
   late final String _initLng;
   late final String _initNote;
@@ -61,6 +51,7 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
   @override
   void initState() {
     super.initState();
+    _titleController = TextEditingController(text: widget.place.title);
     _latController = TextEditingController(
       text: widget.place.lat.toStringAsFixed(6),
     );
@@ -69,22 +60,25 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
     );
     _noteController = TextEditingController(text: widget.place.note);
     _previewAddress = widget.place.address;
-
-    // Record the initial state, then rebuild on any text edit so the Save
-    // button updates live. The address-preview action calls setState itself.
+    _initTitle = _titleController.text;
     _initLat = _latController.text;
     _initLng = _lngController.text;
     _initNote = _noteController.text;
     _initAddress = _previewAddress;
-    for (final c in [_latController, _lngController, _noteController]) {
+    for (final c in [
+      _titleController,
+      _latController,
+      _lngController,
+      _noteController,
+    ]) {
       c.addListener(_onChanged);
     }
   }
 
   void _onChanged() => setState(() {});
 
-  /// Whether any editable field differs from its initial value.
   bool get _hasChanges =>
+      _titleController.text != _initTitle ||
       _latController.text != _initLat ||
       _lngController.text != _initLng ||
       _noteController.text != _initNote ||
@@ -92,28 +86,25 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
 
   @override
   void dispose() {
-    for (final c in [_latController, _lngController, _noteController]) {
+    for (final c in [
+      _titleController,
+      _latController,
+      _lngController,
+      _noteController,
+    ]) {
       c.removeListener(_onChanged);
+      c.dispose();
     }
-    _latController.dispose();
-    _lngController.dispose();
-    _noteController.dispose();
     super.dispose();
   }
-
-  /// Previews the address for current coordinates.
 
   Future<void> _previewAddressForCoordinates() async {
     final lat = double.tryParse(_latController.text);
     final lng = double.tryParse(_lngController.text);
-
     if (lat == null || lng == null) return;
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
-
     setState(() => _isLoading = true);
-
     final address = await GeocodingService.getAddress(lat, lng);
-
     if (mounted) {
       setState(() {
         _previewAddress = address;
@@ -124,27 +115,20 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-
     final lat = double.tryParse(_latController.text);
     final lng = double.tryParse(_lngController.text);
-
     if (lat == null || lng == null) return;
-
-    final updatedPlace = Place(
-      id: widget.place.id,
-      lat: lat,
-      lng: lng,
-      note: _noteController.text.trim(),
-      timestamp: DateTime.now()
-          .toIso8601String(), // Update timestamp when editing
-      address: widget
-          .place
-          .address, // Address will be updated by service if coords changed.
-      isLocal: false,
-      isEncrypted: widget.place.isEncrypted, // Preserve encryption status.
+    Navigator.pop(
+      context,
+      widget.place.copyWith(
+        title: _titleController.text.trim(),
+        lat: lat,
+        lng: lng,
+        note: _noteController.text,
+        timestamp: DateTime.now().toIso8601String(),
+        address: widget.place.address,
+      ),
     );
-
-    Navigator.pop(context, updatedPlace);
   }
 
   @override
@@ -153,7 +137,7 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
       title: const Row(
         children: [
           Icon(Icons.edit, color: Colors.blue),
-          SizedBox(width: 8),
+          Gap(8),
           Expanded(child: Text('Edit Place')),
         ],
       ),
@@ -166,25 +150,77 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Note is the primary field, so give it plenty of room. A
-                // fixed-height box with expands:true makes the editor large and
-                // stable (EmacsTextField has no maxLines parameter).
-                SizedBox(
-                  height: 260,
-                  child: EmacsTextField(
-                    controller: _noteController,
-                    expands: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Note',
-                      hintText: 'Enter a description',
-                      alignLabelWithHint: true,
-                      border: OutlineInputBorder(),
-                    ),
+                // Title.
+                TextFormField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    hintText: 'Short name for this place',
+                    prefixIcon: Icon(Icons.label_outline),
+                    border: OutlineInputBorder(),
                   ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Title is required'
+                      : null,
                 ),
-                const SizedBox(height: 16),
+                const Gap(16),
 
-                // Coordinates: compact two-up row.
+                // Note — editor / preview toggle.
+                Row(
+                  children: [
+                    Text(
+                      'Notes',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () =>
+                          setState(() => _showPreview = !_showPreview),
+                      icon: Icon(
+                        _showPreview ? Icons.edit : Icons.preview,
+                        size: 16,
+                      ),
+                      label: Text(_showPreview ? 'Edit' : 'Preview'),
+                    ),
+                  ],
+                ),
+                const Gap(4),
+                _showPreview
+                    ? Container(
+                        height: 200,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: _noteController.text.isEmpty
+                            ? Text(
+                                'No notes yet.',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              )
+                            : Markdown(
+                                data: _noteController.text,
+                                shrinkWrap: true,
+                              ),
+                      )
+                    : SizedBox(
+                        height: 200,
+                        child: EmacsTextField(
+                          controller: _noteController,
+                          expands: true,
+                          decoration: const InputDecoration(
+                            hintText: 'Markdown notes about this place…',
+                            alignLabelWithHint: true,
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                const Gap(16),
+
+                // Coordinates.
                 Row(
                   children: [
                     Expanded(
@@ -200,11 +236,9 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          final lat = double.tryParse(value);
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Required';
+                          final lat = double.tryParse(v);
                           if (lat == null || lat < -90 || lat > 90) {
                             return 'Invalid';
                           }
@@ -212,7 +246,7 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const Gap(12),
                     Expanded(
                       child: TextFormField(
                         controller: _lngController,
@@ -226,11 +260,9 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          final lng = double.tryParse(value);
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Required';
+                          final lng = double.tryParse(v);
                           if (lng == null || lng < -180 || lng > 180) {
                             return 'Invalid';
                           }
@@ -238,13 +270,12 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    // Preview address as a compact icon button beside coords.
+                    const Gap(12),
                     IconButton.outlined(
                       onPressed: _isLoading
                           ? null
                           : _previewAddressForCoordinates,
-                      tooltip: 'Preview address for these coordinates',
+                      tooltip: 'Preview address',
                       icon: _isLoading
                           ? const SizedBox(
                               width: 16,
@@ -255,9 +286,9 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const Gap(12),
 
-                // Address preview (compact single row).
+                // Address preview.
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -266,7 +297,7 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
                       size: 16,
                       color: Colors.grey.shade600,
                     ),
-                    const SizedBox(width: 8),
+                    const Gap(8),
                     Expanded(
                       child: Text(
                         _previewAddress ?? 'Address not available',
@@ -283,10 +314,9 @@ class _EditPlaceDialogState extends State<EditPlaceDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 Text(
-                  'The address is updated automatically on save if the '
-                  'coordinates change.',
+                  'Address updates automatically when coordinates change.',
                   style: TextStyle(
                     fontSize: 11,
                     fontStyle: FontStyle.italic,

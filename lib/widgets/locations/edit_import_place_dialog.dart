@@ -83,6 +83,7 @@ class _EditImportPlaceDialogState extends State<EditImportPlaceDialog> {
       id: widget.place.id,
       lat: lat,
       lng: lng,
+      title: widget.place.title,
       note: _noteController.text.trim(),
       timestamp: widget.place.timestamp,
       address: null, // Address will be fetched during import.

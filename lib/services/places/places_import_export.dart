@@ -190,6 +190,7 @@ class PlacesImportExport {
           id: (item['id'] as String?) ?? uuid.v4(),
           lat: lat.toDouble(),
           lng: lng.toDouble(),
+          title: (item['title'] as String?) ?? (item['note'] as String?) ?? '',
           note: (item['note'] as String?) ?? '',
           timestamp:
               (item['timestamp'] as String?) ??
@@ -270,6 +271,8 @@ class PlacesImportExport {
             id: (item['id'] as String?) ?? uuid.v4(),
             lat: lat.toDouble(),
             lng: lng.toDouble(),
+            title:
+                (item['title'] as String?) ?? (item['note'] as String?) ?? '',
             note: (item['note'] as String?) ?? '',
             timestamp:
                 (item['timestamp'] as String?) ??

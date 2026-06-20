@@ -27,6 +27,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:flutter_markdown/flutter_markdown.dart';
+
 import 'package:geopod/widgets/map/marker_data.dart';
 import 'package:geopod/widgets/media/media_link_picker_dialog.dart';
 import 'package:geopod/widgets/media/place_media_section.dart';
@@ -173,7 +175,7 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
           const Divider(),
           const SizedBox(height: 12),
 
-          // ── Description ────────────────────────────────────────────────
+          // ── Description (markdown) ──────────────────────────────────────
           if (marker.description.isNotEmpty) ...[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,9 +183,11 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
                 Icon(Icons.notes, size: 20, color: Colors.grey.shade600),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    marker.description,
-                    style: const TextStyle(fontSize: 14),
+                  child: MarkdownBody(
+                    data: marker.description,
+                    styleSheet: MarkdownStyleSheet.fromTheme(
+                      Theme.of(context),
+                    ).copyWith(p: const TextStyle(fontSize: 14)),
                   ),
                 ),
               ],

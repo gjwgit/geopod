@@ -211,16 +211,7 @@ class PlacesWriteService {
             updated.lat,
             updated.lng,
           );
-          toSave = Place(
-            id: updated.id,
-            lat: updated.lat,
-            lng: updated.lng,
-            note: updated.note,
-            timestamp: updated.timestamp,
-            address: addr,
-            isLocal: false,
-            isEncrypted: true,
-          );
+          toSave = updated.copyWith(address: addr, isEncrypted: true);
         }
         // Surgically update main cache BEFORE the write so that the
         // placesChangeNotifier fired inside writeEncryptedPlaces hits an
@@ -248,15 +239,7 @@ class PlacesWriteService {
             updated.lat,
             updated.lng,
           );
-          toSave = Place(
-            id: updated.id,
-            lat: updated.lat,
-            lng: updated.lng,
-            note: updated.note,
-            timestamp: updated.timestamp,
-            address: addr,
-            isLocal: false,
-          );
+          toSave = updated.copyWith(address: addr, isLocal: false);
         }
         list[i] = toSave;
       }
@@ -366,18 +349,10 @@ class PlacesWriteService {
       );
       onProgress?.call(newPlaces.length, newPlaces.length);
 
-      final withAddr = List<Place>.generate(newPlaces.length, (i) {
-        final p = newPlaces[i];
-        return Place(
-          id: p.id,
-          lat: p.lat,
-          lng: p.lng,
-          note: p.note,
-          timestamp: p.timestamp,
-          address: addresses[i],
-          isLocal: false,
-        );
-      });
+      final withAddr = List<Place>.generate(
+        newPlaces.length,
+        (i) => newPlaces[i].copyWith(address: addresses[i], isLocal: false),
+      );
       final merged = [...withAddr, ...existing];
 
       // Write main file first.

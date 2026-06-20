@@ -57,12 +57,7 @@ Future<Place?> performBackgroundSave(
     originalPlace.lat,
     originalPlace.lng,
   );
-  final updatedPlace = Place(
-    id: originalPlace.id,
-    lat: originalPlace.lat,
-    lng: originalPlace.lng,
-    note: originalPlace.note,
-    timestamp: originalPlace.timestamp,
+  final updatedPlace = originalPlace.copyWith(
     address: address,
     isEncrypted: encrypted,
   );

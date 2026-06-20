@@ -1,7 +1,7 @@
 name: geopod
 description: "Map interface to Solid Server Data Vault Pods."
 publish_to: 'none'
-version: 1.0.11+22
+version: 1.0.12+22
 
 environment:
   sdk: ^3.10.0
@@ -19,6 +19,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   emacs_text_field: ^0.1.0
   ffi: ^2.1.0
+  flutter_markdown: ^0.7.7
   file_picker: ^11.0.2
   file_saver: ^0.3.1
   flutter:

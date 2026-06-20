@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Fix markdown rendering of tooltips [1.0.14 20260620 gjw]
 + Tooltips for location markers [1.0.13 20260620 gjw]
 + Include a title for ech location [1.0.12 20260620 gjw]
 + All locations will be encrypted [1.0.11 20260620 gjw]

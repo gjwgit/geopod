@@ -75,9 +75,14 @@ Marker _buildMarker({
       ? _buildSavingMarker()
       : Icon(Icons.location_on, size: 40, color: marker.color);
 
-  final String tooltipText = marker.description.isNotEmpty
-      ? '**${marker.title}**\n\n${marker.description}'
-      : '**${marker.title}**';
+  // wordWrap() inside MarkdownTooltip collapses adjacent non-empty lines into
+  // one paragraph, destroying markdown list items. Preserve list lines by
+  // separating each with a blank line so wordWrap treats them individually.
+  final String tooltipText = _preserveMarkdownLists(
+    marker.description.isNotEmpty
+        ? '**${marker.title}**\n\n${marker.description}'
+        : '**${marker.title}**',
+  );
 
   final Widget tapTarget = MarkdownTooltip(
     message: tooltipText,
@@ -223,4 +228,24 @@ class _SavingMarkerState extends State<_SavingMarker>
 
 Widget _buildSavingMarker() {
   return const _SavingMarker();
+}
+
+/// Inserts blank lines between markdown list items so that [wordWrap] inside
+/// [MarkdownTooltip] does not collapse them into a single paragraph.
+
+String _preserveMarkdownLists(String text) {
+  final lines = text.split('\n');
+  final out = <String>[];
+  final listMarker = RegExp(r'^(\s*)([-*+]|\d+\.)\s');
+  for (int i = 0; i < lines.length; i++) {
+    out.add(lines[i]);
+    final current = lines[i].trim();
+    final next = i + 1 < lines.length ? lines[i + 1].trim() : '';
+    // Insert a blank line after each list item so wordWrap treats it as its
+    // own paragraph and does not merge it with the next item.
+    if (listMarker.hasMatch(current) && next.isNotEmpty) {
+      out.add('');
+    }
+  }
+  return out.join('\n');
 }

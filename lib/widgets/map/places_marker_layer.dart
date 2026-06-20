@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
+import 'package:markdown_tooltip/markdown_tooltip.dart';
 
 import 'package:geopod/widgets/map/marker_data.dart';
 import 'package:geopod/widgets/map/marker_details_sheet.dart';
@@ -74,14 +75,21 @@ Marker _buildMarker({
       ? _buildSavingMarker()
       : Icon(Icons.location_on, size: 40, color: marker.color);
 
-  final Widget tapTarget = GestureDetector(
-    onTap: () => showMarkerDetailsSheet(
-      context,
-      marker,
-      onDelete: () => onDelete(marker),
-      onEdit: () => onEdit(marker),
+  final String tooltipText = marker.description.isNotEmpty
+      ? '**${marker.title}**\n\n${marker.description}'
+      : '**${marker.title}**';
+
+  final Widget tapTarget = MarkdownTooltip(
+    message: tooltipText,
+    child: GestureDetector(
+      onTap: () => showMarkerDetailsSheet(
+        context,
+        marker,
+        onDelete: () => onDelete(marker),
+        onEdit: () => onEdit(marker),
+      ),
+      child: icon,
     ),
-    child: icon,
   );
 
   // When no animation is needed, pass the stateless widget directly.

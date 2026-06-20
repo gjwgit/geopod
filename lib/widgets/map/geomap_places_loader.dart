@@ -125,9 +125,3 @@ List<Place> mergeEncryptedPlaces({
   result.addAll(encryptedPlaces);
   return result;
 }
-
-/// Removes encrypted places from all places list.
-
-List<Place> removeEncryptedPlaces({required List<Place> allPlaces}) {
-  return allPlaces.where((p) => !p.isEncrypted).toList();
-}

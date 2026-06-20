@@ -136,24 +136,37 @@ class _AddPlaceFormState extends State<AddPlaceForm> {
   }
 
   String? _validateLatitude(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Latitude is required';
+    if (value == null || value.trim().isEmpty) {
+      return 'Latitude is required';
+    }
     final lat = double.tryParse(value.trim());
-    if (lat == null) return 'Enter a valid number';
-    if (lat < -90 || lat > 90) return 'Latitude must be between -90 and 90';
+    if (lat == null) {
+      return 'Enter a valid number';
+    }
+    if (lat < -90 || lat > 90) {
+      return 'Latitude must be between -90 and 90';
+    }
     return null;
   }
 
   String? _validateLongitude(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Longitude is required';
+    if (value == null || value.trim().isEmpty) {
+      return 'Longitude is required';
+    }
     final lng = double.tryParse(value.trim());
-    if (lng == null) return 'Enter a valid number';
-    if (lng < -180 || lng > 180)
+    if (lng == null) {
+      return 'Enter a valid number';
+    }
+    if (lng < -180 || lng > 180) {
       return 'Longitude must be between -180 and 180';
+    }
     return null;
   }
 
   void _handleSave() {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     final lat = double.parse(_latitudeController.text.trim());
     final lng = double.parse(_longitudeController.text.trim());
     final place = Place(

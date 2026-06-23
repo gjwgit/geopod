@@ -174,16 +174,33 @@ class AppScaffoldWidget extends StatelessWidget {
             width: 64, // Adjust size as needed
             height: 64,
           ),
-          applicationLegalese: '''Copyright © 2025 Togaware Pty Ltd''',
+          applicationLegalese: '''Copyright © 2025 - 2026 Togaware Pty Ltd''',
           text: '''
 
-          GeoPod provides a graphic maps-based interface to locations of
-          interest that you have recorded or that are shared with you by their
-          custodians.
+          GeoPod is a map-based location manager that stores your points of
+          interest encrypted in your personal Solid Pod, so your data stays
+          under your control. Your Solid Pod can be hosted on any Solid server
+          and being encrypted it is protected against casual access by anyone,
+          including the server administrators.
 
-          [Source code.](https://github.com/gjwgit/geopod)
+          ### Key features
+
+          - Interactive map to browse and tap to add locations
+          - Add locations by entering latitude and longitude directly
+          - Markdown notes and title for each location
+          - Hover tooltips showing location title and notes on the map
+          - Linked audio and video media for each location
+          - Backup and restore all locations and media as a ZIP
+          - Share locations with other Pod owners
+          - Security key management for encrypted data
+          - Theme switching (light / dark / system)
+
+          For more information, visit the
+          [GeoPod](https://github.com/gjwgit/geopod) GitHub repository and our
+          [Australian Solid Community](https://solidcommunity.au) web site.
 
           ''',
+          readmeUrl: 'https://gjwgit.github.io/geopod',
         ),
 
         // THEME DARK/LIGHT Mode.

@@ -295,6 +295,7 @@ class PodDirectoryService {
       // Evict from local cache regardless of server response.
       _cache.remove(relativePath);
       invalidateCache(relativePath);
+      notifyChange();
 
       return containerGone;
     } catch (e) {

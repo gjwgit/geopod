@@ -20,6 +20,7 @@ import 'package:solidpod/solidpod.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/places/encrypted_places_paths.dart';
+import 'package:geopod/services/pod/pod_directory_service.dart';
 import 'package:geopod/services/pod/pod_file_system.dart';
 
 /// Ensure the encrypted places directory's ACL and encryption key are set up.
@@ -55,7 +56,7 @@ Future<(bool success, bool dirCreated)> ensureEncryptedPlacesDir(
 }
 
 /// Read encrypted places from Pod.
-/// Optimized: tries to read directly without checking existence first.
+/// Loads granular individual files or migrates legacy aggregate file.
 Future<List<Place>> fetchEncryptedPlacesFromPod() async {
   final places = <Place>[];
 
@@ -64,24 +65,38 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
       return places;
     }
 
-    // Read encrypted content directly using relative path
-    // If file doesn't exist, readPod will return fail status
-    final filePath = getEncryptedPlacesFilePath();
-    final content = await readPod(filePath);
+    final dirPath = 'data/$encryptedPlacesDirName';
+    final dirItems = await PodDirectoryService.listDirectory(
+      dirPath,
+      forceRefresh: true,
+    );
 
-    // Handle non-existent file or errors gracefully
-    if (content == SolidFunctionCallStatus.notLoggedIn.toString() ||
-        content == SolidFunctionCallStatus.fail.toString() ||
-        content.isEmpty) {
-      return places;
-    }
+    final individualFiles = dirItems.where((item) =>
+        !item.isDirectory &&
+        item.name.startsWith(encryptedPlaceFilePrefix) &&
+        item.name.endsWith(encryptedPlaceFileExtension));
 
-    // Parse JSON content directly.
+    if (individualFiles.isNotEmpty) {
+      // Load individual files in parallel
+      final futures = <Future<String?>>[];
+      for (final item in individualFiles) {
+        final cleanPath = item.path.startsWith('data/')
+            ? item.path.substring('data/'.length)
+            : item.path;
+        futures.add(readPod(cleanPath));
+      }
 
-    try {
-      final jsonList = jsonDecode(content);
-      if (jsonList is List) {
-        for (final item in jsonList) {
+      final contents = await Future.wait(futures);
+      for (final content in contents) {
+        if (content == null ||
+            content == SolidFunctionCallStatus.notLoggedIn.toString() ||
+            content == SolidFunctionCallStatus.fail.toString() ||
+            content.isEmpty) {
+          continue;
+        }
+
+        try {
+          final item = jsonDecode(content);
           if (item is Map<String, dynamic>) {
             final place = Place.fromJson(
               item,
@@ -90,10 +105,44 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
             );
             places.add(place);
           }
+        } catch (e) {
+          debugPrint('Failed to parse encrypted place JSON: $e');
         }
       }
-    } catch (e) {
-      debugPrint('Failed to parse encrypted places JSON: $e');
+    } else {
+      // Migration path: Check if legacy aggregate file exists
+      final aggregatePath = getEncryptedPlacesFilePath();
+      final content = await readPod(aggregatePath);
+      if (content != SolidFunctionCallStatus.notLoggedIn.toString() &&
+          content != SolidFunctionCallStatus.fail.toString() &&
+          content.isNotEmpty) {
+        try {
+          final jsonList = jsonDecode(content);
+          if (jsonList is List) {
+            for (final item in jsonList) {
+              if (item is Map<String, dynamic>) {
+                final place = Place.fromJson(
+                  item,
+                  isLocalSource: false,
+                  isEncryptedSource: true,
+                );
+                places.add(place);
+              }
+            }
+          }
+
+          // Migrate by writing individual files
+          if (places.isNotEmpty) {
+            await Future.wait(
+              places.map((p) => writeIndividualEncryptedPlaceFile(p)),
+            );
+            // Delete the legacy aggregate file
+            await PodFileSystem.deleteFile(getEncryptedPlacesFilePath());
+          }
+        } catch (e) {
+          debugPrint('Failed to migrate legacy encrypted places: $e');
+        }
+      }
     }
 
     places.sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -106,6 +155,8 @@ Future<List<Place>> fetchEncryptedPlacesFromPod() async {
 
 /// Write encrypted places to Pod.
 /// Returns (success, dirCreated) tuple.
+/// Since granular individual files are written separately, this function
+/// only needs to ensure that the encrypted places directory is set up.
 Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(
   List<Place> places,
   bool directoryVerified,
@@ -119,31 +170,6 @@ Future<(bool success, bool dirCreated)> writeEncryptedPlacesToPod(
       return (false, false);
     }
 
-    // Use relative paths (writePod uses PathType.relativeToData by default)
-
-    final filePath = getEncryptedPlacesFilePath();
-    final dirPath = getEncryptedPlacesDirPath();
-
-    // Convert places to JSON
-
-    final jsonList = places.map((p) => p.toJson()).toList();
-    final jsonContent = jsonEncode(jsonList);
-
-    // Write encrypted file with key inheritance from directory
-    // Note: When using inheritKeyFrom, the encryption is handled by the
-    // directory's key, not by a file-specific individual key. So we set
-    // encrypted: false to avoid the "encryption status changed" dialog.
-    // The file will still be encrypted via the inherited directory key.
-
-    await writePod(
-      filePath,
-      jsonContent,
-      encrypted: false,
-      overwrite: true,
-      inheritKeyFrom: dirPath,
-    );
-
-    // writePod returns void in 0.9.x, assume success if no exception
     return (true, dirCreated);
   } catch (e) {
     debugPrint('Error writing encrypted places: $e');

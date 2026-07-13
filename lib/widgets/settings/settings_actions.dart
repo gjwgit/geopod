@@ -82,6 +82,20 @@ Widget buildUserActionsSection(BuildContext context) {
               style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
             ),
           ),
+
+          const SizedBox(height: 8),
+
+          // DEBUG: Wipe all data in the connected pod (except profile)
+          Center(
+            child: TextButton.icon(
+              onPressed: () => DebugDataService.clearAllPodData(context),
+              icon: const Icon(Icons.cleaning_services, size: 18),
+              label: const Text('Clear All Pod Data (DEBUG)'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red.shade900,
+              ),
+            ),
+          ),
         ],
       );
     },

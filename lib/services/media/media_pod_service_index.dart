@@ -173,6 +173,14 @@ Future<bool> _writeIndex(MediaType type, List<MediaItem> items) async {
     // writePod throws on failure (handled below), so reaching here is success.
     // Update the cache so subsequent reads are still fast.
     _setCache(type, List<MediaItem>.from(items));
+
+    // Invalidate the directory cache and notify the file browser.
+    final dirPath = type == MediaType.audio
+        ? getAudioDirPath()
+        : getVideoDirPath();
+    PodDirectoryService.invalidateCache(dirPath);
+    PodDirectoryService.notifyChange();
+
     return true;
   } catch (e) {
     debugPrint('MediaPodService._writeIndex error: $e');

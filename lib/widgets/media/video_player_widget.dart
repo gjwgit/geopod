@@ -12,7 +12,8 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -113,9 +114,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     } catch (e, st) {
       debugPrint('[VideoPlayerWidget] init error: $e\n$st');
       if (mounted) {
+        String errorMsg = e.toString();
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux) {
+          if (e is UnimplementedError ||
+              errorMsg.contains('init()') ||
+              errorMsg.toLowerCase().contains('mpv')) {
+            errorMsg =
+                '$errorMsg (on Linux, ensure libmpv is installed: sudo apt install libmpv-dev mpv)';
+          }
+        }
         setState(() {
           _failedToLoad = true;
-          _errorMessage = e.toString();
+          _errorMessage = errorMsg;
         });
       }
     }

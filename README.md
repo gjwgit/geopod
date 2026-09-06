@@ -63,6 +63,23 @@ access to through your Pod.
 
 ![Map Screen Darwin](assets/screenshots/map_screen_darwin.png)
 
+## GNU/Linux
+
+For building and running on GNU/Linux desktop, audio and video playback
+relies on `libmpv`. Install the required system development libraries:
+
+```bash
+sudo apt-get install -y libmpv-dev mpv libsecret-1-dev
+```
+
+Run the application:
+
+```bash
+make linux
+# or
+flutter run -d linux
+```
+
 ## MacOS/iOS
 
 This project uses a human readable `project.yml` in macos and ios folders, where

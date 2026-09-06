@@ -23,11 +23,13 @@ apps:
     command: geopod
     extensions: [gnome] # gnome includes the libraries required by flutter
     plugs:
+      - audio-playback
       - desktop
       - desktop-legacy
       - home
       - network
       - opengl
+      - pulseaudio
       - wayland
       - x11
 
@@ -97,5 +99,6 @@ parts:
       - libgstreamer-plugins-good1.0-0
       - libgstreamer1.0-0
       - libjsoncpp-dev
+      - libmpv2
       - libsecret-1-0
       - libssl3

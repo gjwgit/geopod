@@ -24,7 +24,7 @@ Version: ${VER}
 Section: utils
 Priority: optional
 Architecture: amd64
-Depends: libgtk-3-0, libblkid1, liblzma5
+Depends: libgtk-3-0, libblkid1, liblzma5, libsecret-1-0, libmpv1 | libmpv2
 Maintainer: Graham Williams <graham.williams@togaware.com>
 Description: Explore location points of interest.
  With ${APP} you can interact with location points of interest. The data is

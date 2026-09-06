@@ -10,6 +10,8 @@
 
 library;
 
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 
 import 'package:video_player/video_player.dart';
@@ -98,9 +100,18 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
     } catch (e, st) {
       debugPrint('[AudioPlayerWidget] init error: $e\n$st');
       if (mounted) {
+        String errorMsg = e.toString();
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux) {
+          if (e is UnimplementedError ||
+              errorMsg.contains('init()') ||
+              errorMsg.toLowerCase().contains('mpv')) {
+            errorMsg =
+                '$errorMsg (on Linux, ensure libmpv is installed: sudo apt install libmpv-dev mpv)';
+          }
+        }
         setState(() {
           _failedToLoad = true;
-          _errorMessage = e.toString();
+          _errorMessage = errorMsg;
         });
       }
     }

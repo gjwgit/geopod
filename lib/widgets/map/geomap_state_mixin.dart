@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:geopod/models/external_place.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
@@ -62,6 +63,7 @@ mixin MarkerCacheMixin {
   List<MarkerData>? _cachedFilteredMarkers;
   int _lastPlacesHash = 0;
   int _lastSavingIdsHash = 0;
+  int _lastSharedPlacesHash = 0;
   bool _lastShowLocalPlaces = true;
   bool _lastHideAllMarkers = false;
   Color _lastUserPlacesColor = Colors.blue;
@@ -73,6 +75,7 @@ mixin MarkerCacheMixin {
     required List<Place> allPlaces,
     required MapSettings mapSettings,
     required Set<String> savingPlaceIds,
+    List<ExternalPlace> sharedPlaces = const [],
     required List<MarkerData> Function() builder,
   }) {
     final placesHash = Object.hashAll(
@@ -83,6 +86,12 @@ mixin MarkerCacheMixin {
       ),
     );
     final savingHash = Object.hashAll(savingPlaceIds);
+    final sharedHash = Object.hashAll(
+      sharedPlaces.map(
+        (p) =>
+            '${p.placeUrl}_${p.content?.lat}_${p.content?.lng}_${p.permissionGranter}',
+      ),
+    );
     final showLocal = mapSettings.showLocalPlaces;
     final hideMarkers = mapSettings.hideAllMarkers;
     final userColor = mapSettings.userPlacesColor;
@@ -91,6 +100,7 @@ mixin MarkerCacheMixin {
     if (_cachedFilteredMarkers != null &&
         placesHash == _lastPlacesHash &&
         savingHash == _lastSavingIdsHash &&
+        sharedHash == _lastSharedPlacesHash &&
         showLocal == _lastShowLocalPlaces &&
         hideMarkers == _lastHideAllMarkers &&
         userColor == _lastUserPlacesColor &&
@@ -100,6 +110,7 @@ mixin MarkerCacheMixin {
 
     _lastPlacesHash = placesHash;
     _lastSavingIdsHash = savingHash;
+    _lastSharedPlacesHash = sharedHash;
     _lastShowLocalPlaces = showLocal;
     _lastHideAllMarkers = hideMarkers;
     _lastUserPlacesColor = userColor;

@@ -48,11 +48,13 @@ class PlaceListTile extends StatelessWidget {
     required this.place,
     this.onEdit,
     this.onDelete,
+    this.onShare,
   });
 
   final Place place;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +162,12 @@ class PlaceListTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (onShare != null)
+              IconButton(
+                icon: Icon(Icons.share, color: Colors.deepPurple.shade600),
+                onPressed: onShare,
+                tooltip: 'Share',
+              ),
             if (onEdit != null)
               IconButton(
                 icon: Icon(Icons.edit_outlined, color: Colors.blue.shade600),
@@ -258,6 +266,15 @@ class PlaceListTile extends StatelessWidget {
                 ),
               ),
               actions: [
+                if (onShare != null)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onShare!();
+                    },
+                    icon: const Icon(Icons.share, size: 18),
+                    label: const Text('Share'),
+                  ),
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);

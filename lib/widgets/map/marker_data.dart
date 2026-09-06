@@ -29,6 +29,7 @@ import 'package:flutter/material.dart';
 
 import 'package:latlong2/latlong.dart';
 
+import 'package:geopod/models/external_place.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/map_settings_service.dart';
 
@@ -61,6 +62,12 @@ class MarkerData {
   /// Tags on this place.
   final List<String> tags;
 
+  /// Whether this marker was shared by an external user.
+  final bool isShared;
+
+  /// WebID of the user who shared this place.
+  final String? sharedBy;
+
   MarkerData({
     required this.position,
     required this.title,
@@ -73,6 +80,8 @@ class MarkerData {
     this.isEncrypted = false,
     this.dateOfInterest,
     this.tags = const [],
+    this.isShared = false,
+    this.sharedBy,
   });
 
   String get coordinates =>
@@ -85,6 +94,7 @@ List<MarkerData> buildFilteredMarkers({
   required List<Place> allPlaces,
   required MapSettings mapSettings,
   required Set<String> savingPlaceIds,
+  List<ExternalPlace> sharedPlaces = const [],
 }) {
   // If hideAllMarkers is enabled, return empty list
   if (mapSettings.hideAllMarkers) return [];
@@ -95,7 +105,7 @@ List<MarkerData> buildFilteredMarkers({
     return true;
   }).toList();
 
-  return visible
+  final markers = visible
       .map(
         (p) => MarkerData(
           id: p.id,
@@ -114,4 +124,28 @@ List<MarkerData> buildFilteredMarkers({
         ),
       )
       .toList();
+
+  for (final sp in sharedPlaces) {
+    final p = sp.content;
+    if (p == null) continue;
+    markers.add(
+      MarkerData(
+        id: p.id,
+        position: LatLng(p.lat, p.lng),
+        title: p.displayTitle,
+        description: p.note,
+        address: p.address,
+        isLocal: false,
+        isSaving: false,
+        color: Colors.deepPurple,
+        isEncrypted: p.isEncrypted,
+        dateOfInterest: p.formattedDateOfInterest,
+        tags: p.tags,
+        isShared: true,
+        sharedBy: sp.permissionGranter,
+      ),
+    );
+  }
+
+  return markers;
 }

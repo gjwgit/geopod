@@ -141,6 +141,11 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
                           color: Colors.orange.shade600,
                         ),
                       )
+                    else if (marker.isShared)
+                      Text(
+                        'Shared Location',
+                        style: TextStyle(fontSize: 12, color: markerColor),
+                      )
                     else if (marker.isLocal)
                       Text(
                         'Example Location',
@@ -174,6 +179,35 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
           const SizedBox(height: 16),
           const Divider(),
           const SizedBox(height: 12),
+
+          // ── Shared by banner ───────────────────────────────────────────
+          if (marker.isShared && marker.sharedBy != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.deepPurple.shade200),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.share, size: 18, color: Colors.deepPurple),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Shared with you by: ${marker.sharedBy}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // ── Description (markdown) ──────────────────────────────────────
           if (marker.description.isNotEmpty) ...[

@@ -117,3 +117,8 @@ https://api.anthropic.com/v1/messages
 
 https://www.reddit.com/r/SAI_Rattle/
 https://rdrr.io/rforge/tm/man/stopwords.html
+
+# 20260907 amogh Place sharing test WebIDs and URLs
+
+https://alice.solidcommunity.au/.*
+https://bob.solidcommunity.au/.*

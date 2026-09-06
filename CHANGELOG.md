@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Implement sharing of locations with other users [1.0.23 20260907 amogh]
 + Fix places added from Locations being saved unencrypted [1.0.22 20260808 gjw]
 + Prompt to save unsaved place on window close [1.0.21 20260808 gjw]
 + Refactor loc lint [1.0.20 20260712 gjw]
@@ -67,7 +68,7 @@ then please show some ❤️ and tap on the star at
 + Fix encrypted file saving [0.0.10 20260123 miduo]
 + Cleanup [0.0.9 20260122 miduo]
 + Add LOCATE ME button [0.0.8 20260121 miduo]
-+ Re-enginer to split large file into function-based files [0.0.7 20260110 miduo]
++ Split large file into function-based files [0.0.7 20260110 miduo]
 + FILES begins in app data folder [0.0.6 20251218 gjw]
 + Add zoom +/- buttons [0.0.5 20251210 miduo]
 + Read and write places of interest from Pods and files [0.0.4 20251208 miduo]

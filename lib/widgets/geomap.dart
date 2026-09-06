@@ -21,12 +21,14 @@ import 'package:latlong2/latlong.dart';
 import 'package:solidpod/solidpod.dart' show authStateNotifier;
 import 'package:solidui/solidui.dart';
 
+import 'package:geopod/models/external_place.dart';
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/geocoding_service.dart';
 import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/services/navigation_service.dart' show pendingNavTarget;
 import 'package:geopod/services/places_service.dart'
     show placesChangeNotifier, PlacesService;
+import 'package:geopod/services/sharing/sharing_service.dart';
 import 'package:geopod/utils/widget_utils.dart';
 import 'package:geopod/widgets/locations/edit_place_dialog.dart';
 import 'package:geopod/widgets/locations/place_operations.dart';
@@ -76,6 +78,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
   TileProvider tileProvider = NetworkTileProvider();
   @override
   List<Place> allPlaces = [];
+  List<ExternalPlace> sharedPlaces = [];
   @override
   final Set<String> savingPlaceIds = {};
   @override
@@ -132,7 +135,10 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       animationController: animationController,
       fadeAnimation: fadeAnimation,
       onAnimationComplete: _onAnimationComplete,
-      onAuthStateChanged: () => onAuthStateChanged(),
+      onAuthStateChanged: () async {
+        await onAuthStateChanged();
+        await loadSharedPlaces();
+      },
       onPlacesChanged: () => onPlacesChanged(),
       authStateNotifier: authStateNotifier,
       placesChangeNotifier: placesChangeNotifier,
@@ -177,6 +183,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             setState(() => allPlaces = result.places!);
           }
         }
+        await loadSharedPlaces();
       },
     );
     WidgetsBinding.instance.addObserver(this);
@@ -284,6 +291,33 @@ class GeoMapWidgetState extends State<GeoMapWidget>
     navigateToLocation(target);
   }
 
+  /// Load places shared with the current user.
+  Future<void> loadSharedPlaces() async {
+    if (!isLoggedIn) {
+      if (sharedPlaces.isNotEmpty && mounted) {
+        setState(() => sharedPlaces = []);
+      }
+      return;
+    }
+    try {
+      final res = await getExternalPlaceList();
+      if (mounted && res.places != null) {
+        setState(() {
+          sharedPlaces = res.places!;
+        });
+      }
+    } catch (_) {
+      // Ignore background shared place loading errors.
+    }
+  }
+
+  @override
+  Future<void> handleRefreshPressed() async {
+    invalidateExternalPlaceCache();
+    await super.handleRefreshPressed();
+    await loadSharedPlaces();
+  }
+
   /// Cached getter for filtered markers to avoid expensive rebuilds.
 
   List<MarkerData> get _filteredMarkers {
@@ -291,10 +325,12 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       allPlaces: allPlaces,
       mapSettings: mapSettings,
       savingPlaceIds: savingPlaceIds,
+      sharedPlaces: sharedPlaces,
       builder: () => buildFilteredMarkers(
         allPlaces: allPlaces,
         mapSettings: mapSettings,
         savingPlaceIds: savingPlaceIds,
+        sharedPlaces: sharedPlaces,
       ),
     );
   }

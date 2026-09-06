@@ -26,6 +26,7 @@ import 'package:geopod/widgets/locations/locations_page_views.dart';
 import 'package:geopod/widgets/locations/place_list_tile.dart';
 import 'package:geopod/widgets/locations/place_operations.dart';
 import 'package:geopod/widgets/map/place_save_handler.dart';
+import 'package:geopod/widgets/sharing/share_place.dart';
 
 class LocationsPage extends StatefulWidget {
   const LocationsPage({super.key});
@@ -277,6 +278,14 @@ class _LocationsPageState extends State<LocationsPage>
     }
   }
 
+  void _sharePlace(Place place) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SharePlace(place: place, backPage: widget),
+      ),
+    );
+  }
+
   Future<void> _editPlace(Place place) async {
     final knownTags = <String>{for (final p in _places) ...p.tags};
     await showDialog<void>(
@@ -434,7 +443,10 @@ class _LocationsPageState extends State<LocationsPage>
                 return PlaceListTile(
                   place: p,
 
-                  // Only allow edit/delete when logged in and place is not local.
+                  // Only allow edit/delete/share when logged in and place is not local.
+                  onShare: isLoggedIn && !p.isLocal
+                      ? () => _sharePlace(p)
+                      : null,
                   onEdit: isLoggedIn && !p.isLocal ? () => _editPlace(p) : null,
                   onDelete: isLoggedIn && !p.isLocal
                       ? () => _deletePlace(p)

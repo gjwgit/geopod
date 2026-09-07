@@ -42,7 +42,7 @@ mixin AuthStateManagement<T extends StatefulWidget> on State<T> {
 
   void onAuthStateChanged(bool isLoggedIn);
 
-  /// Initialize auth state listener.
+  /// Initialise auth state listener.
   /// Call this in initState().
 
   void initAuthStateListener() {

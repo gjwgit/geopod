@@ -105,24 +105,24 @@ class PlacesImportExport {
     final result = ImportResult();
 
     try {
-      final pickResult = await FilePicker.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['json'],
-        withData: true,
       );
 
-      if (pickResult == null || pickResult.files.isEmpty) {
+      if (file == null) {
         result.cancelled = true;
         return result;
       }
 
-      final file = pickResult.files.first;
-      if (file.bytes == null) {
-        result.errors.add('Failed to read file data');
+      final String jsonString;
+      try {
+        jsonString = utf8.decode(await file.readAsBytes());
+      } catch (e) {
+        result.errors.add('Failed to read file data: $e');
         return result;
       }
 
-      final jsonString = utf8.decode(file.bytes!);
       final dynamic decoded;
 
       try {

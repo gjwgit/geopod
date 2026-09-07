@@ -74,24 +74,25 @@ class _UploadMediaDialogState extends State<_UploadMediaDialog> {
         ? ['mp3', 'm4a', 'aac', 'ogg', 'wav', 'webm']
         : ['mp4', 'mov', 'mkv', 'avi', 'webm'];
 
-    final result = await FilePicker.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: allowedExtensions,
-      withData: true, // We need bytes for upload.
     );
 
-    if (result == null || result.files.isEmpty) return;
-    final file = result.files.first;
+    if (file == null) return;
 
-    // `bytes` is non-null when withData = true.
-    if (file.bytes == null) {
-      setState(() => _errorText = 'Could not read file bytes.');
+    // The bytes are read up front because the upload needs them in memory.
+    final Uint8List bytes;
+    try {
+      bytes = await file.readAsBytes();
+    } catch (e) {
+      setState(() => _errorText = 'Could not read file bytes: $e');
       return;
     }
 
     setState(() {
       _pickedFilename = file.name;
-      _pickedBytes = file.bytes;
+      _pickedBytes = bytes;
       _errorText = null;
       // Pre-fill display name from filename (without extension).
       if (_nameController.text.isEmpty) {

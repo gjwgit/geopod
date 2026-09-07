@@ -56,7 +56,7 @@ Future<(bool success, bool dirCreated)> ensureEncryptedPlacesDir(
 }
 
 /// Read encrypted places from Pod.
-/// Optimized: tries to read directly without checking existence first.
+/// Optimised: tries to read directly without checking existence first.
 Future<List<Place>> fetchEncryptedPlacesFromPod() async {
   final places = <Place>[];
 

@@ -1,4 +1,4 @@
-/// Initialization and lifecycle management for GeoMap.
+/// Initialisation and lifecycle management for GeoMap.
 ///
 // Time-stamp: <Tuesday 2026-01-14 +1100>
 ///
@@ -18,7 +18,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
 
-/// Initializes animation controller and listeners for map widget.
+/// Initialises animation controller and listeners for map widget.
 
 void initializeMapState({
   required AnimationController animationController,
@@ -39,7 +39,7 @@ void initializeMapState({
   placesChangeNotifier.addListener(onPlacesChanged);
 }
 
-/// Initializes map widget after first frame.
+/// Initialises map widget after first frame.
 
 void initializeMapPostFrame({
   required BuildContext context,

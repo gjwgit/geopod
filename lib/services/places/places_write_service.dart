@@ -217,7 +217,7 @@ class PlacesWriteService {
         // placesChangeNotifier fired inside writeEncryptedPlaces hits an
         // already-correct allPlaces cache — no revert, no extra network fetch.
         PlacesCacheManager().updatePlaceInCache(toSave);
-        return EncryptedPlacesService.updateEncryptedPlace(
+        return await EncryptedPlacesService.updateEncryptedPlace(
           toSave,
           context,
           returnWidget,

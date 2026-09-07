@@ -26,7 +26,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -194,14 +193,14 @@ class BackupService {
       onProgress?.call(0, 1, 'Choosing save location…');
       final zipBytes = Uint8List.fromList(ZipEncoder().encode(archive));
       final filename = 'geopod_backup_${_ts(DateTime.now())}.zip';
-      final savePath = await FilePicker.saveFile(
+      final savedUri = await FilePicker.saveFile(
         dialogTitle: 'Save Backup',
         fileName: filename,
         type: FileType.custom,
         allowedExtensions: ['zip'],
+        bytes: zipBytes,
       );
-      if (savePath == null) return false; // user cancelled
-      await File(savePath).writeAsBytes(zipBytes);
+      if (savedUri == null) return false; // user cancelled
       return true;
     } catch (e) {
       debugPrint('BackupService.exportBackup error: $e');
@@ -219,16 +218,17 @@ class BackupService {
   }) async {
     final result = RestoreResult();
 
-    final picked = await FilePicker.pickFiles(
+    final picked = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['zip'],
-      withData: true,
     );
-    if (picked == null || picked.files.isEmpty) return result;
+    if (picked == null) return result;
 
-    final fileBytes = picked.files.first.bytes;
-    if (fileBytes == null) {
-      result.errors.add('Could not read the selected file.');
+    final Uint8List fileBytes;
+    try {
+      fileBytes = await picked.readAsBytes();
+    } catch (e) {
+      result.errors.add('Could not read the selected file: $e');
       return result;
     }
 

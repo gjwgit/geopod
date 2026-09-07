@@ -55,7 +55,10 @@ pw.Document buildWeatherPdfDocument({
           level: 0,
           child: pw.Text(
             'Weather Data Report',
-            style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
+            style: const pw.TextStyle(
+              fontSize: 24,
+              fontWeight: pw.FontWeight.bold,
+            ),
           ),
         ),
         pw.SizedBox(height: 20),
@@ -86,7 +89,7 @@ pw.Document buildWeatherPdfDocument({
             ),
             child: pw.Text(
               dataSource,
-              style: pw.TextStyle(
+              style: const pw.TextStyle(
                 fontSize: 12,
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.blue800,
@@ -106,7 +109,10 @@ pw.Document buildWeatherPdfDocument({
         // Data type.
         pw.Text(
           'Data Type: $title',
-          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          style: const pw.TextStyle(
+            fontSize: 14,
+            fontWeight: pw.FontWeight.bold,
+          ),
         ),
         pw.SizedBox(height: 5),
 
@@ -183,7 +189,7 @@ pw.Document buildWeatherPdfDocument({
             children: [
               pw.Text(
                 'Data Processing Algorithms',
-                style: pw.TextStyle(
+                style: const pw.TextStyle(
                   fontSize: 12,
                   fontWeight: pw.FontWeight.bold,
                 ),
@@ -203,10 +209,13 @@ pw.Document buildWeatherPdfDocument({
         ),
         pw.SizedBox(height: 20),
 
-        // Chart visualization.
+        // Chart visualisation.
         pw.Text(
-          'Data Visualization',
-          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          'Data Visualisation',
+          style: const pw.TextStyle(
+            fontSize: 14,
+            fontWeight: pw.FontWeight.bold,
+          ),
         ),
         pw.SizedBox(height: 10),
 
@@ -236,7 +245,10 @@ pw.Document buildWeatherPdfDocument({
           dataType == 'precipitation'
               ? 'Daily Total Data'
               : 'Daily Average Data',
-          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          style: const pw.TextStyle(
+            fontSize: 14,
+            fontWeight: pw.FontWeight.bold,
+          ),
         ),
         pw.SizedBox(height: 10),
         buildPdfDataTable(

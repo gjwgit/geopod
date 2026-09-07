@@ -20,7 +20,7 @@ dependencies:
   emacs_text_field: ^0.1.0
   ffi: ^2.1.0
   flutter_markdown: ^0.7.7
-  file_picker: ^11.0.2
+  file_picker: ^12.2.0
   file_saver: ^0.3.1
   flutter:
     sdk: flutter
@@ -36,8 +36,8 @@ dependencies:
   path_provider: ^2.1.5
   pdf: ^3.11.1
   shared_preferences: ^2.3.3
-  solidpod: ^1.0.13
-  solidui: ^1.0.30
+  solidpod: ^1.0.20
+  solidui: ^1.0.39
   uuid: ^4.5.1
   video_player: ^2.9.2
   video_player_media_kit: ^2.0.0

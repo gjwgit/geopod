@@ -135,7 +135,7 @@ class SnackBarHelper {
 /// Helper for showing confirmation dialogs.
 
 class DialogHelper {
-  /// Shows a confirmation dialog with customizable title, content, and buttons.
+  /// Shows a confirmation dialog with customisable title, content, and buttons.
   ///
   /// Returns true if user confirmed, false if cancelled or dismissed.
   static Future<bool> showConfirmation(

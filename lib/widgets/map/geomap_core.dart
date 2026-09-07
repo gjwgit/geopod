@@ -23,7 +23,7 @@ import 'package:geopod/widgets/map/user_location_marker_layer.dart';
 
 /// Builds the core FlutterMap widget with all layers.
 ///
-/// Performance optimizations:
+/// Performance optimisations:
 /// - Uses RepaintBoundary to isolate map repaints from overlay UI
 /// - Defers marker layer updates when not animating.
 

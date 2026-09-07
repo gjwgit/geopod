@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Location photo uploads and map visualization #67 [1.0.23 20260907 amogh]
 + Fix places added from Locations being saved unencrypted [1.0.22 20260808 gjw]
 + Prompt to save unsaved place on window close [1.0.21 20260808 gjw]
 + Refactor loc lint [1.0.20 20260712 gjw]

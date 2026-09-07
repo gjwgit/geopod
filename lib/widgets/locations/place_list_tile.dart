@@ -37,6 +37,7 @@ import 'package:geopod/services/navigation_service.dart'
 import 'package:geopod/widgets/locations/detail_row.dart';
 import 'package:geopod/widgets/media/media_link_picker_dialog.dart';
 import 'package:geopod/widgets/media/place_media_section.dart';
+import 'package:geopod/widgets/media/place_photo_section.dart';
 
 /// A list tile widget for displaying a single user place.
 ///
@@ -246,6 +247,10 @@ class PlaceListTile extends StatelessWidget {
                             .toList(),
                       ),
                     ],
+                    PlacePhotoSection(
+                      placeId: place.id,
+                      placeTitle: place.displayTitle,
+                    ),
                     PlaceMediaSection(
                       placeId: place.id,
                       onManageLinks: () => showMediaLinkPickerDialog(

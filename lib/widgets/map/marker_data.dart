@@ -1,6 +1,6 @@
 /// Data model for a map marker.
 ///
-// Time-stamp: <Monday 2025-12-08 08:22:27 +1100 Graham Williams>
+// Time-stamp: <2026-09-07 Amogh>
 ///
 /// Copyright (C) 2025, Software Innovation Institute, ANU.
 ///
@@ -21,7 +21,7 @@
 // You should have received a copy of the GNU General Public License along with
 // this program.  If not, see <https://opensource.org/license/gpl-3-0>.
 ///
-/// Authors: Graham Williams, Miduo
+/// Authors: Graham Williams, Miduo, Amogh
 
 library;
 
@@ -31,6 +31,7 @@ import 'package:latlong2/latlong.dart';
 
 import 'package:geopod/models/place.dart';
 import 'package:geopod/services/map_settings_service.dart';
+import 'package:geopod/services/media/media_pod_service.dart';
 
 /// Data model for a map marker.
 
@@ -61,6 +62,12 @@ class MarkerData {
   /// Tags on this place.
   final List<String> tags;
 
+  /// Number of photos linked to this place.
+  final int photoCount;
+
+  /// Whether this place has at least one photo attached.
+  final bool hasPhotos;
+
   MarkerData({
     required this.position,
     required this.title,
@@ -73,7 +80,9 @@ class MarkerData {
     this.isEncrypted = false,
     this.dateOfInterest,
     this.tags = const [],
-  });
+    this.photoCount = 0,
+    bool? hasPhotos,
+  }) : hasPhotos = hasPhotos ?? (photoCount > 0);
 
   String get coordinates =>
       '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
@@ -85,6 +94,7 @@ List<MarkerData> buildFilteredMarkers({
   required List<Place> allPlaces,
   required MapSettings mapSettings,
   required Set<String> savingPlaceIds,
+  Map<String, int> photoCounts = const {},
 }) {
   // If hideAllMarkers is enabled, return empty list
   if (mapSettings.hideAllMarkers) return [];
@@ -95,23 +105,28 @@ List<MarkerData> buildFilteredMarkers({
     return true;
   }).toList();
 
-  return visible
-      .map(
-        (p) => MarkerData(
-          id: p.id,
-          position: LatLng(p.lat, p.lng),
-          title: p.displayTitle,
-          description: p.note,
-          address: p.address,
-          isLocal: p.isLocal,
-          isSaving: savingPlaceIds.contains(p.id),
-          color: p.isLocal
-              ? mapSettings.localPlacesColor
-              : mapSettings.userPlacesColor,
-          isEncrypted: p.isEncrypted,
-          dateOfInterest: p.formattedDateOfInterest,
-          tags: p.tags,
-        ),
-      )
-      .toList();
+  return visible.map((p) {
+    final count = photoCounts.containsKey(p.id)
+        ? photoCounts[p.id]!
+        : MediaPodService.getLinkedPhotoCountSync(p.id);
+    final hasPhoto =
+        count > 0 || (MediaPodService.hasLinkedPhotoSync(p.id) == true);
+    return MarkerData(
+      id: p.id,
+      position: LatLng(p.lat, p.lng),
+      title: p.displayTitle,
+      description: p.note,
+      address: p.address,
+      isLocal: p.isLocal,
+      isSaving: savingPlaceIds.contains(p.id),
+      color: p.isLocal
+          ? mapSettings.localPlacesColor
+          : mapSettings.userPlacesColor,
+      isEncrypted: p.isEncrypted,
+      dateOfInterest: p.formattedDateOfInterest,
+      tags: p.tags,
+      photoCount: count,
+      hasPhotos: hasPhoto,
+    );
+  }).toList();
 }

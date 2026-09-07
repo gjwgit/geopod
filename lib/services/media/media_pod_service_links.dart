@@ -23,6 +23,7 @@ Future<void> _unlinkAllForPlaceAsync(String placeId) async {
     final results = await Future.wait([
       _readIndex(MediaType.audio),
       _readIndex(MediaType.video),
+      _readIndex(MediaType.photo),
     ]);
 
     Future<void> cleanType(MediaType type, List<MediaItem> items) async {
@@ -42,6 +43,7 @@ Future<void> _unlinkAllForPlaceAsync(String placeId) async {
     await Future.wait([
       cleanType(MediaType.audio, results[0]),
       cleanType(MediaType.video, results[1]),
+      cleanType(MediaType.photo, results[2]),
     ]);
   } catch (e) {
     debugPrint('MediaPodService._unlinkAllForPlaceAsync error: $e');
@@ -57,6 +59,7 @@ Future<void> _clearAllPlaceLinksAsync() async {
     final results = await Future.wait([
       _readIndex(MediaType.audio),
       _readIndex(MediaType.video),
+      _readIndex(MediaType.photo),
     ]);
 
     Future<void> clearType(MediaType type, List<MediaItem> items) async {
@@ -71,6 +74,7 @@ Future<void> _clearAllPlaceLinksAsync() async {
     await Future.wait([
       clearType(MediaType.audio, results[0]),
       clearType(MediaType.video, results[1]),
+      clearType(MediaType.photo, results[2]),
     ]);
   } catch (e) {
     debugPrint('MediaPodService._clearAllPlaceLinksAsync error: $e');

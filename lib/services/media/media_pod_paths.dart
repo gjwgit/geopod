@@ -18,6 +18,9 @@ const String audioDirName = 'audio';
 /// Sub-directory under `geopod/data/` for video files.
 const String videoDirName = 'video';
 
+/// Sub-directory under `geopod/data/` for photo files.
+const String photoDirName = 'photo';
+
 // ── Index file names ─────────────────────────────────────────────────────────
 
 /// JSON index file that lists all audio items.
@@ -25,6 +28,9 @@ const String audioIndexFileName = 'audio_index.json';
 
 /// JSON index file that lists all video items.
 const String videoIndexFileName = 'video_index.json';
+
+/// JSON index file that lists all photo items.
+const String photoIndexFileName = 'photo_index.json';
 
 // ── Path helpers (relative to the Pod data directory, passed to PodPath) ────
 //
@@ -37,17 +43,26 @@ String getAudioDirPath() => 'data/$audioDirName';
 /// `data/video`
 String getVideoDirPath() => 'data/$videoDirName';
 
+/// `data/photo`
+String getPhotoDirPath() => 'data/$photoDirName';
+
 /// `data/audio/audio_index.json`
 String getAudioIndexPath() => 'data/$audioDirName/$audioIndexFileName';
 
 /// `data/video/video_index.json`
 String getVideoIndexPath() => 'data/$videoDirName/$videoIndexFileName';
 
+/// `data/photo/photo_index.json`
+String getPhotoIndexPath() => 'data/$photoDirName/$photoIndexFileName';
+
 /// `data/audio/<filename>`
 String getAudioFilePath(String filename) => 'data/$audioDirName/$filename';
 
 /// `data/video/<filename>`
 String getVideoFilePath(String filename) => 'data/$videoDirName/$filename';
+
+/// `data/photo/<filename>`
+String getPhotoFilePath(String filename) => 'data/$photoDirName/$filename';
 
 // ── MIME type helpers ─────────────────────────────────────────────────────────
 
@@ -69,4 +84,10 @@ const Map<String, String> _mimeMap = {
   'mkv': 'video/x-matroska',
   'avi': 'video/x-msvideo',
   'webmv': 'video/webm',
+  'jpg': 'image/jpeg',
+  'jpeg': 'image/jpeg',
+  'png': 'image/png',
+  'webp': 'image/webp',
+  'gif': 'image/gif',
+  'svg': 'image/svg+xml',
 };

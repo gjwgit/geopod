@@ -18,6 +18,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/services.dart' show rootBundle;
+
+import 'package:http/http.dart' as http;
 
 import 'package:solidpod/solidpod.dart'
     show
@@ -51,41 +54,63 @@ const _uuid = Uuid();
 // Per-session flags: setInheritKeyDir only needs to run once per type per session.
 bool _audioKeyReady = false;
 bool _videoKeyReady = false;
+bool _photoKeyReady = false;
 
 // In-memory index cache - avoids repeated Pod round-trips within a session.
-// Both caches are invalidated on write.
+// Caches are invalidated on write.
 List<MediaItem>? _audioCache;
 List<MediaItem>? _videoCache;
+List<MediaItem>? _photoCache;
 
 /// In-flight fetch futures - ensures only one Pod request per type is
 /// issued at a time even when many callers ask concurrently.
 Future<List<MediaItem>>? _audioFetch;
 Future<List<MediaItem>>? _videoFetch;
+Future<List<MediaItem>>? _photoFetch;
+
+// In-memory decoded media bytes cache (e.g. for photo thumbnails).
+final Map<String, Uint8List> _mediaBytesCache = {};
 
 // Library-private cache helpers - shared across all part files.
 
-List<MediaItem>? _getCache(MediaType type) =>
-    type == MediaType.audio ? _audioCache : _videoCache;
+List<MediaItem>? _getCache(MediaType type) => switch (type) {
+  MediaType.audio => _audioCache,
+  MediaType.video => _videoCache,
+  MediaType.photo => _photoCache,
+};
 
 void _setCache(MediaType type, List<MediaItem> items) {
-  if (type == MediaType.audio) {
-    _audioCache = items;
-  } else {
-    _videoCache = items;
+  switch (type) {
+    case MediaType.audio:
+      _audioCache = items;
+      break;
+    case MediaType.video:
+      _videoCache = items;
+      break;
+    case MediaType.photo:
+      _photoCache = items;
+      break;
   }
 }
 
 void _invalidateCache(MediaType type) {
-  if (type == MediaType.audio) {
-    _audioCache = null;
-    _audioFetch = null;
-  } else {
-    _videoCache = null;
-    _videoFetch = null;
+  switch (type) {
+    case MediaType.audio:
+      _audioCache = null;
+      _audioFetch = null;
+      break;
+    case MediaType.video:
+      _videoCache = null;
+      _videoFetch = null;
+      break;
+    case MediaType.photo:
+      _photoCache = null;
+      _photoFetch = null;
+      break;
   }
 }
 
-/// Service that manages audio and video items on the user''s Solid Pod.
+/// Service that manages audio, video, and photo items on the user's Solid Pod.
 ///
 /// **Storage layout** (all paths relative to Pod data directory):
 /// ```
@@ -96,6 +121,10 @@ void _invalidateCache(MediaType type) {
 /// video/
 ///   video_index.json
 ///   <filename>.mp4
+///   <filename>.enc
+/// photo/
+///   photo_index.json
+///   <filename>.png
 ///   <filename>.enc
 /// ```
 class MediaPodService {
@@ -109,20 +138,29 @@ class MediaPodService {
   /// browser) so that the next [listItems] call re-fetches from the Pod.
   static void clearCacheForType(MediaType type) {
     _invalidateCache(type);
-    if (type == MediaType.audio) {
-      _audioFetch = null;
-    } else {
-      _videoFetch = null;
+    switch (type) {
+      case MediaType.audio:
+        _audioFetch = null;
+        break;
+      case MediaType.video:
+        _videoFetch = null;
+        break;
+      case MediaType.photo:
+        _photoFetch = null;
+        break;
     }
   }
 
-  /// Clears both in-memory caches.  Call when the user logs out or when a
+  /// Clears in-memory caches. Call when the user logs out or when a
   /// full refresh is needed.
   static void clearCache() {
     _audioCache = null;
     _videoCache = null;
+    _photoCache = null;
     _audioFetch = null;
     _videoFetch = null;
+    _photoFetch = null;
+    _mediaBytesCache.clear();
   }
 
   // Public API
@@ -188,11 +226,18 @@ class MediaPodService {
   static Future<String?> loadPlaybackUrl(MediaItem item) =>
       _loadPlaybackUrl(item);
 
+  /// Downloads or decodes the media bytes for [item] (e.g. for image display).
+  ///
+  /// Results are cached in memory for the duration of the app session.
+  /// Returns `null` if fetching or decryption fails.
+  static Future<Uint8List?> loadMediaBytes(MediaItem item) =>
+      _loadMediaBytes(item);
+
   /// Releases the local playback URL created by [loadPlaybackUrl].
   /// Should be called when the player widget is disposed.
   static Future<void> releasePlaybackUrl(String url) => revokePlaybackUrl(url);
 
-  /// Updates (or on first link, inserts) an item''s metadata in the Pod index.
+  /// Updates (or on first link, inserts) an item's metadata in the Pod index.
   ///
   /// **Matching:** the item is located by [MediaItem.podItemId].
   ///
@@ -207,18 +252,39 @@ class MediaPodService {
   // Place-link helpers
 
   /// Synchronously checks the in-memory index cache to determine whether
-  /// [placeId] has any linked media items (audio or video).
+  /// [placeId] has any linked media items (audio, video, or photo).
   ///
-  /// Returns `null` if either media index has not been loaded into cache yet
+  /// Returns `null` if any media index has not been loaded into cache yet
   /// (caller should treat as "unknown", not "no links").
-  /// Returns `true` / `false` once both caches are populated.
+  /// Returns `true` / `false` once all caches are populated.
   ///
   /// This is a pure cache read - no network request is made.
   static bool? hasLinkedMediaSync(String placeId) {
     final audio = _audioCache;
     final video = _videoCache;
-    if (audio == null || video == null) return null;
-    return [...audio, ...video].any((i) => i.locationIds.contains(placeId));
+    final photo = _photoCache;
+    if (audio == null || video == null || photo == null) return null;
+    return [
+      ...audio,
+      ...video,
+      ...photo,
+    ].any((i) => i.locationIds.contains(placeId));
+  }
+
+  /// Synchronously checks whether [placeId] has any linked photos.
+  /// Returns `null` if photo cache is not loaded yet.
+  static bool? hasLinkedPhotoSync(String placeId) {
+    final photo = _photoCache;
+    if (photo == null) return null;
+    return photo.any((i) => i.locationIds.contains(placeId));
+  }
+
+  /// Synchronously returns the number of linked photos for [placeId].
+  /// Returns 0 if photo cache is not loaded yet.
+  static int getLinkedPhotoCountSync(String placeId) {
+    final photo = _photoCache;
+    if (photo == null) return 0;
+    return photo.where((i) => i.locationIds.contains(placeId)).length;
   }
 
   /// Removes [placeId] from every media item''s [MediaItem.locationIds] in

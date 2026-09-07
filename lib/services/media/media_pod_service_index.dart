@@ -17,17 +17,21 @@ part of 'media_pod_service.dart';
 
 // ── Index path ────────────────────────────────────────────────────────────
 
-String _indexPath(MediaType type) =>
-    type == MediaType.audio ? getAudioIndexPath() : getVideoIndexPath();
+String _indexPath(MediaType type) => switch (type) {
+  MediaType.audio => getAudioIndexPath(),
+  MediaType.video => getVideoIndexPath(),
+  MediaType.photo => getPhotoIndexPath(),
+};
 
 // ── Pod index bootstrapping ───────────────────────────────────────────────
 
-/// Ensures that both media index files exist on the Pod.
+/// Ensures that media index files exist on the Pod.
 Future<void> _ensureIndexFiles() async {
   if (!await PodAuth.isLoggedIn()) return;
   await Future.wait([
     _ensureIndexFile(MediaType.audio),
     _ensureIndexFile(MediaType.video),
+    _ensureIndexFile(MediaType.photo),
   ]);
 }
 
@@ -61,21 +65,31 @@ Future<void> _ensureIndexFile(MediaType type) async {
 /// Ensures the ACL file and encryption key are set up for the directory.
 /// Skipped after the first successful call per session.
 Future<void> _ensureDir(MediaType type) async {
-  final alreadyReady = type == MediaType.audio
-      ? _audioKeyReady
-      : _videoKeyReady;
+  final alreadyReady = switch (type) {
+    MediaType.audio => _audioKeyReady,
+    MediaType.video => _videoKeyReady,
+    MediaType.photo => _photoKeyReady,
+  };
   if (alreadyReady) return;
 
-  final relDir = type == MediaType.audio
-      ? getAudioDirPath()
-      : getVideoDirPath();
+  final relDir = switch (type) {
+    MediaType.audio => getAudioDirPath(),
+    MediaType.video => getVideoDirPath(),
+    MediaType.photo => getPhotoDirPath(),
+  };
   try {
     final dirUrl = await PodPath.getDirUrl(relDir);
     await setInheritKeyDir(dirUrl, createAcl: true);
-    if (type == MediaType.audio) {
-      _audioKeyReady = true;
-    } else {
-      _videoKeyReady = true;
+    switch (type) {
+      case MediaType.audio:
+        _audioKeyReady = true;
+        break;
+      case MediaType.video:
+        _videoKeyReady = true;
+        break;
+      case MediaType.photo:
+        _photoKeyReady = true;
+        break;
     }
   } catch (e) {
     debugPrint('MediaPodService._ensureDir error: $e');
@@ -91,22 +105,38 @@ Future<List<MediaItem>> _readIndex(MediaType type) async {
 
   // If a fetch is already in-flight, share it instead of issuing a second
   // identical HTTP request.
-  final existing = type == MediaType.audio ? _audioFetch : _videoFetch;
+  final existing = switch (type) {
+    MediaType.audio => _audioFetch,
+    MediaType.video => _videoFetch,
+    MediaType.photo => _photoFetch,
+  };
   if (existing != null) return List<MediaItem>.from(await existing);
 
   // No cache, no in-flight request: start a new fetch.
   final fetch = _fetchFromPod(type);
-  if (type == MediaType.audio) {
-    _audioFetch = fetch;
-  } else {
-    _videoFetch = fetch;
+  switch (type) {
+    case MediaType.audio:
+      _audioFetch = fetch;
+      break;
+    case MediaType.video:
+      _videoFetch = fetch;
+      break;
+    case MediaType.photo:
+      _photoFetch = fetch;
+      break;
   }
   final items = await fetch;
   // Clear the in-flight reference now that it has settled.
-  if (type == MediaType.audio) {
-    _audioFetch = null;
-  } else {
-    _videoFetch = null;
+  switch (type) {
+    case MediaType.audio:
+      _audioFetch = null;
+      break;
+    case MediaType.video:
+      _videoFetch = null;
+      break;
+    case MediaType.photo:
+      _photoFetch = null;
+      break;
   }
   return List<MediaItem>.from(items);
 }
@@ -154,8 +184,11 @@ String _indexSolidpodPath(MediaType type) {
 }
 
 /// The directory (under data/) whose inherited key encrypts the index.
-String _indexDirName(MediaType type) =>
-    type == MediaType.audio ? audioDirName : videoDirName;
+String _indexDirName(MediaType type) => switch (type) {
+  MediaType.audio => audioDirName,
+  MediaType.video => videoDirName,
+  MediaType.photo => photoDirName,
+};
 
 // ── Index write ───────────────────────────────────────────────────────────
 

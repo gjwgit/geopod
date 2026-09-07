@@ -73,15 +73,20 @@ Marker _buildMarker({
   // Build the visual child (pure stateless widgets when not saving).
   final Widget icon = marker.isSaving
       ? _buildSavingMarker()
+      : marker.hasPhotos
+      ? _buildPhotoMarker(marker.color, marker.photoCount)
       : Icon(Icons.location_on, size: 40, color: marker.color);
 
   // wordWrap() inside MarkdownTooltip collapses adjacent non-empty lines into
   // one paragraph, destroying markdown list items. Preserve list lines by
   // separating each with a blank line so wordWrap treats them individually.
+  final photoBadge = marker.hasPhotos
+      ? '\n\n📷 ${marker.photoCount > 0 ? "${marker.photoCount} photo${marker.photoCount > 1 ? "s" : ""}" : "Photo attached"}'
+      : '';
   final String tooltipText = _preserveMarkdownLists(
     marker.description.isNotEmpty
-        ? '**${marker.title}**\n\n${marker.description}'
-        : '**${marker.title}**',
+        ? '**${marker.title}**\n\n${marker.description}$photoBadge'
+        : '**${marker.title}**$photoBadge',
   );
 
   final Widget tapTarget = MarkdownTooltip(
@@ -108,13 +113,46 @@ Marker _buildMarker({
   return Marker(
     key: ValueKey('marker_${marker.id}'),
     point: marker.position,
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignment: const Alignment(
       0.0,
       -0.8,
     ), // Align the bottom center of the icon to the point.
     child: child,
+  );
+}
+
+/// Builds a marker icon with an overlay camera badge indicating attached photos.
+Widget _buildPhotoMarker(Color color, int photoCount) {
+  return SizedBox(
+    width: 44,
+    height: 44,
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Center(child: Icon(Icons.location_on, size: 40, color: color)),
+        Positioned(
+          top: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.all(2.5),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Icon(Icons.photo_camera, size: 13, color: color),
+          ),
+        ),
+      ],
+    ),
   );
 }
 

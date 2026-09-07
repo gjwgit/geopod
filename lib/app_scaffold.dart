@@ -37,6 +37,7 @@ import 'widgets/audio_page.dart';
 import 'widgets/backup_screen.dart';
 import 'widgets/geomap.dart';
 import 'widgets/locations_page.dart';
+import 'widgets/photos_page.dart';
 import 'widgets/video_page.dart';
 
 /// App scaffold widget that responds to fullscreen mode changes.
@@ -95,6 +96,17 @@ class AppScaffoldWidget extends StatelessWidget {
 
             ''',
             child: LocationsPage(),
+          ),
+          const SolidMenuItem(
+            icon: Icons.photo_library,
+            title: 'Photos',
+            tooltip: '''
+
+            **Photos:** Tap here to view and review photos for specific
+              locations of interest.
+
+            ''',
+            child: PhotosPage(),
           ),
           const SolidMenuItem(
             icon: Icons.headphones,

@@ -25,8 +25,8 @@
 
 library;
 
-/// Discriminates between audio and video resources.
-enum MediaType { audio, video }
+/// Discriminates between audio, video, and photo resources.
+enum MediaType { audio, video, photo }
 
 /// A single media resource – either a bundled asset, a remote Pod file, or a
 /// Pod-hosted item that is loaded on demand.
@@ -51,7 +51,7 @@ class MediaItem {
   /// Human-readable label shown in the list tile.
   final String name;
 
-  /// Audio or video.
+  /// Audio, video, or photo.
   final MediaType type;
 
   /// Path within the Flutter asset bundle, e.g. `'assets/audio/example.mp3'`.
@@ -63,7 +63,7 @@ class MediaItem {
   final String? remoteUrl;
 
   /// Path relative to the Pod **data** directory for items stored in the Pod,
-  /// e.g. `'audio/example.mp3'` or `'audio/example.enc'`.
+  /// e.g. `'audio/example.mp3'` or `'photo/example.png'`.
   /// `null` for asset-backed or external URL items.
   final String? podRelativePath;
 
@@ -87,6 +87,11 @@ class MediaItem {
   /// `true` when this item lives in the user's Solid Pod.
   bool get isPodItem => podRelativePath != null;
 
+  /// Convenience type checks.
+  bool get isAudio => type == MediaType.audio;
+  bool get isVideo => type == MediaType.video;
+  bool get isPhoto => type == MediaType.photo;
+
   // ── JSON serialisation ───────────────────────────────────────────────────
 
   /// Parses [locationIds] from JSON, with backward-compat for legacy
@@ -100,10 +105,23 @@ class MediaItem {
     return const [];
   }
 
+  static MediaType _parseType(String? rawType) {
+    switch (rawType) {
+      case 'video':
+        return MediaType.video;
+      case 'photo':
+      case 'image':
+        return MediaType.photo;
+      case 'audio':
+      default:
+        return MediaType.audio;
+    }
+  }
+
   factory MediaItem.fromJson(Map<String, dynamic> json) {
     return MediaItem(
       name: json['name'] as String,
-      type: json['type'] == 'video' ? MediaType.video : MediaType.audio,
+      type: _parseType(json['type'] as String?),
       assetPath: json['assetPath'] as String?,
       podRelativePath: json['podRelativePath'] as String?,
       isEncrypted: (json['isEncrypted'] as bool?) ?? false,
@@ -117,7 +135,7 @@ class MediaItem {
 
   Map<String, dynamic> toJson() => {
     'name': name,
-    'type': type == MediaType.video ? 'video' : 'audio',
+    'type': type.name,
     if (assetPath != null) 'assetPath': assetPath,
     if (podRelativePath != null) 'podRelativePath': podRelativePath,
     'isEncrypted': isEncrypted,

@@ -137,9 +137,11 @@ class BackupService {
       // ── 2. Media ──────────────────────────────────────────────────────
       final audioItems = await MediaPodService.listItems(MediaType.audio);
       final videoItems = await MediaPodService.listItems(MediaType.video);
+      final photoItems = await MediaPodService.listItems(MediaType.photo);
       final podItems = [
         ...audioItems,
         ...videoItems,
+        ...photoItems,
       ].where((i) => i.isPodItem).toList();
       final manifest = <_MediaManifestEntry>[];
 
@@ -164,7 +166,11 @@ class BackupService {
         }
 
         final storedName = _cleanFilename(item);
-        final dir = item.type == MediaType.audio ? 'audio' : 'video';
+        final dir = switch (item.type) {
+          MediaType.audio => 'audio',
+          MediaType.video => 'video',
+          MediaType.photo => 'photo',
+        };
         final zipPath = '$dir/$storedName';
         archive.addFile(ArchiveFile(zipPath, bytes.length, bytes));
         manifest.add(
@@ -286,9 +292,11 @@ class BackupService {
             continue;
           }
 
-          final type = entry.type == 'audio'
-              ? MediaType.audio
-              : MediaType.video;
+          final type = switch (entry.type) {
+            'audio' => MediaType.audio,
+            'photo' => MediaType.photo,
+            'video' || _ => MediaType.video,
+          };
           final uploaded = await MediaPodService.uploadItem(
             name: entry.name,
             filename: entry.filename.split('/').last,

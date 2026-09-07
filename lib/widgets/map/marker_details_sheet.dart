@@ -32,6 +32,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 import 'package:geopod/widgets/media/media_link_picker_dialog.dart';
 import 'package:geopod/widgets/media/place_media_section.dart';
+import 'package:geopod/widgets/media/place_photo_section.dart';
 import 'package:geopod/widgets/weather_dialog.dart';
 
 /// Shows detailed information about a marker in a scrollable bottom sheet.
@@ -258,6 +259,9 @@ class _MarkerDetailsSheetContent extends StatelessWidget {
               children: marker.tags.map((t) => Chip(label: Text(t))).toList(),
             ),
           ],
+
+          // ── Location Photos ───────────────────────────────────────────
+          PlacePhotoSection(placeId: marker.id, placeTitle: marker.title),
 
           // ── Linked media (audio / video) ───────────────────────────────
           // Shown for all markers (including local/demo ones) so users can

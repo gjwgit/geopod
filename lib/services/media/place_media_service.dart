@@ -45,7 +45,7 @@ class PlaceMediaService {
 
   // ── Query ─────────────────────────────────────────────────────────────────
 
-  /// Returns all [MediaItem]s (audio + video) linked to [placeId].
+  /// Returns all [MediaItem]s (audio, video, photo) linked to [placeId].
   ///
   /// [extraItems] are additional media items not stored in the Pod (e.g.
   /// bundled asset items) that callers pass in so the service can also filter
@@ -63,27 +63,58 @@ class PlaceMediaService {
           .toList();
     }
 
-    // Fetch both indices in parallel – halves the Pod round-trip count.
+    // Fetch indices in parallel.
     final results = await Future.wait([
       MediaPodService.listItems(MediaType.audio),
       MediaPodService.listItems(MediaType.video),
+      MediaPodService.listItems(MediaType.photo),
     ]);
     final podAudio = results[0];
     final podVideo = results[1];
+    final podPhoto = results[2];
 
-    final all = [...extraItems, ...podAudio, ...podVideo];
+    final all = [...extraItems, ...podAudio, ...podVideo, ...podPhoto];
     return all.where((item) => item.locationIds.contains(placeId)).toList();
   }
 
-  /// Returns all [MediaItem]s (audio + video) from the Pod, regardless of
+  /// Returns all photo [MediaItem]s linked to [placeId].
+  static Future<List<MediaItem>> getPhotosForPlace(
+    String placeId, {
+    List<MediaItem> extraItems = const [],
+  }) async {
+    if (!PodAuth.isLoggedInSync()) {
+      return extraItems
+          .where((item) => item.isPhoto && item.locationIds.contains(placeId))
+          .toList();
+    }
+    final podPhotos = await MediaPodService.listItems(MediaType.photo);
+    final all = [...extraItems.where((i) => i.isPhoto), ...podPhotos];
+    return all.where((item) => item.locationIds.contains(placeId)).toList();
+  }
+
+  /// Returns a map of placeId -> list of linked photo items for all places.
+  static Future<Map<String, List<MediaItem>>> getAllPhotosByPlaceId() async {
+    if (!PodAuth.isLoggedInSync()) return {};
+    final podPhotos = await MediaPodService.listItems(MediaType.photo);
+    final map = <String, List<MediaItem>>{};
+    for (final photo in podPhotos) {
+      for (final placeId in photo.locationIds) {
+        map.putIfAbsent(placeId, () => []).add(photo);
+      }
+    }
+    return map;
+  }
+
+  /// Returns all [MediaItem]s (audio + video + photo) from the Pod, regardless of
   /// place links.  Useful when showing the full list for a link-picker dialog.
   static Future<List<MediaItem>> getAllPodMedia() async {
     if (!PodAuth.isLoggedInSync()) return [];
     final results = await Future.wait([
       MediaPodService.listItems(MediaType.audio),
       MediaPodService.listItems(MediaType.video),
+      MediaPodService.listItems(MediaType.photo),
     ]);
-    return [...results[0], ...results[1]];
+    return [...results[0], ...results[1], ...results[2]];
   }
 
   // ── Mutate ────────────────────────────────────────────────────────────────

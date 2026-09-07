@@ -52,23 +52,27 @@ Future<MediaItem?> _uploadItem({
     existingItems,
     encrypt,
   );
-  final relPath = type == MediaType.audio
-      ? getAudioFilePath(storedFilename)
-      : getVideoFilePath(storedFilename);
+  final relPath = switch (type) {
+    MediaType.audio => getAudioFilePath(storedFilename),
+    MediaType.video => getVideoFilePath(storedFilename),
+    MediaType.photo => getPhotoFilePath(storedFilename),
+  };
 
   bool uploadOk;
   if (encrypt) {
     // Base64-encode the bytes and store as a solidpod encrypted file.
     // writePod paths use PathType.relativeToData, so pass just the
-    // subdirectory name (e.g. 'audio') for inheritKeyFrom.
+    // subdirectory name (e.g. 'audio', 'photo') for inheritKeyFrom.
     final base64Content = base64Encode(bytes);
-    // relPath is 'data/audio/file.enc'; solidpod needs 'audio/file.enc'.
+    // relPath is 'data/photo/file.enc'; solidpod needs 'photo/file.enc'.
     final solidpodRelPath = relPath.startsWith('data/')
         ? relPath.substring('data/'.length)
         : relPath;
-    final solidpodDirPath = type == MediaType.audio
-        ? audioDirName
-        : videoDirName;
+    final solidpodDirPath = switch (type) {
+      MediaType.audio => audioDirName,
+      MediaType.video => videoDirName,
+      MediaType.photo => photoDirName,
+    };
     try {
       await SolidPendingWrites.track(
         writePod(
@@ -115,14 +119,20 @@ Future<MediaItem?> _uploadItem({
     uploadedAt: DateTime.now(),
   );
 
+  // Cache bytes immediately so new uploads display instantly without refetching.
+  _mediaBytesCache[id] = bytes;
+  _mediaBytesCache[relPath] = bytes;
+
   // Update index (reuse the pre-read list to avoid a second round-trip).
   existingItems.add(item);
   await _writeIndex(type, existingItems);
 
   // Notify file browser that the directory contents have changed.
-  final dirPath = type == MediaType.audio
-      ? getAudioDirPath()
-      : getVideoDirPath();
+  final dirPath = switch (type) {
+    MediaType.audio => getAudioDirPath(),
+    MediaType.video => getVideoDirPath(),
+    MediaType.photo => getPhotoDirPath(),
+  };
   PodDirectoryService.invalidateCache(dirPath);
   PodDirectoryService.notifyChange();
 
@@ -135,6 +145,12 @@ Future<bool> _deleteItem(MediaItem item) async {
   if (!item.isPodItem) return false;
   if (!PodAuth.isLoggedInSync()) return false;
 
+  // Invalidate bytes cache.
+  if (item.podItemId != null) _mediaBytesCache.remove(item.podItemId);
+  if (item.podRelativePath != null) {
+    _mediaBytesCache.remove(item.podRelativePath);
+  }
+
   // Delete the actual file.
   final deleted = await PodFileSystem.deleteFile(item.podRelativePath!);
 
@@ -144,9 +160,11 @@ Future<bool> _deleteItem(MediaItem item) async {
   await _writeIndex(item.type, existing);
 
   // Notify file browser that the directory contents have changed.
-  final dirPath = item.type == MediaType.audio
-      ? getAudioDirPath()
-      : getVideoDirPath();
+  final dirPath = switch (item.type) {
+    MediaType.audio => getAudioDirPath(),
+    MediaType.video => getVideoDirPath(),
+    MediaType.photo => getPhotoDirPath(),
+  };
   PodDirectoryService.invalidateCache(dirPath);
   PodDirectoryService.notifyChange();
 
@@ -271,11 +289,76 @@ Future<bool> _updateItem(MediaItem item) async {
   // Notify the file browser that the index file content has changed so
   // any open directory views refresh their cached data.
   if (ok) {
-    final dirPath = item.type == MediaType.audio
-        ? getAudioDirPath()
-        : getVideoDirPath();
+    final dirPath = switch (item.type) {
+      MediaType.audio => getAudioDirPath(),
+      MediaType.video => getVideoDirPath(),
+      MediaType.photo => getPhotoDirPath(),
+    };
     PodDirectoryService.invalidateCache(dirPath);
     PodDirectoryService.notifyChange();
   }
   return ok;
+}
+
+// ── Media Bytes ───────────────────────────────────────────────────────────
+
+Future<Uint8List?> _loadMediaBytes(MediaItem item) async {
+  final cacheKey =
+      item.podItemId ??
+      item.podRelativePath ??
+      item.remoteUrl ??
+      item.assetPath;
+  if (cacheKey != null && _mediaBytesCache.containsKey(cacheKey)) {
+    return _mediaBytesCache[cacheKey];
+  }
+
+  Uint8List? bytes;
+
+  if (item.assetPath != null) {
+    try {
+      final byteData = await rootBundle.load(item.assetPath!);
+      bytes = byteData.buffer.asUint8List();
+    } catch (e) {
+      debugPrint('MediaPodService.loadMediaBytes: asset load error: $e');
+    }
+  } else if (item.remoteUrl != null) {
+    try {
+      final response = await http.get(Uri.parse(item.remoteUrl!));
+      if (response.statusCode == 200) {
+        bytes = response.bodyBytes;
+      }
+    } catch (e) {
+      debugPrint('MediaPodService.loadMediaBytes: remoteUrl error: $e');
+    }
+  } else if (item.isPodItem) {
+    if (!PodAuth.isLoggedInSync()) return null;
+    final relPath = item.podRelativePath!;
+    if (item.isEncrypted) {
+      final solidpodRelPath = relPath.startsWith('data/')
+          ? relPath.substring('data/'.length)
+          : relPath;
+      final content = await readPod(solidpodRelPath);
+      if (content != SolidFunctionCallStatus.notLoggedIn.toString() &&
+          content != SolidFunctionCallStatus.fail.toString() &&
+          content.isNotEmpty) {
+        try {
+          bytes = base64Decode(content.trim());
+        } catch (e) {
+          debugPrint('MediaPodService.loadMediaBytes: base64 decode error: $e');
+        }
+      }
+    } else {
+      final url = await PodPath.getFileUrl(relPath);
+      try {
+        bytes = await getResource(url);
+      } catch (e) {
+        debugPrint('MediaPodService.loadMediaBytes: download error: $e');
+      }
+    }
+  }
+
+  if (bytes != null && cacheKey != null) {
+    _mediaBytesCache[cacheKey] = bytes;
+  }
+  return bytes;
 }

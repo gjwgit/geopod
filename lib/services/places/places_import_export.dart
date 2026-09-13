@@ -105,24 +105,21 @@ class PlacesImportExport {
     final result = ImportResult();
 
     try {
-      final pickResult = await FilePicker.pickFiles(
+      // pickFile is file_picker 12's single-file picker, returning the file
+      // itself rather than a result wrapper, and the bytes are read from it
+      // on demand rather than through withData. 20260912 gjw
+
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['json'],
-        withData: true,
       );
 
-      if (pickResult == null || pickResult.files.isEmpty) {
+      if (file == null) {
         result.cancelled = true;
         return result;
       }
 
-      final file = pickResult.files.first;
-      if (file.bytes == null) {
-        result.errors.add('Failed to read file data');
-        return result;
-      }
-
-      final jsonString = utf8.decode(file.bytes!);
+      final jsonString = utf8.decode(await file.readAsBytes());
       final dynamic decoded;
 
       try {

@@ -33,8 +33,25 @@ FILES=(
     ${SCRIPTS}flutter/.gitignore .gitignore
     ${SCRIPTS}flutter/.lycheeignore .lycheeignore
     ${SCRIPTS}flutter/CLAUDE.md CLAUDE.md
+    ${SCRIPTS}flutter/dart_dependency_validator.yaml dart_dependency_validator.yaml
     ${SCRIPTS}Makefile Makefile
 )
+
+# 20260911 gjw The android build configuration is app independent: the
+# app name only appears in android/app/build.gradle.kts (namespace,
+# applicationId) which stays local. Sharing these keeps the gradle,
+# AGP, and kotlin versions in step across all apps, which is what
+# flutter's build dependency validation warns about. Only add them
+# when the app builds for android.
+
+if [ -d android ]; then
+    FILES+=(
+	${SCRIPTS}flutter/android/build.gradle.kts android/build.gradle.kts
+	${SCRIPTS}flutter/android/settings.gradle.kts android/settings.gradle.kts
+	${SCRIPTS}flutter/android/gradle.properties android/gradle.properties
+	${SCRIPTS}flutter/android/gradle/wrapper/gradle-wrapper.properties android/gradle/wrapper/gradle-wrapper.properties
+    )
+fi
 
 length=${#FILES[@]}
 
@@ -70,12 +87,13 @@ for ((i=0; i < length; i+=2)); do
 
 	continue
 
-	# 20260217 gjw For license.dart do not consider the first line
-	# in the comparison nor the 5th line which might be Copyright
-	# SII or Togaware.
+	# 20260217 gjw For license.dart do not consider the first
+	# DESCRIPTION line in the comparison, the 5th line which is
+	# usually the COPYRIGHT SII or Togaware, nor the 24th line
+	# which is the AUTHORS.
 
 	if [[ "$f1" == "license.dart" ]]; then
-	    if diff <(sed '1d;5d' "$f1") <(sed '1d;5d' "$f2") >/dev/null; then
+	    if diff <(sed '1d;5d;24d' "$f1") <(sed '1d;5d;24d' "$f2") >/dev/null; then
 		echo "IDENTICAL $f1 $f2"
 	    else
 		echo "MELD      $f1 $f2"
@@ -196,7 +214,7 @@ for ((i=0; i < length; i+=2)); do
 	# SII or Togaware.
 
 	if [[ "$f1" == "license.dart" ]]; then
-	    if diff <(sed '1d;5d' "$f1") <(sed '1d;5d' "$f2") >/dev/null; then
+	    if diff <(sed '1d;5d;24d' "$f1") <(sed '1d;5d;24d' "$f2") >/dev/null; then
 		echo "IDENTICAL $f1 $f2"
 	    else
 		echo "MELD      $f2 $f1"

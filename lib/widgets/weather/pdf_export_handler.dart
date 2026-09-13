@@ -10,7 +10,6 @@
 
 library;
 
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -41,23 +40,27 @@ Future<void> handlePdfExport(BuildContext context, Uint8List pdfBytes) async {
       );
     }
   } else {
-    // For mobile/desktop: Let user choose save location.
-    final outputPath = await FilePicker.saveFile(
+    // For mobile/desktop: Let user choose save location. From file_picker
+    // 12 the picker writes the bytes itself and reports the destination as
+    // a Uri — a content:// one on Android, which has no path to show.
+    // 20260912 gjw
+
+    final saved = await FilePicker.saveFile(
       dialogTitle: 'Save PDF Report',
       fileName: '$filename.pdf',
+      bytes: pdfBytes,
+      mimeType: 'application/pdf',
       type: FileType.custom,
       allowedExtensions: ['pdf'],
     );
 
-    if (outputPath != null) {
-      // Save the file to the chosen location.
-      final file = File(outputPath);
-      await file.writeAsBytes(pdfBytes);
+    if (saved != null) {
+      final where = saved.isScheme('file') ? saved.toFilePath() : saved;
 
       if (context.mounted) {
         SnackBarHelper.showSuccess(
           context,
-          'PDF saved to: $outputPath',
+          'PDF saved to: $where',
           duration: const Duration(seconds: 3),
         );
       }

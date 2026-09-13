@@ -108,8 +108,13 @@ void main() async {
 
     await SolidWindowCloseGuard.enable();
 
-    const windowOptions = WindowOptions(title: appTitle);
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {});
+    // 20260913 gjw Shown through solidui, which opens the window at the size
+    // it was last left at and keeps that size up to date as it is resized.
+    // The user sets the size, and turns remembering it off, under Settings in
+    // the profile menu. Unlike the call it replaces, solidui also shows and
+    // focuses the window once it is ready, as the other apps do.
+
+    await SolidWindowSize.show(const WindowOptions(title: appTitle));
   }
 
   // The runApp() function takes the given Widget and makes it the root of the

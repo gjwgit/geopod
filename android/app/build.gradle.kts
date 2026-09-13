@@ -24,6 +24,10 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         manifestPlaceholders["appAuthRedirectScheme"] = "com.togaware.geopod"
+
+        // oidcRedirectScheme is required by oidc_android, which declares no
+        // default for it, so the manifest merger fails without it.
+        manifestPlaceholders["oidcRedirectScheme"] = "com.togaware.geopod"
 	}
 
     buildTypes {

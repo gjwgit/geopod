@@ -26,7 +26,7 @@ pw.Widget buildPdfDataTable({
   final dateFormat = DateFormat('yyyy-MM-dd');
 
   return pw.TableHelper.fromTextArray(
-    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+    headerStyle: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
     cellStyle: const pw.TextStyle(fontSize: 10),
     headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
     cellHeight: 25,

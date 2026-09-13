@@ -26,7 +26,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -194,14 +193,18 @@ class BackupService {
       onProgress?.call(0, 1, 'Choosing save location…');
       final zipBytes = Uint8List.fromList(ZipEncoder().encode(archive));
       final filename = 'geopod_backup_${_ts(DateTime.now())}.zip';
-      final savePath = await FilePicker.saveFile(
+      // From file_picker 12 the picker writes the bytes itself rather than
+      // handing back a path to write to. 20260912 gjw
+
+      final saved = await FilePicker.saveFile(
         dialogTitle: 'Save Backup',
         fileName: filename,
+        bytes: zipBytes,
+        mimeType: 'application/zip',
         type: FileType.custom,
         allowedExtensions: ['zip'],
       );
-      if (savePath == null) return false; // user cancelled
-      await File(savePath).writeAsBytes(zipBytes);
+      if (saved == null) return false; // user cancelled
       return true;
     } catch (e) {
       debugPrint('BackupService.exportBackup error: $e');
@@ -219,16 +222,21 @@ class BackupService {
   }) async {
     final result = RestoreResult();
 
-    final picked = await FilePicker.pickFiles(
+    // pickFile is file_picker 12's single-file picker, returning the file
+    // itself rather than a result wrapper, and the bytes are read from it
+    // on demand rather than through withData. 20260912 gjw
+
+    final picked = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['zip'],
-      withData: true,
     );
-    if (picked == null || picked.files.isEmpty) return result;
+    if (picked == null) return result;
 
-    final fileBytes = picked.files.first.bytes;
-    if (fileBytes == null) {
-      result.errors.add('Could not read the selected file.');
+    final Uint8List fileBytes;
+    try {
+      fileBytes = await picked.readAsBytes();
+    } catch (e) {
+      result.errors.add('Could not read the selected file: $e');
       return result;
     }
 

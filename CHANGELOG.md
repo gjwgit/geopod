@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Await the encrypted place save inside its try [1.0.25 20260914 gjw]
 + Update to solidpod 1.0.22 and solidui 1.0.41 [1.0.24 20260914 gjw]
 + Remember the window size between sessions [1.0.23 20260913 gjw]
 + Fix places added from Locations being saved unencrypted [1.0.22 20260808 gjw]

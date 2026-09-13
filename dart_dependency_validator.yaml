@@ -1,2 +1,9 @@
 ignore:
   - cupertino_icons  # An asset repository.
+
+  # 20260914 gjw media_kit_libs_video ships the native mpv libraries that
+  # video_player_media_kit plays through, and video_player_media_kit does not
+  # depend on it itself, so the app has to. Nothing imports it in Dart, hence
+  # it looks unused here.
+
+  - media_kit_libs_video

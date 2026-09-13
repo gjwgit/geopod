@@ -21,7 +21,8 @@ import 'package:geopod/widgets/map/geomap_places_loader.dart';
 
 /// Handles places loading for GeoMap. All places are stored encrypted.
 
-mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
+mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget>
+    on State<T>, SafeSetState<T> {
   bool get isLoggedIn;
   MapSettings get mapSettings;
   List<Place> get allPlaces;
@@ -41,10 +42,10 @@ mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
 
     if (!mounted) return;
 
-    if (result.showLoading) safeSetState(this, () {});
+    if (result.showLoading) safeSetState(() {});
 
     if (result.hasChanges) {
-      safeSetState(this, () {
+      safeSetState(() {
         allPlaces = List.from(result.places);
       });
     }
@@ -63,7 +64,7 @@ mixin GeoMapEncryptedPlacesLoader<T extends StatefulWidget> on State<T> {
     );
 
     if (mounted && result.encryptedPlaces.isNotEmpty) {
-      safeSetState(this, () {
+      safeSetState(() {
         allPlaces = mergeEncryptedPlaces(
           allPlaces: allPlaces,
           encryptedPlaces: result.encryptedPlaces,

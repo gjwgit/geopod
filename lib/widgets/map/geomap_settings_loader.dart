@@ -23,7 +23,8 @@ import 'package:geopod/widgets/map/geomap_settings.dart';
 
 /// Handles settings loading and viewport restoration for GeoMap.
 
-mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
+mixin GeoMapSettingsLoader<T extends StatefulWidget>
+    on State<T>, SafeSetState<T> {
   MapController get mapController;
   MapSettings get mapSettings;
   set mapSettings(MapSettings value);
@@ -44,7 +45,7 @@ mixin GeoMapSettingsLoader<T extends StatefulWidget> on State<T> {
         .then((result) {
           if (!mounted) return;
 
-          safeSetState(this, () {
+          safeSetState(() {
             mapSettings = result.settings;
             if (result.initialCenter != null) {
               initialCenter = result.initialCenter!;

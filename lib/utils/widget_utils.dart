@@ -67,67 +67,75 @@ mixin AuthStateManagement<T extends StatefulWidget> on State<T> {
   }
 }
 
-/// Safe setState wrapper that checks mounted state.
+/// Adds [safeSetState] and [executeWithLoading] to a [State].
+///
+/// 20260914 gjw A mixin rather than a pair of functions taking the State,
+/// because setState is protected: calling it on somebody else's State has to
+/// suppress the invalid-use-of-protected-member lint, whereas a mixin on
+/// State is inside the class it belongs to.
 ///
 /// Usage:
 /// ```dart
-/// safeSe<br/>tState(this, () {
-///   _myValue = newValue;
-/// });
+/// class _MyWidgetState extends State<MyWidget> with SafeSetState {
+///   void _update() => safeSetState(() {
+///     _myValue = newValue;
+///   });
+/// }
 /// ```
 
-void safeSetState(State state, VoidCallback fn) {
-  if (state.mounted) {
-    // ignore: invalid_use_of_protected_member
-    state.setState(fn);
+mixin SafeSetState<T extends StatefulWidget> on State<T> {
+  /// Rebuild with [fn], doing nothing once the widget is gone.
+
+  void safeSetState(VoidCallback fn) {
+    if (mounted) setState(fn);
   }
-}
 
-/// Execute an async operation with automatic error handling and loading state.
-///
-/// Returns true if operation succeeded, false if failed.
-///
-/// Usage:
-/// ```dart
-/// await executeWithLoading(
-///   state: this,
-///   setLoading: (loading) => _isLoading = loading,
-///   setError: (error) => _errorMessage = error,
-///   operation: () async {
-///     final data = await fetchData();
-///     _data = data;
-///   },
-/// );
-/// ```
+  /// Execute an async operation with automatic error handling and loading
+  /// state.
+  ///
+  /// Returns true if operation succeeded, false if failed.
+  ///
+  /// Usage:
+  /// ```dart
+  /// await executeWithLoading(
+  ///   setLoading: (loading) => _isLoading = loading,
+  ///   setError: (error) => _errorMessage = error,
+  ///   operation: () async {
+  ///     final data = await fetchData();
+  ///     _data = data;
+  ///   },
+  /// );
+  /// ```
 
-Future<bool> executeWithLoading({
-  required State state,
-  required void Function(bool) setLoading,
-  void Function(String?)? setError,
-  required Future<void> Function() operation,
-}) async {
-  if (!state.mounted) return false;
+  Future<bool> executeWithLoading({
+    required void Function(bool) setLoading,
+    void Function(String?)? setError,
+    required Future<void> Function() operation,
+  }) async {
+    if (!mounted) return false;
 
-  safeSetState(state, () {
-    setLoading(true);
-    setError?.call(null);
-  });
+    safeSetState(() {
+      setLoading(true);
+      setError?.call(null);
+    });
 
-  try {
-    await operation();
-    if (state.mounted) {
-      // CRITICAL: Execute setState to trigger rebuild after operation completes.
-      safeSetState(state, () => setLoading(false));
-    }
-    return true;
-  } catch (e) {
-    if (state.mounted) {
-      safeSetState(state, () {
+    try {
+      await operation();
+
+      // CRITICAL: Execute setState to trigger rebuild after operation
+      // completes.
+
+      safeSetState(() => setLoading(false));
+
+      return true;
+    } catch (e) {
+      safeSetState(() {
         setError?.call(e.toString());
         setLoading(false);
       });
+
+      return false;
     }
-    return false;
   }
 }
 

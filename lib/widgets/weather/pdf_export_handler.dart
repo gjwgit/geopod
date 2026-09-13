@@ -40,10 +40,10 @@ Future<void> handlePdfExport(BuildContext context, Uint8List pdfBytes) async {
       );
     }
   } else {
-    // For mobile/desktop: Let user choose save location. From file_picker
-    // 12 the picker writes the bytes itself and reports the destination as
-    // a Uri — a content:// one on Android, which has no path to show.
-    // 20260912 gjw
+    // 20260912 gjw For mobile/desktop: Let user choose save location. From
+    // file_picker 12 the picker writes the bytes itself and reports the
+    // destination as a Uri — a content:// one on Android, which has no path to
+    // show.
 
     final saved = await FilePicker.saveFile(
       dialogTitle: 'Save PDF Report',

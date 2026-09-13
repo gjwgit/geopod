@@ -105,9 +105,9 @@ class PlacesImportExport {
     final result = ImportResult();
 
     try {
-      // pickFile is file_picker 12's single-file picker, returning the file
-      // itself rather than a result wrapper, and the bytes are read from it
-      // on demand rather than through withData. 20260912 gjw
+      // 20260912 gjw pickFile is file_picker 12's single-file picker, returning
+      // the file itself rather than a result wrapper, and the bytes are read
+      // from it on demand rather than through withData.
 
       final file = await FilePicker.pickFile(
         type: FileType.custom,

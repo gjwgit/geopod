@@ -34,7 +34,7 @@ class LocationsPage extends StatefulWidget {
 }
 
 class _LocationsPageState extends State<LocationsPage>
-    with AuthStateManagement {
+    with SafeSetState, AuthStateManagement {
   List<Place> _places = [];
   late bool _isLoading;
   String? _errorMessage;
@@ -152,7 +152,6 @@ class _LocationsPageState extends State<LocationsPage>
 
   Future<void> _loadPlaces({bool forceRefresh = false}) async {
     await executeWithLoading(
-      state: this,
       setLoading: (loading) => _isLoading = loading,
       setError: (error) => _errorMessage = error,
       operation: () async {
@@ -192,7 +191,7 @@ class _LocationsPageState extends State<LocationsPage>
 
   Future<void> _persistNewPlace(AddPlaceResult result) async {
     // Optimistic update: show immediately, save in background.
-    safeSetState(this, () => _places = [..._places, result.place]);
+    safeSetState(() => _places = [..._places, result.place]);
     final saved = await performBackgroundSave(
       result.place,
       context,
@@ -201,7 +200,6 @@ class _LocationsPageState extends State<LocationsPage>
     if (!mounted) return;
     if (saved != null) {
       safeSetState(
-        this,
         () => _places = [
           for (final p in _places)
             if (p.id == result.place.id) saved else p,
@@ -209,7 +207,6 @@ class _LocationsPageState extends State<LocationsPage>
       );
     } else {
       safeSetState(
-        this,
         () => _places = _places.where((p) => p.id != result.place.id).toList(),
       );
       // Thrown so AddPlaceForm keeps what the user typed and stays open,
@@ -244,16 +241,13 @@ class _LocationsPageState extends State<LocationsPage>
 
     final removed = place;
     final ri = _places.indexOf(place);
-    safeSetState(this, () => _places.remove(place));
+    safeSetState(() => _places.remove(place));
 
     final success = await deletePlaceWithFeedback(context, place);
     if (!mounted) return;
 
     if (!success) {
-      safeSetState(
-        this,
-        () => _places.insert(ri.clamp(0, _places.length), removed),
-      );
+      safeSetState(() => _places.insert(ri.clamp(0, _places.length), removed));
     }
   }
 
@@ -267,13 +261,13 @@ class _LocationsPageState extends State<LocationsPage>
     if (!confirmed || !mounted) return;
 
     final removed = _userPlaces.toList();
-    safeSetState(this, () => _places.removeWhere((p) => !p.isLocal));
+    safeSetState(() => _places.removeWhere((p) => !p.isLocal));
 
     final success = await clearAllPlacesWithFeedback(context, removed.length);
     if (!mounted) return;
 
     if (!success) {
-      safeSetState(this, () => _places.insertAll(0, removed));
+      safeSetState(() => _places.insertAll(0, removed));
     }
   }
 
@@ -297,7 +291,7 @@ class _LocationsPageState extends State<LocationsPage>
     final old = place;
     final i = _places.indexOf(place);
 
-    safeSetState(this, () {
+    safeSetState(() {
       if (i != -1) {
         _places[i] = result;
       }
@@ -321,7 +315,7 @@ class _LocationsPageState extends State<LocationsPage>
       }
       showUpdateSuccessSnackbar(context);
     } else {
-      safeSetState(this, () {
+      safeSetState(() {
         if (i != -1) {
           _places[i] = old;
         }

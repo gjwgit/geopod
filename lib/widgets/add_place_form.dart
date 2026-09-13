@@ -76,7 +76,8 @@ class AddPlaceForm extends StatefulWidget {
   State<AddPlaceForm> createState() => _AddPlaceFormState();
 }
 
-class _AddPlaceFormState extends State<AddPlaceForm> with UnsavedChangesMixin {
+class _AddPlaceFormState extends State<AddPlaceForm>
+    with SafeSetState, UnsavedChangesMixin {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _latitudeController = TextEditingController();
@@ -200,12 +201,12 @@ class _AddPlaceFormState extends State<AddPlaceForm> with UnsavedChangesMixin {
     });
     try {
       final address = await GeocodingService.getAddress(lat, lng);
-      safeSetState(this, () {
+      safeSetState(() {
         _addressPreview = address;
         _isLoadingAddress = false;
       });
     } catch (e) {
-      safeSetState(this, () {
+      safeSetState(() {
         _addressPreview = 'Failed to load address';
         _isLoadingAddress = false;
       });

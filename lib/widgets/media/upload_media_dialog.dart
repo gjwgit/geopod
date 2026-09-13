@@ -74,9 +74,9 @@ class _UploadMediaDialogState extends State<_UploadMediaDialog> {
         ? ['mp3', 'm4a', 'aac', 'ogg', 'wav', 'webm']
         : ['mp4', 'mov', 'mkv', 'avi', 'webm'];
 
-    // pickFile is file_picker 12's single-file picker, returning the file
-    // itself rather than a result wrapper, and the bytes we need for the
-    // upload are read from it rather than through withData. 20260912 gjw
+    // 20260912 gjw pickFile is file_picker 12's single-file picker, returning
+    // the file itself rather than a result wrapper, and the bytes we need for
+    // the upload are read from it rather than through withData.
 
     final file = await FilePicker.pickFile(
       type: FileType.custom,

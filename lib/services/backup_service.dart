@@ -193,8 +193,8 @@ class BackupService {
       onProgress?.call(0, 1, 'Choosing save location…');
       final zipBytes = Uint8List.fromList(ZipEncoder().encode(archive));
       final filename = 'geopod_backup_${_ts(DateTime.now())}.zip';
-      // From file_picker 12 the picker writes the bytes itself rather than
-      // handing back a path to write to. 20260912 gjw
+      // 20260912 gjw From file_picker 12 the picker writes the bytes itself
+      // rather than handing back a path to write to.
 
       final saved = await FilePicker.saveFile(
         dialogTitle: 'Save Backup',
@@ -222,9 +222,9 @@ class BackupService {
   }) async {
     final result = RestoreResult();
 
-    // pickFile is file_picker 12's single-file picker, returning the file
-    // itself rather than a result wrapper, and the bytes are read from it
-    // on demand rather than through withData. 20260912 gjw
+    // 20260912 gjw pickFile is file_picker 12's single-file picker, returning
+    // the file itself rather than a result wrapper, and the bytes are read from
+    // it on demand rather than through withData.
 
     final picked = await FilePicker.pickFile(
       type: FileType.custom,

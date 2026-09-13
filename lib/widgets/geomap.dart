@@ -60,6 +60,7 @@ class GeoMapWidget extends StatefulWidget {
 
 class GeoMapWidgetState extends State<GeoMapWidget>
     with
+        SafeSetState,
         SingleTickerProviderStateMixin,
         WidgetsBindingObserver,
         GeoMapStateMixin,
@@ -246,7 +247,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
             newSettings: newSettings,
           );
 
-          safeSetState(this, () {
+          safeSetState(() {
             mapSettings = newSettings;
             if (changes.mapSourceChanged) {
               tileProvider = createTileProvider();

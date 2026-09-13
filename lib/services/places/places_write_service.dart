@@ -218,9 +218,9 @@ class PlacesWriteService {
         // already-correct allPlaces cache — no revert, no extra network fetch.
         PlacesCacheManager().updatePlaceInCache(toSave);
 
-        // Awaited inside the try so that a failure here returns false like
-        // every other path through this method, rather than escaping as a
-        // rejected future. 20260914 gjw
+        // 20260914 gjw Awaited inside the try so that a failure here returns
+        // false like every other path through this method, rather than escaping
+        // as a rejected future.
 
         return await EncryptedPlacesService.updateEncryptedPlace(
           toSave,

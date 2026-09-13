@@ -58,7 +58,7 @@ class WeatherDialog extends StatefulWidget {
 }
 
 class _WeatherDialogState extends State<WeatherDialog>
-    with SingleTickerProviderStateMixin {
+    with SafeSetState, SingleTickerProviderStateMixin {
   final WeatherService _weatherService = WeatherService();
   late TabController _tabController;
   WeatherData? _weatherData;
@@ -99,12 +99,12 @@ class _WeatherDialogState extends State<WeatherDialog>
         latitude: widget.latitude,
         longitude: widget.longitude,
       );
-      safeSetState(this, () {
+      safeSetState(() {
         _weatherData = weather;
         _isLoading = false;
       });
     } catch (e) {
-      safeSetState(this, () {
+      safeSetState(() {
         _errorMessage = e.toString();
         _isLoading = false;
       });
@@ -124,12 +124,12 @@ class _WeatherDialogState extends State<WeatherDialog>
         longitude: widget.longitude,
         days: 10,
       );
-      safeSetState(this, () {
+      safeSetState(() {
         _pastWeatherData = pastWeather;
         _isLoadingPast = false;
       });
     } catch (e) {
-      safeSetState(this, () {
+      safeSetState(() {
         _isLoadingPast = false;
       });
       if (mounted) {
@@ -151,12 +151,12 @@ class _WeatherDialogState extends State<WeatherDialog>
         longitude: widget.longitude,
         days: 7,
       );
-      safeSetState(this, () {
+      safeSetState(() {
         _forecastWeatherData = forecastWeather;
         _isLoadingForecast = false;
       });
     } catch (e) {
-      safeSetState(this, () {
+      safeSetState(() {
         _isLoadingForecast = false;
       });
       if (mounted) {
@@ -189,14 +189,14 @@ class _WeatherDialogState extends State<WeatherDialog>
         startDate: selectedStartDate,
         endDate: selectedEndDate,
       );
-      safeSetState(this, () {
+      safeSetState(() {
         _historicalWeatherData = historicalWeather;
         _historicalStartDate = selectedStartDate;
         _historicalEndDate = selectedEndDate;
         _isLoadingHistorical = false;
       });
     } catch (e) {
-      safeSetState(this, () {
+      safeSetState(() {
         _isLoadingHistorical = false;
       });
       if (mounted) {

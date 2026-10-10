@@ -200,7 +200,7 @@ class AppScaffoldWidget extends StatelessWidget {
           [Australian Solid Community](https://solidcommunity.au) web site.
 
           ''',
-          readmeUrl: 'https://gjwgit.github.io/geopod',
+          docsUrl: 'https://gjwgit.github.io/geopod',
         ),
 
         // THEME DARK/LIGHT Mode.

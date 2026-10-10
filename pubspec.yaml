@@ -37,7 +37,7 @@ dependencies:
   pdf: ^3.11.1
   shared_preferences: ^2.3.3
   solidpod: ^1.0.22
-  solidui: ^1.0.41
+  solidui: ^1.1.0
   uuid: ^4.5.1
   video_player: ^2.9.2
   video_player_media_kit: ^2.0.0

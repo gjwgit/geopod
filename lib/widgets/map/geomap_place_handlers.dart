@@ -16,7 +16,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:geopod/models/place.dart';
-import 'package:geopod/services/places_service.dart' show PlacesCacheManager;
 import 'package:geopod/widgets/map/delete_place_handler.dart';
 import 'package:geopod/widgets/map/marker_data.dart';
 import 'package:geopod/widgets/map/place_save_handler.dart';
@@ -62,11 +61,16 @@ Future<void> handleOptimisticPlaceSave({
 }
 
 /// Performs background save and updates UI on completion.
+///
+/// [allPlaces] is read when the save completes rather than captured up front:
+/// the write fires placesChangeNotifier, whose reload replaces the widget's
+/// list, so a list captured before the save may no longer be the one shown.
+/// The services keep the places cache up to date themselves.
 
 Future<void> performPlaceBackgroundSave({
   required Place originalPlace,
   required BuildContext context,
-  required List<Place> allPlaces,
+  required List<Place> Function() allPlaces,
   required Set<String> savingPlaceIds,
   required void Function(void Function()) setState,
   bool encrypted = false,
@@ -83,11 +87,11 @@ Future<void> performPlaceBackgroundSave({
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         setState(() {
-          final index = allPlaces.indexWhere((x) => x.id == originalPlace.id);
-          if (index != -1) allPlaces[index] = updatedPlace;
+          final places = allPlaces();
+          final index = places.indexWhere((x) => x.id == originalPlace.id);
+          if (index != -1) places[index] = updatedPlace;
           savingPlaceIds.remove(originalPlace.id);
         });
-        PlacesCacheManager().cacheAllPlaces(allPlaces);
         showSaveSuccessSnackbar(context);
       });
     }
@@ -98,7 +102,7 @@ Future<void> performPlaceBackgroundSave({
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         setState(() {
-          allPlaces.removeWhere((x) => x.id == originalPlace.id);
+          allPlaces().removeWhere((x) => x.id == originalPlace.id);
           savingPlaceIds.remove(originalPlace.id);
         });
       });

@@ -137,6 +137,20 @@ class PlacesCacheManager {
     _lastCacheTime = DateTime.now();
   }
 
+  /// Replaces the encrypted places held in the merged all-places cache with
+  /// [encrypted], keeping the Pod and local places as they are.
+  ///
+  /// Called after every successful encrypted write, before the change is
+  /// announced, so that listeners re-reading the cache see the write.
+  /// Does nothing if the merged cache has not been built yet.
+
+  void replaceEncryptedPlaces(List<Place> encrypted) {
+    final c = _allPlacesCache;
+    if (c == null) return;
+    _allPlacesCache = [...encrypted, ...c.where((p) => !p.isEncrypted)];
+    _lastCacheTime = DateTime.now();
+  }
+
   /// Surgically updates a single place in both in-memory caches.
   /// Avoids a full cache clear + network re-fetch when only one place changes.
   /// If the place is not found nothing happens (safe to call speculatively).

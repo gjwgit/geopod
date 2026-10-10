@@ -370,7 +370,7 @@ class GeoMapWidgetState extends State<GeoMapWidget>
       performBackgroundSave: (place) => performPlaceBackgroundSave(
         originalPlace: place,
         context: context,
-        allPlaces: allPlaces,
+        allPlaces: () => allPlaces,
         savingPlaceIds: savingPlaceIds,
         setState: setState,
         encrypted: encrypted,

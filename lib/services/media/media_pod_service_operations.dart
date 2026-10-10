@@ -36,7 +36,14 @@ Future<MediaItem?> _uploadItem({
 
   // Read the index up-front so we can (a) detect duplicate filenames and
   // (b) reuse the list when adding the new item to the index at the end.
-  final existingItems = await _readIndex(type);
+  // Abort before uploading anything if it cannot be read.
+  final List<MediaItem> existingItems;
+  try {
+    existingItems = await _readIndex(type);
+  } catch (e) {
+    debugPrint('MediaPodService.uploadItem: could not read index ($e)');
+    return null;
+  }
 
   final safeFilename = filename.replaceAll(RegExp(r'[^a-zA-Z0-9._\-]'), '_');
   // solidpod writePod requires encrypted files to end with `.ttl` (Turtle
@@ -116,8 +123,13 @@ Future<MediaItem?> _uploadItem({
   );
 
   // Update index (reuse the pre-read list to avoid a second round-trip).
+  // An item missing from the index is invisible, so a failed index write
+  // fails the upload and removes the file rather than leaving it orphaned.
   existingItems.add(item);
-  await _writeIndex(type, existingItems);
+  if (!await _writeIndex(type, existingItems)) {
+    await PodFileSystem.deleteFile(relPath);
+    return null;
+  }
 
   // Notify file browser that the directory contents have changed.
   final dirPath = type == MediaType.audio
@@ -135,11 +147,20 @@ Future<bool> _deleteItem(MediaItem item) async {
   if (!item.isPodItem) return false;
   if (!PodAuth.isLoggedInSync()) return false;
 
+  // Read the index first: if it cannot be read it cannot be updated, and the
+  // file is left in place rather than becoming a dangling index entry.
+  final List<MediaItem> existing;
+  try {
+    existing = await _readIndex(item.type);
+  } catch (e) {
+    debugPrint('MediaPodService.deleteItem: could not read index ($e)');
+    return false;
+  }
+
   // Delete the actual file.
   final deleted = await PodFileSystem.deleteFile(item.podRelativePath!);
 
   // Always update the index, even if the file delete "failed" (may be 404).
-  final existing = await _readIndex(item.type);
   existing.removeWhere((i) => i.podRelativePath == item.podRelativePath);
   await _writeIndex(item.type, existing);
 
@@ -258,7 +279,13 @@ Future<bool> _updateItem(MediaItem item) async {
   if (!item.isPodItem && item.podItemId == null) return false;
   if (!PodAuth.isLoggedInSync()) return false;
 
-  final existing = await _readIndex(item.type);
+  final List<MediaItem> existing;
+  try {
+    existing = await _readIndex(item.type);
+  } catch (e) {
+    debugPrint('MediaPodService.updateItem: could not read index ($e)');
+    return false;
+  }
   final idx = existing.indexWhere((i) => i.podItemId == item.podItemId);
   if (idx == -1) {
     // First-time registration of a built-in asset item: append to the index.

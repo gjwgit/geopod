@@ -77,6 +77,9 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
   bool _saving = false;
   String? _error;
 
+  /// Set when the last save failed; shown above the actions.
+  String? _saveError;
+
   /// podItemIds of initially linked items – used to compute the save delta.
   Set<String> _original = {};
 
@@ -134,30 +137,42 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
   }
 
   Future<void> _save() async {
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
 
     // Items added (selected now but not before).
     final added = _selected.difference(_original);
     // Items removed (deselected now but were selected before).
     final removed = _original.difference(_selected);
 
-    bool anyOk = false;
+    bool allOk = true;
     for (final item in _allMedia) {
       if (item.podItemId == null) continue;
       if (added.contains(item.podItemId)) {
         final ok = await PlaceMediaService.linkToPlace(item, widget.placeId);
-        if (ok) anyOk = true;
+        if (!ok) allOk = false;
       } else if (removed.contains(item.podItemId)) {
         final ok = await PlaceMediaService.unlinkFromPlace(
           item,
           widget.placeId,
         );
-        if (ok) anyOk = true;
+        if (!ok) allOk = false;
       }
     }
 
     if (!mounted) return;
-    Navigator.pop(context, anyOk || (added.isEmpty && removed.isEmpty));
+    if (allOk) {
+      Navigator.pop(context, true);
+    } else {
+      // Stay open with the selection intact so the user can retry; saving
+      // again is safe because linking and unlinking are idempotent.
+      setState(() {
+        _saving = false;
+        _saveError = 'Some links could not be saved to your Pod.';
+      });
+    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -197,6 +212,14 @@ class _MediaLinkPickerDialogState extends State<_MediaLinkPickerDialog> {
                 child: _buildContent(),
               ),
             ),
+            if (_saveError != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child: Text(
+                  _saveError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             // Actions
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),

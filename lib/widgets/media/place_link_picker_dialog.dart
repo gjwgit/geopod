@@ -67,6 +67,9 @@ class _PlaceLinkPickerDialogState extends State<_PlaceLinkPickerDialog> {
   bool _saving = false;
   String? _error;
 
+  /// Set when the last save failed; shown above the actions.
+  String? _saveError;
+
   /// Current selection of place IDs.
   late Set<String> _selected;
 
@@ -79,7 +82,9 @@ class _PlaceLinkPickerDialogState extends State<_PlaceLinkPickerDialog> {
 
   Future<void> _loadPlaces() async {
     try {
-      final places = await PlacesService.fetchPlaces();
+      // Places are stored encrypted, so they must be included here or a cold
+      // cache leaves the picker with only the bundled examples.
+      final places = await PlacesService.fetchPlaces(includeEncrypted: true);
       if (mounted) {
         setState(() {
           _places = places;
@@ -97,13 +102,24 @@ class _PlaceLinkPickerDialogState extends State<_PlaceLinkPickerDialog> {
   }
 
   Future<void> _save() async {
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
     final ok = await PlaceMediaService.setLinkedPlaces(
       widget.item,
       _selected.toList(),
     );
     if (!mounted) return;
-    Navigator.pop(context, ok);
+    if (ok) {
+      Navigator.pop(context, true);
+    } else {
+      // Stay open with the selection intact so the user can retry.
+      setState(() {
+        _saving = false;
+        _saveError = 'The links could not be saved to your Pod.';
+      });
+    }
   }
 
   @override
@@ -150,6 +166,14 @@ class _PlaceLinkPickerDialogState extends State<_PlaceLinkPickerDialog> {
                 ),
               ),
             ),
+            if (_saveError != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child: Text(
+                  _saveError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             // Actions
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),

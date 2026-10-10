@@ -20,11 +20,12 @@ const String videoDirName = 'video';
 
 // ── Index file names ─────────────────────────────────────────────────────────
 
-/// JSON index file that lists all audio items.
-const String audioIndexFileName = 'audio_index.json';
+/// Encrypted index file that lists all audio items. The content is JSON, but
+/// solidpod only writes encrypted resources whose name ends in `.ttl`.
+const String audioIndexFileName = 'audio_index.ttl';
 
-/// JSON index file that lists all video items.
-const String videoIndexFileName = 'video_index.json';
+/// Encrypted index file that lists all video items.
+const String videoIndexFileName = 'video_index.ttl';
 
 // ── Path helpers (relative to the Pod data directory, passed to PodPath) ────
 //
@@ -37,10 +38,10 @@ String getAudioDirPath() => 'data/$audioDirName';
 /// `data/video`
 String getVideoDirPath() => 'data/$videoDirName';
 
-/// `data/audio/audio_index.json`
+/// `data/audio/audio_index.ttl`
 String getAudioIndexPath() => 'data/$audioDirName/$audioIndexFileName';
 
-/// `data/video/video_index.json`
+/// `data/video/video_index.ttl`
 String getVideoIndexPath() => 'data/$videoDirName/$videoIndexFileName';
 
 /// `data/audio/<filename>`

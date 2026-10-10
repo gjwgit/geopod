@@ -23,6 +23,7 @@ import 'package:solidpod/solidpod.dart'
     show
         readPod,
         writePod,
+        ResourceNotExistException,
         setInheritKeyDir,
         createResource,
         getResource,
@@ -90,11 +91,11 @@ void _invalidateCache(MediaType type) {
 /// **Storage layout** (all paths relative to Pod data directory):
 /// ```
 /// audio/
-///   audio_index.json          <- unencrypted metadata index
+///   audio_index.ttl           <- encrypted metadata index (JSON content)
 ///   <filename>.mp3            <- unencrypted binary file
-///   <filename>.enc            <- encrypted base-64 ciphertext (solidpod)
+///   <filename>.enc.ttl        <- encrypted base-64 ciphertext (solidpod)
 /// video/
-///   video_index.json
+///   video_index.ttl
 ///   <filename>.mp4
 ///   <filename>.enc
 /// ```
@@ -138,9 +139,11 @@ class MediaPodService {
 
   /// Returns all [type] media items stored in the Pod.
   /// Includes only Pod-hosted items; bundled assets are managed by the page.
+  /// An index that cannot be read is shown as empty; writers use the strict
+  /// [_readIndex] instead so they never overwrite an index they could not read.
   static Future<List<MediaItem>> listItems(MediaType type) async {
     if (!PodAuth.isLoggedInSync()) return [];
-    return _readIndex(type);
+    return _readIndexOrEmpty(type);
   }
 
   /// Returns cached media items if available, otherwise fetches from the Pod
@@ -149,7 +152,7 @@ class MediaPodService {
     final cached = _getCache(type);
     if (cached != null) return List<MediaItem>.from(cached);
     if (!await PodAuth.isLoggedIn()) return [];
-    return _readIndex(type);
+    return _readIndexOrEmpty(type);
   }
 
   /// Uploads [bytes] as a new media item to the Pod.

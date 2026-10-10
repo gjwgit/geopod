@@ -32,28 +32,35 @@ Future<void> _ensureIndexFiles() async {
 }
 
 Future<void> _ensureIndexFile(MediaType type) async {
-  // readPod throws when the file is absent (the expected state before any
-  // media exists); that is caught so we then create an empty encrypted index.
   try {
     await readPod(_indexSolidpodPath(type));
     // File already exists (empty or with items) – nothing to do.
     return;
-  } catch (_) {
+  } on ResourceNotExistException {
     // Not found – create an empty encrypted index below.
+  } catch (e) {
+    // Any other failure (network, no security key yet) says nothing about
+    // whether the index exists, so it must not be overwritten with '[]'.
+    debugPrint('MediaPodService._ensureIndexFile: skipped ($e)');
+    return;
   }
-  // The index is encrypted with the media directory's inherited key, so make
-  // sure that key/ACL exists before writing.
-  await _ensureDir(type);
-  // Tracked so closing the window waits for the write to land.
-  await SolidPendingWrites.track(
-    writePod(
-      _indexSolidpodPath(type),
-      '[]',
-      encrypted: true,
-      overwrite: true,
-      inheritKeyFrom: _indexDirName(type),
-    ),
-  );
+  try {
+    // The index is encrypted with the media directory's inherited key, so
+    // make sure that key/ACL exists before writing.
+    await _ensureDir(type);
+    // Tracked so closing the window waits for the write to land.
+    await SolidPendingWrites.track(
+      writePod(
+        _indexSolidpodPath(type),
+        '[]',
+        encrypted: true,
+        overwrite: true,
+        inheritKeyFrom: _indexDirName(type),
+      ),
+    );
+  } catch (e) {
+    debugPrint('MediaPodService._ensureIndexFile: create failed ($e)');
+  }
 }
 
 // ── Directory initialisation ──────────────────────────────────────────────
@@ -84,6 +91,11 @@ Future<void> _ensureDir(MediaType type) async {
 
 // ── Index read ────────────────────────────────────────────────────────────
 
+/// Reads the index, throwing if it exists but could not be read.
+///
+/// Every caller that writes the index back must use this rather than
+/// [_readIndexOrEmpty]: treating a failed read as an empty index and then
+/// writing it would wipe every other item.
 Future<List<MediaItem>> _readIndex(MediaType type) async {
   // Return cached copy if available – avoids a Pod round-trip.
   final cached = _getCache(type);
@@ -101,48 +113,51 @@ Future<List<MediaItem>> _readIndex(MediaType type) async {
   } else {
     _videoFetch = fetch;
   }
-  final items = await fetch;
-  // Clear the in-flight reference now that it has settled.
-  if (type == MediaType.audio) {
-    _audioFetch = null;
-  } else {
-    _videoFetch = null;
+  try {
+    return List<MediaItem>.from(await fetch);
+  } finally {
+    // Clear the in-flight reference now that it has settled, failed or not,
+    // so a failed fetch is retried next time.
+    if (type == MediaType.audio) {
+      if (identical(_audioFetch, fetch)) _audioFetch = null;
+    } else {
+      if (identical(_videoFetch, fetch)) _videoFetch = null;
+    }
   }
-  return List<MediaItem>.from(items);
+}
+
+/// Reads the index for display, treating an unreadable index as empty.
+Future<List<MediaItem>> _readIndexOrEmpty(MediaType type) async {
+  try {
+    return await _readIndex(type);
+  } catch (e) {
+    debugPrint('MediaPodService: could not read ${_indexPath(type)} ($e)');
+    return [];
+  }
 }
 
 Future<List<MediaItem>> _fetchFromPod(MediaType type) async {
+  // readPod decrypts the index. A missing index is the expected state before
+  // any media exists and genuinely means "no items"; every other failure is
+  // rethrown so writers do not mistake it for an empty index.
+  String content;
   try {
-    // readPod transparently decrypts encrypted indexes and also reads any
-    // legacy plaintext index, so old data keeps working. It throws when the
-    // file is missing; that is the expected pre-bootstrap state and is treated
-    // as an empty/transient result (not cached).
-    String content;
-    try {
-      content = await readPod(_indexSolidpodPath(type));
-    } catch (e) {
-      debugPrint(
-        'MediaPodService._fetchFromPod: could not read ${_indexPath(type)} – skipping cache ($e)',
-      );
-      return [];
-    }
-    if (content.isEmpty) {
-      // File found but empty – or the index was returned as an empty string.
-      // Safe to cache as an empty list.
-      _setCache(type, []);
-      return [];
-    }
-    final list = jsonDecode(content) as List<dynamic>;
-    final items = list
-        .whereType<Map<String, dynamic>>()
-        .map(MediaItem.fromJson)
-        .toList();
-    _setCache(type, items);
-    return items;
-  } catch (e) {
-    debugPrint('MediaPodService._fetchFromPod error: $e');
+    content = await readPod(_indexSolidpodPath(type));
+  } on ResourceNotExistException {
+    _setCache(type, []);
     return [];
   }
+  if (content.trim().isEmpty) {
+    _setCache(type, []);
+    return [];
+  }
+  final list = jsonDecode(content) as List<dynamic>;
+  final items = list
+      .whereType<Map<String, dynamic>>()
+      .map(MediaItem.fromJson)
+      .toList();
+  _setCache(type, items);
+  return items;
 }
 
 // ── Index encryption helpers ──────────────────────────────────────────────

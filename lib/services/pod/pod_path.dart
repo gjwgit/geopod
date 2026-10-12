@@ -43,7 +43,7 @@ class PodPath {
   /// Returns true if path is in `geopod/data/` or is the data dir itself.
 
   static bool isDataPath(String path) {
-    // Normalize: remove leading/trailing slashes.
+    // Normalise: remove leading/trailing slashes.
     var normalized = path;
     if (normalized.startsWith('/')) {
       normalized = normalized.substring(1);

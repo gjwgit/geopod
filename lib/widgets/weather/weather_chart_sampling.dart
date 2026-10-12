@@ -123,7 +123,7 @@ double perpendicularDistance(
   MapEntry<DateTime, double> lineEnd,
   int totalPoints,
 ) {
-  // Normalize time to 0-1 range for distance calculation.
+  // Normalise time to 0-1 range for distance calculation.
   final x0 = point.key.millisecondsSinceEpoch.toDouble();
   final y0 = point.value;
 

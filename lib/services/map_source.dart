@@ -36,7 +36,7 @@ enum MapSource {
   /// CartoDB Voyager - Colorful detailed map.
   cartoVoyager,
 
-  /// CartoDB Dark Matter - Night-optimized dark map.
+  /// CartoDB Dark Matter - Night-optimised dark map.
   cartoDarkMatter,
 
   /// CartoDB Positron - Light grayscale map.
@@ -54,7 +54,7 @@ enum MapSource {
   /// OpenTopoMap - Free topographic map.
   openTopoMap,
 
-  /// CyclOSM - Optimized for cycling.
+  /// CyclOSM - Optimised for cycling.
   cyclOSM,
 }
 
@@ -135,7 +135,7 @@ extension MapSourceExtension on MapSource {
       case MapSource.cartoVoyager:
         return 'Colorful and detailed';
       case MapSource.cartoDarkMatter:
-        return 'Night-optimized dark theme';
+        return 'Night-optimised dark theme';
       case MapSource.cartoPositron:
         return 'Light grayscale design';
       case MapSource.esriWorldStreetMap:
@@ -147,7 +147,7 @@ extension MapSourceExtension on MapSource {
       case MapSource.openTopoMap:
         return 'Free topographic map';
       case MapSource.cyclOSM:
-        return 'Optimized for cycling';
+        return 'Optimised for cycling';
     }
   }
 
@@ -171,7 +171,7 @@ extension MapSourceExtension on MapSource {
     }
   }
 
-  /// Whether this is a dark/night-optimized map source.
+  /// Whether this is a dark/night-optimised map source.
   /// Dark sources don't need color matrix filter in dark mode.
 
   bool get isDarkSource {

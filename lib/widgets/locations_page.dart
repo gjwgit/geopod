@@ -55,7 +55,7 @@ class _LocationsPageState extends State<LocationsPage>
   void initState() {
     super.initState();
 
-    // CRITICAL: Initialize auth listener FIRST to get current state.
+    // CRITICAL: Initialise auth listener FIRST to get current state.
 
     initAuthStateListener();
 

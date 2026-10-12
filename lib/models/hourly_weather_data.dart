@@ -314,7 +314,7 @@ class HourlyWeatherData {
       return (0, maxValue + 5.0);
     }
 
-    // Add some padding to the max for better visualization.
+    // Add some padding to the max for better visualisation.
     return (0, maxValue * 1.1);
   }
 }

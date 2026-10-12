@@ -250,7 +250,7 @@ class PodFileSystem {
     return true;
   }
 
-  /// Get absolute URL for a path (without normalizing through getFilePath).
+  /// Get absolute URL for a path (without normalising through getFilePath).
 
   static Future<String> _getAbsoluteUrl(String path) async {
     final baseUrl = await PodAuth.getPodBaseUrl();

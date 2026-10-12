@@ -106,7 +106,7 @@ class EncryptedPlacesService {
     }
   }
 
-  /// Initialize service - load persistent flags.
+  /// Initialise service - load persistent flags.
   /// Call this once at app startup for better performance.
 
   static Future<void> initialize() async {
@@ -243,7 +243,7 @@ class EncryptedPlacesService {
   }
 
   /// Write encrypted places to Pod.
-  /// Optimized: Uses persistent directoryVerified flag to skip repeated
+  /// Optimised: Uses persistent directoryVerified flag to skip repeated
   /// directory status checks across app sessions.
 
   static Future<bool> writeEncryptedPlaces(

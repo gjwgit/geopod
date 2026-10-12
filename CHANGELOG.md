@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ macOS file access, British spellings [1.0.29 20261012 gjw]
 + Default to the Esri topographic map [1.0.28 20261012 gjw]
 + Bump solidui 1.5.5 and solidpod 1.1.1 [1.0.27 20261012 gjw]
 + safeSetState as a mixin, so no lint is suppressed [1.0.26 20260914 gjw]

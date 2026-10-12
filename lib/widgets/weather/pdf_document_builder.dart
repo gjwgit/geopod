@@ -209,9 +209,9 @@ pw.Document buildWeatherPdfDocument({
         ),
         pw.SizedBox(height: 20),
 
-        // Chart visualization.
+        // Chart visualisation.
         pw.Text(
-          'Data Visualization',
+          'Data Visualisation',
           style: const pw.TextStyle(
             fontSize: 14,
             fontWeight: pw.FontWeight.bold,

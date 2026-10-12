@@ -51,7 +51,7 @@ void main() async {
   //   null;
   // };
 
-  // Ensure Flutter bindings are initialized for async operations, in particular
+  // Ensure Flutter bindings are initialised for async operations, in particular
   // to set the Linux desktop window [title].
 
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,7 +75,7 @@ void main() async {
   // Without this, paths become //data/places.json instead of geopod/data/places.json.
   await setAppDirName('geopod');
 
-  // Initialize encrypted places service to load persistent flags
+  // Initialise encrypted places service to load persistent flags
   // This improves performance by avoiding repeated checks.
   await EncryptedPlacesService.initialize();
 

@@ -1,4 +1,4 @@
-/// Chart widget builders for weather data visualization.
+/// Chart widget builders for weather data visualisation.
 ///
 // Time-stamp: <Sunday 2026-01-26 12:00:00 +1100>
 ///

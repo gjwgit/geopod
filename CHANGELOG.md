@@ -26,6 +26,7 @@ then please show some ❤️ and tap on the star at
 
 ## 1.0 Updated key management
 
++ Bump solidui 1.5.5 and solidpod 1.1.1 [1.0.27 20261012 gjw]
 + safeSetState as a mixin, so no lint is suppressed [1.0.26 20260914 gjw]
 + Await the encrypted place save inside its try [1.0.25 20260914 gjw]
 + Update to solidpod 1.0.22 and solidui 1.0.41 [1.0.24 20260914 gjw]

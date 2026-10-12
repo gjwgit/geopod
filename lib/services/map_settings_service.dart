@@ -98,11 +98,11 @@ class MapSettings {
     this.initialLng = defaultInitialLng,
     this.initialZoom = defaultInitialZoom,
     MapSource? mapSource,
-  }) : mapSource = mapSource ?? MapSource.openStreetMap;
+  }) : mapSource = mapSource ?? MapSource.esriWorldTopo;
 
-  /// Always defaults to OpenStreetMap.
+  /// Always defaults to Esri World Topo.
 
-  static MapSource getDefaultMapSource() => MapSource.openStreetMap;
+  static MapSource getDefaultMapSource() => MapSource.esriWorldTopo;
 
   /// Creates a copy with optional overrides.
 

@@ -30,7 +30,7 @@ import 'package:flutter/material.dart';
 /// Available map tile sources.
 
 enum MapSource {
-  /// OpenStreetMap - Standard street map (day default)
+  /// OpenStreetMap - Standard street map.
   openStreetMap,
 
   /// CartoDB Voyager - Colorful detailed map.
@@ -48,7 +48,7 @@ enum MapSource {
   /// Esri World Imagery - Satellite imagery.
   esriWorldImagery,
 
-  /// Esri World Topo - Topographic map.
+  /// Esri World Topo - Topographic map (default).
   esriWorldTopo,
 
   /// OpenTopoMap - Free topographic map.
@@ -169,12 +169,6 @@ extension MapSourceExtension on MapSource {
       case MapSource.openTopoMap:
         return Icons.terrain;
     }
-  }
-
-  /// Whether this is a priority source (preload on startup).
-
-  bool get isPriority {
-    return this == MapSource.openStreetMap || this == MapSource.cartoDarkMatter;
   }
 
   /// Whether this is a dark/night-optimized map source.

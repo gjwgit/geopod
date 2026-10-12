@@ -18,7 +18,7 @@ import 'package:geopod/services/map_settings_service.dart';
 import 'package:geopod/widgets/settings/color_picker_tile.dart';
 import 'package:geopod/widgets/settings/viewport_selector.dart';
 
-/// Shows color picker dialog for selecting a color.
+/// Shows colour picker dialog for selecting a colour.
 
 Future<void> showColorPickerDialog({
   required BuildContext context,
@@ -241,7 +241,7 @@ Widget buildMapSourceSection({
   );
 }
 
-/// Builds the marker colors section.
+/// Builds the marker colours section.
 
 Widget buildMarkerColorsSection({
   required BuildContext context,
@@ -254,7 +254,7 @@ Widget buildMarkerColorsSection({
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const Text(
-        'Marker Colors',
+        'Marker Colours',
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.bold,
@@ -268,7 +268,7 @@ Widget buildMarkerColorsSection({
         color: userPlacesColor,
         onTap: () => showColorPickerDialog(
           context: context,
-          title: 'My Places Color',
+          title: 'My Places Colour',
           currentColor: userPlacesColor,
           onColorChanged: onUserColorChanged,
         ),
@@ -280,7 +280,7 @@ Widget buildMarkerColorsSection({
         color: localPlacesColor,
         onTap: () => showColorPickerDialog(
           context: context,
-          title: 'Example Places Color',
+          title: 'Example Places Colour',
           currentColor: localPlacesColor,
           onColorChanged: onLocalColorChanged,
         ),

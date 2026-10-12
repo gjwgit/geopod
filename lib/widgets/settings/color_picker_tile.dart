@@ -1,4 +1,4 @@
-/// A tile widget for displaying and selecting a color.
+/// A tile widget for displaying and selecting a colour.
 ///
 // Time-stamp: <2025-12-05 Miduo>
 ///
@@ -14,7 +14,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-/// A tile widget for displaying and selecting a color.
+/// A tile widget for displaying and selecting a colour.
 
 class ColorPickerTile extends StatelessWidget {
   const ColorPickerTile({
@@ -43,7 +43,7 @@ class ColorPickerTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Color preview.
+            // Colour preview.
             Container(
               width: 40,
               height: 40,

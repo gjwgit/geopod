@@ -95,7 +95,7 @@ IconData getDataIcon(String dataType) {
   }
 }
 
-/// Get color based on value position in range.
+/// Get colour based on value position in range.
 
 Color getValueColor(double value, double min, double max) {
   final range = max - min;

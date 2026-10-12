@@ -16,7 +16,7 @@ import 'package:flutter_map/flutter_map.dart';
 
 import 'package:geopod/services/map_settings_service.dart';
 
-/// Midnight color matrix for dark mode.
+/// Midnight colour matrix for dark mode.
 
 const midnightMatrix = <double>[
   -0.33,

@@ -180,7 +180,7 @@ class _SavingMarkerState extends State<_SavingMarker>
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Base marker icon - cyan color to distinguish from examples (orange)
+        // Base marker icon - cyan colour to distinguish from examples (orange)
         Icon(Icons.location_on, size: 40, color: Colors.cyan.shade400),
 
         // Rotating ring around the marker.

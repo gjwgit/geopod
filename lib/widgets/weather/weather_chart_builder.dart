@@ -66,8 +66,8 @@ Widget buildSimpleChart({
   required double dataMax,
   required String dataType,
 }) {
-  // Determine color based on data type.
-  Color lineColor = Colors.blue; // Default color
+  // Determine colour based on data type.
+  Color lineColor = Colors.blue; // Default colour
   if (dataType == 'humidity') {
     lineColor = Colors.red; // Red for humidity
   } else if (dataType == 'precipitation') {

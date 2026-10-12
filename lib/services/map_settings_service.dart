@@ -53,7 +53,7 @@ const double defaultInitialLat = -12.4634;
 const double defaultInitialLng = 130.8456;
 const double defaultInitialZoom = 11.0;
 
-/// Default colors for map markers.
+/// Default colours for map markers.
 
 const Color defaultUserColor = Colors.blue;
 const Color defaultLocalColor = Colors.red;
@@ -67,10 +67,10 @@ class MapSettings {
   /// Whether to hide all markers on the map.
   final bool hideAllMarkers;
 
-  /// Color for user's saved places (from Pod).
+  /// Colour for user's saved places (from Pod).
   final Color userPlacesColor;
 
-  /// Color for local canned example places.
+  /// Colour for local canned example places.
   final Color localPlacesColor;
 
   /// Current map tile source.

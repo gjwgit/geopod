@@ -33,13 +33,13 @@ enum MapSource {
   /// OpenStreetMap - Standard street map.
   openStreetMap,
 
-  /// CartoDB Voyager - Colorful detailed map.
+  /// CartoDB Voyager - Colourful detailed map.
   cartoVoyager,
 
   /// CartoDB Dark Matter - Night-optimised dark map.
   cartoDarkMatter,
 
-  /// CartoDB Positron - Light grayscale map.
+  /// CartoDB Positron - Light greyscale map.
   cartoPositron,
 
   /// Esri World Street Map - Professional street map.
@@ -133,11 +133,11 @@ extension MapSourceExtension on MapSource {
       case MapSource.openStreetMap:
         return 'Classic open source map';
       case MapSource.cartoVoyager:
-        return 'Colorful and detailed';
+        return 'Colourful and detailed';
       case MapSource.cartoDarkMatter:
         return 'Night-optimised dark theme';
       case MapSource.cartoPositron:
-        return 'Light grayscale design';
+        return 'Light greyscale design';
       case MapSource.esriWorldStreetMap:
         return 'Professional street map';
       case MapSource.esriWorldImagery:
@@ -172,7 +172,7 @@ extension MapSourceExtension on MapSource {
   }
 
   /// Whether this is a dark/night-optimised map source.
-  /// Dark sources don't need color matrix filter in dark mode.
+  /// Dark sources don't need colour matrix filter in dark mode.
 
   bool get isDarkSource {
     return this == MapSource.cartoDarkMatter;

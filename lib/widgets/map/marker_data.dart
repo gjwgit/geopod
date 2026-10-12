@@ -49,7 +49,7 @@ class MarkerData {
   /// Whether this marker is currently being saved.
   final bool isSaving;
 
-  /// Custom color for this marker (from settings).
+  /// Custom colour for this marker (from settings).
   final Color color;
 
   /// Whether this marker is from encrypted storage.

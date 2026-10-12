@@ -161,33 +161,58 @@ if [[ "${status}" == "completed" ]]; then
 
     echo ""
 
-    echo '******************** UPLOAD MACOS ZIP ORIGINAL'
+    # 20261008 gjw <app>-macos.dmg and <app>-macos.zip are the default
+    # macOS installers. They are the notarized builds when there are any,
+    # and otherwise the ad-hoc builds, so an app without the Developer ID
+    # secrets still has a macOS download under the default name.
+    #
+    # Both are taken from the same, most recent, run. Artefacts outlive
+    # their run, so preferring any notarized artefact over any ad-hoc one
+    # would let an old notarized build shadow every newer ad-hoc build.
+
+    for ext in dmg zip; do
+
+	echo "******************** UPLOAD MACOS ${ext^^}"
+
+	TARGET="${APP}-macos.${ext}"
+
+	artifacts=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+			--jq ".artifacts[] | select(.name | endswith(\"-notarized-macos-${ext}\") or endswith(\"-adhoc-macos-${ext}\")) | \"\\(.workflow_run.id) \\(.name) \\(.id)\"")
+	run=$(echo "${artifacts}" | head -n 1 | cut -d ' ' -f 1)
+	artifactId=$(echo "${artifacts}" | awk -v run="${run}" '$1 == run' \
+			 | sort -k 2 | tail -n 1 | cut -d ' ' -f 3)
+
+	if [[ -z "${artifactId}" ]]; then
+	    echo "No artifact found."
+	else
+	    echo "artifact id: $artifactId"
+	    gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	    unzip artifact.zip
+	    fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	    touch ${fname} # Timestamp with current date/time
+	    rm -f artifact.zip
+	    echo  "Installing ${fname} as ${DEST}${TARGET}"
+	    rsync -avzh ${fname} ${DEST}${TARGET}
+	    ssh ${HOST} "cd ${FLDR}; chmod 0644 ${TARGET}"
+
+	    # The ad-hoc build is archived by its own section below.
+
+	    if [[ "${fname}" == *-notarized-* ]]; then
+		echo  "Archive as installers/ARCHIVE/${APP}_${version}_notarized_macos.${ext}"
+		mv ${fname} ARCHIVE/${APP}_${version}_notarized_macos.${ext}
+	    else
+		rm -f ${fname}
+	    fi
+	fi
+
+	echo ""
+
+    done
+
+    echo '******************** UPLOAD MACOS DMG AD HOC'
 
     artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
-		    --jq '.artifacts[] | select(.name | endswith("-macos-zip")) | .id' | head -n 1)
-
-    if [[ -z "${artifactId}" ]]; then
-	echo "No artifact found."
-    else
-	echo "artifact id: $artifactId"
-	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
-	unzip artifact.zip
-	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
-	touch ${fname} # Timestamp with current date/time
-	rm -f artifact.zip
-	echo  "Installing as ${DEST}${APP}-macos.zip"
-	rsync -avzh ${APP}-macos.zip ${DEST}
-	ssh ${HOST} "cd ${FLDR}; chmod 0644 ${APP}-macos.zip"
-	echo  "Archive as installers/ARCHIVE/${APP}_${version}_macos.zip"
-	mv ${APP}-macos.zip ARCHIVE/${APP}_${version}_macos.zip
-    fi
-
-    echo ""
-
-    echo '******************** UPLOAD MACOS DMG ORIGINAL'
-
-    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
-		    --jq '.artifacts[] | select(.name | endswith("-macos-dmg")) | .id' | head -n 1)
+		    --jq '.artifacts[] | select(.name | endswith("-adhoc-macos-dmg")) | .id' | head -n 1)
 
     if [[ -z "${artifactId}" ]]; then
 	echo "No artifact found."
@@ -209,11 +234,36 @@ if [[ "${status}" == "completed" ]]; then
 
     echo ""
 
-    # 20251222 gjw
+    echo '******************** UPLOAD MACOS ZIP AD HOC'
+
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-adhoc-macos-zip")) | .id' | head -n 1)
+
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${fname}"
+	rsync -avzh ${fname} ${DEST}
+	ssh ${HOST} "cd ${FLDR}; chmod 0644 ${fname}"
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}_macos.zip"
+	mv ${fname} ARCHIVE/${APP}_${version}_macos.zip
+    fi
+
+    echo ""
+
+    # 20251222 gjw The macOS and iOS signed/certified builds are under
+    # development with the notepod app. Once it is working there we
+    # can migrate all other apps.
     #
-    #    The macOS and iOS signed/certified builds are under
-    #    development with the notepod app. Once it is working there we
-    #    can migrate all other apps.
+    # 20260921 gjw The above targets are the most recent work with
+    # todopod to get a working macOS installer. The final solution
+    # will be some combination of the below and the above.
 
     echo '******************** UPLOAD MACOS ZIP UNSIGNED'
 
@@ -303,6 +353,29 @@ if [[ "${status}" == "completed" ]]; then
 	ssh ${HOST} "cd ${FLDR}; chmod 0644 ${fname}"
 	echo  "Archive as installers/ARCHIVE/${APP}_${version}_macos_dev.dmg"
 	mv ${fname} ARCHIVE/${APP}_${version}_macos_dev.dmg
+    fi
+
+    echo ""
+
+    echo '******************** UPLOAD iOS IPA'
+
+    artifactId=$(gh api -H "Accept: application/vnd.github+json" /repos/${REP}/${APP}/actions/artifacts \
+		    --jq '.artifacts[] | select(.name | endswith("-ipa")) | .id' | head -n 1)
+
+    if [[ -z "${artifactId}" ]]; then
+	echo "No artifact found."
+    else
+	echo "artifact id: $artifactId"
+	gh api -H "Accept: application/vnd.github+json" repos/${REP}/${APP}/actions/artifacts/${artifactId}/zip > artifact.zip
+	unzip artifact.zip
+	fname=$(unzip -l artifact.zip | awk 'NR==4 {print $4}')
+	touch ${fname} # Timestamp with current date/time
+	rm -f artifact.zip
+	echo  "Installing as ${DEST}${fname}"
+	rsync -avzh ${fname} ${DEST}
+	ssh ${HOST} "cd ${FLDR}; chmod 0644 ${fname}"
+	echo  "Archive as installers/ARCHIVE/${APP}_${version}.ipa"
+	mv ${fname} ARCHIVE/${APP}_${version}.ipa
     fi
 
     echo ""

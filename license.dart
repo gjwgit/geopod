@@ -1,10 +1,10 @@
 /// GeoPod - A map based interface to significant points of interest.
 ///
-// Time-stamp: <Thursday 2026-02-19 09:59:21 +1100 Graham Williams>
+// Time-stamp: <Monday 2026-09-21 17:03:18 +1000 Graham Williams>
 ///
 /// Copyright (C) 2025, Software Innovation Institute ANU
 ///
-/// Licensed under the GNU General Public License, Version 3 (the "License");
+/// Licensed under the GNU General Public License, Version 3 (the "License").
 ///
 /// License: https://opensource.org/license/gpl-3-0
 //
@@ -15,11 +15,11 @@
 //
 // This program is distributed in the hope that it will be useful, but WITHOUT
 // ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+// FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 // details.
 //
 // You should have received a copy of the GNU General Public License along with
-// this program.  If not, see <https://opensource.org/license/gpl-3-0>.
+// this program. If not, see <https://opensource.org/license/gpl-3-0>.
 ///
 /// Authors: AUTHORS
 

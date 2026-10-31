@@ -1,6 +1,6 @@
-/// GeoPod - A map based interface to significant points of interest.
+/// Interactive map points of interest managed by Pods
 ///
-// Time-stamp: <Monday 2026-09-21 17:03:18 +1000 Graham Williams>
+// Time-stamp: <>
 ///
 /// Copyright (C) 2025, Software Innovation Institute ANU
 ///

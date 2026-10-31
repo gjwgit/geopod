@@ -4,15 +4,9 @@ Noted below are the high level changes for the app.  Each update
 includes a short user-oriented description, version number, date, and
 developer.
 
-You can run the app in your
-[**browser**](https://geopod.solidcommunity.au) or else download and
-locally install the latest version from the [Solid Community
-AU](https://solidcommunity.au) or directly: for **GNU/Linux** as
-[deb](https://solidcommunity.au/installers/geopod_amd64.deb) or
-[zip](https://solidcommunity.au/installers/geopod-linux.zip); and
-**Windows** as
-[zip](https://solidcommunity.au/installers/geopod-windows.zip) or
-[exe](https://solidcommunity.au/installers/geopod-windows-inno.exe).
+See the [Install
+Guide](https://gjwgit.github.io/geopod/INSTALL.html) for
+installation instructions on any platform.
 
 Contributions are welcome. Visit
 [github](https://github.com/gjwgit/geopod) to submit an issue or, even
@@ -23,6 +17,10 @@ Pull Request. Coding documentation is
 We make this project available for free so if you appreciate the app
 then please show some ❤️ and tap on the star at
 [GitHub](https://github.com/gjwgit/geopod) to support our work.
+
+## 1.1 Migrate to using Copier for Templates
+
++ Move to copier [1.1.0 20261101 gjw]
 
 ## 1.0 Updated key management
 

@@ -5,4 +5,5 @@ Exec=geopod
 Icon=${SNAP}/meta/gui/icon.png
 Terminal=false
 Type=Application
-Categories=Utility;
+Categories=Utility;Maps;
+Keywords=map;places;points of interest;solid;pod;

@@ -50,8 +50,6 @@ Future<void> handlePdfExport(BuildContext context, Uint8List pdfBytes) async {
       fileName: '$filename.pdf',
       bytes: pdfBytes,
       mimeType: 'application/pdf',
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
     );
 
     if (saved != null) {

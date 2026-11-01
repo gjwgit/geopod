@@ -201,8 +201,6 @@ class BackupService {
         fileName: filename,
         bytes: zipBytes,
         mimeType: 'application/zip',
-        type: FileType.custom,
-        allowedExtensions: ['zip'],
       );
       if (saved == null) return false; // user cancelled
       return true;

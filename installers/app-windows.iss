@@ -34,7 +34,7 @@
 ; 20261030 gjw The AppId must never change once released, or Windows
 ; treats the next version as a different app.
 ;
-AppId={{6B5EF861-CA64-4E55-91B0-1ED4544ABF98}
+AppId={{DA1C7CAA-C813-4195-8393-4C8615C9E7CC}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;

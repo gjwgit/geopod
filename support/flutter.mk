@@ -727,9 +727,16 @@ solidcommunity:
 	--exclude linux --exclude windows --exclude android
 	ssh solidcommunity.au '(cd projects/$(APP); flutter upgrade; make prod)'
 
+# 20261118 gjw app_icon_square.png is the snap, flatpak and deb icon,
+# which must be square and at most 512x512. It is derived from
+# app_icon.png only when missing, so a hand-made one is kept. Remove it
+# to regenerate after app_icon.png changes.
+
 .PHONY: icons
 icons:
-	cp assets/images/app_icon.png snap/gui/icon.png
+	@[ -f assets/images/app_icon_square.png ] || \
+	  convert assets/images/app_icon.png -resize 512x512 -background none \
+	  -gravity center -extent 512x512 assets/images/app_icon_square.png
 	dart run flutter_launcher_icons
 
 .PHONY: build_ios upload_ios

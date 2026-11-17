@@ -97,8 +97,8 @@ Then set up your local installation (only required once):
 ln -s ${HOME}/.local/share/geopod/geopod ${HOME}/.local/bin/
 wget https://raw.githubusercontent.com/gjwgit/geopod/dev/installers/app.desktop -O ${HOME}/.local/share/applications/geopod.desktop
 sed -i "s/USER/$(whoami)/g" ${HOME}/.local/share/applications/geopod.desktop
-mkdir -p ${HOME}/.local/share/icons/hicolor/256x256/apps/
-wget https://github.com/gjwgit/geopod/raw/dev/installers/app.png -O ${HOME}/.local/share/icons/hicolor/256x256/apps/geopod.png
+mkdir -p ${HOME}/.local/share/icons/hicolor/512x512/apps/
+wget https://github.com/gjwgit/geopod/raw/dev/assets/images/app_icon_square.png -O ${HOME}/.local/share/icons/hicolor/512x512/apps/geopod.png
 ```
 
 To install for any user on the computer:
@@ -107,7 +107,7 @@ To install for any user on the computer:
 sudo unzip geopod-linux.zip -d /opt/geopod
 sudo ln -s /opt/geopod/geopod /usr/local/bin/
 wget https://raw.githubusercontent.com/gjwgit/geopod/dev/installers/app.desktop -O ${HOME}/usr/local/share/applications/geopod.desktop
-wget https://github.com/gjwgit/geopod/raw/dev/installers/app.png -O ${HOME}/use/local/share/icons/geopod.png
+wget https://github.com/gjwgit/geopod/raw/dev/assets/images/app_icon_square.png -O ${HOME}/use/local/share/icons/geopod.png
 ```
 
 Once installed you can run the app from the GNOME desktop through

@@ -13,8 +13,14 @@ description: |
 # 20260924 gjw Named explicitly rather than relying on snapcraft finding
 # snap/gui/icon.png by convention. This is the icon the Snap Store shows
 # beside the listing, and the store limits it to 256kB.
+#
+# 20261118 gjw The icon lives with the other app icons in assets/images
+# rather than as a copy in snap/gui that was easily left out. The store
+# wants it square and at most 512x512, which app_icon.png often is not,
+# so `make icons` derives app_icon_square.png from it when missing.
+# snapcraft still installs it as meta/gui/icon.png for the desktop file.
 
-icon: snap/gui/icon.png
+icon: assets/images/app_icon_square.png
 
 base: core24
 grade: stable

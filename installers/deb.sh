@@ -74,9 +74,9 @@ cp -r ../build/linux/x64/release/bundle/* ${ROOT}/usr/lib/${APP}/
 
 (cd ${ROOT}/usr/bin; ln -s ../lib/${APP}/${APP} ${APP})
 
-# The app icon.
+# The app icon, square and at most 512x512 to suit its folder.
 
-cp ../assets/images/app_icon.png ${ROOT}/usr/share/icons/hicolor/512x512/apps/${APP}.png
+cp ../assets/images/app_icon_square.png ${ROOT}/usr/share/icons/hicolor/512x512/apps/${APP}.png
 
 # Set correct permissions.
 
